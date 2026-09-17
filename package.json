@@ -1,0 +1,15 @@
+{
+  "name": "ethereum-rpc-knowledge-map",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "An interactive knowledge map for learning Ethereum RPC.",
+  "scripts": {
+    "start": "node server.js",
+    "build": "node scripts/build.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20.5"
+  }
+}
