@@ -46,6 +46,7 @@ const els = {
   zoomIn: $('#zoom-in'),
   zoomOut: $('#zoom-out'),
   theme: $('#theme-toggle'),
+  motion: $('#motion-toggle'),
   toast: $('#toast'),
   savedButton: $('#saved-button'),
   savedPopover: $('#saved-popover'),
@@ -87,6 +88,7 @@ const state = {
   pointer: null,
   bookmarks: new Set(),
   learned: new Set(),
+  motion: true,
   quizLocks: {},
   quiz: null
 };
@@ -97,6 +99,7 @@ const STORAGE_KEYS = {
   theme: 'ethereum-rpc-map:theme',
   split: 'ethereum-rpc-map:lesson-width',
   view: 'ethereum-rpc-map:view',
+  motion: 'ethereum-rpc-map:motion',
   quiz: 'ethereum-rpc-map:quiz'
 };
 
@@ -157,7 +160,21 @@ if (Number.isFinite(savedSplit) && savedSplit >= 0.18 && savedSplit <= 0.62) {
 const WORLD = { size: 4800, c: 2400 };
 const BRANCH_LIMIT = 18;
 const INLINE_PATTERN = /(\[\[[^\]]+\]\]|`[^`\n]+`)/g;
-const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+// Motion follows the operating system until the reader says otherwise, and their choice
+// then wins. Honouring the system default silently is why an OS-level "no animations"
+// setting could switch the whole map's motion off with nothing in the app to say so.
+const systemReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+function applyMotion(on) {
+  state.motion = on;
+  document.documentElement.dataset.motion = on ? 'on' : 'off';
+  if (els.motion) {
+    els.motion.textContent = on ? '⏵' : '⏸';
+    els.motion.classList.toggle('is-off', !on);
+    els.motion.setAttribute('aria-label', on ? 'Turn animations off' : 'Turn animations on');
+    els.motion.title = on ? 'Animations are on' : 'Animations are off';
+  }
+}
+const prefersReducedMotion = () => !state.motion;
 
 function tint(hex, alpha = '1f') {
   const value = String(hex).replace('#', '');
@@ -573,11 +590,17 @@ function tweenLayout(layout, { animate = true } = {}) {
   // frame would leave freshly appended nodes at the canvas origin for one paint.
   paint(new Map(starts));
 
-  const started = performance.now();
   const duration = 520;
   const ease = time => 1 - (1 - time) ** 3;
+  // The clock starts on the first frame, not here. A frame callback scheduled from an event
+  // handler runs later in that same frame and is handed the frame's start timestamp, which
+  // is earlier than performance.now() was at this line. Measuring from performance.now()
+  // therefore gives a negative progress on the first step, and the easing turns that into a
+  // large negative multiplier that throws every node far off screen before it recovers.
+  let started = null;
   const step = now => {
-    const progress = Math.min(1, (now - started) / duration);
+    if (started === null) started = now;
+    const progress = Math.min(1, Math.max(0, (now - started) / duration));
     const eased = ease(progress);
     const frame = new Map();
     targets.forEach((target, key) => {
@@ -588,6 +611,15 @@ function tweenLayout(layout, { animate = true } = {}) {
     state.layoutFrame = progress < 1 ? requestAnimationFrame(step) : 0;
   };
   state.layoutFrame = requestAnimationFrame(step);
+  // Frame callbacks are throttled in background tabs and stop entirely in some embedded
+  // views. Without this the map would be left frozen part-way through a move.
+  window.clearTimeout(tweenLayout.settle);
+  tweenLayout.settle = window.setTimeout(() => {
+    if (!state.layoutFrame) return;
+    cancelAnimationFrame(state.layoutFrame);
+    state.layoutFrame = 0;
+    paint(new Map(targets));
+  }, duration + 140);
 }
 
 function applyViewport() {
@@ -613,10 +645,12 @@ function setViewport(pan, zoom, { animate = true } = {}) {
   const distance = Math.hypot(pan.x - from.x, pan.y - from.y);
   if (distance < 1 && Math.abs(zoom - from.zoom) < 0.002) { state.pan = pan; state.zoom = zoom; applyViewport(); return; }
   const duration = Math.min(620, Math.max(280, 260 + distance * 0.12));
-  const started = performance.now();
   const ease = time => (time < 0.5 ? 4 * time ** 3 : 1 - (-2 * time + 2) ** 3 / 2);
+  // Anchored to the first frame and clamped at both ends; see the note in tweenLayout.
+  let started = null;
   const step = now => {
-    const progress = Math.min(1, (now - started) / duration);
+    if (started === null) started = now;
+    const progress = Math.min(1, Math.max(0, (now - started) / duration));
     const eased = ease(progress);
     state.pan = { x: from.x + (pan.x - from.x) * eased, y: from.y + (pan.y - from.y) * eased };
     state.zoom = from.zoom + (zoom - from.zoom) * eased;
@@ -1398,6 +1432,11 @@ function bindEvents() {
   els.quizClose.addEventListener('click', () => closeQuiz());
   els.quizOverlay.addEventListener('click', event => { if (event.target === els.quizOverlay) closeQuiz(); });
   els.savedButton.addEventListener('click', () => setSavedPopover(els.savedPopover.hidden));
+  els.motion.addEventListener('click', () => {
+    applyMotion(!state.motion);
+    writeItem(STORAGE_KEYS.motion, state.motion ? 'on' : 'off');
+    toast(state.motion ? 'Animations on' : 'Animations off');
+  });
   els.theme.addEventListener('click', () => {
     const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
     document.documentElement.dataset.theme = next;
@@ -1504,6 +1543,8 @@ function bindEvents() {
 
 /* ---------- boot ---------- */
 async function load() {
+  const storedMotion = readItem(STORAGE_KEYS.motion);
+  applyMotion(storedMotion === 'on' ? true : storedMotion === 'off' ? false : !systemReducedMotion());
   bindEvents();
   els.viewButtons.forEach(button => button.classList.toggle('is-active', button.dataset.view === state.view));
   try {
@@ -1527,6 +1568,11 @@ async function load() {
     renderGraph();
     renderTrail();
     fitView({ animate: false });
+    // Say so rather than just being still: an OS-level setting turning the map's motion
+    // off is otherwise indistinguishable from the animation being broken.
+    if (!state.motion && systemReducedMotion() && readItem(STORAGE_KEYS.motion) === null) {
+      window.setTimeout(() => toast('Animations are off to match your system setting. Use ⏸ in the toolbar to turn them on.'), 900);
+    }
     // ?checkpoint opens the quiz straight away, so a checkpoint can be linked to directly.
     if (new URLSearchParams(location.search).has('checkpoint') && state.selected && !state.learned.has(state.selected.id)) openQuiz(state.selected);
   } catch (error) {

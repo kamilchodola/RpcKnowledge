@@ -460,9 +460,18 @@ body.quiz-open { overflow: hidden; }
 .toast { position: fixed; z-index: 70; right: 24px; bottom: 22px; max-width: 280px; padding: 11px 14px; border: 1px solid var(--line-strong); border-radius: var(--r-md); color: var(--ink); background: var(--surface); box-shadow: var(--shadow); font-size: 12px; opacity: 0; pointer-events: none; transform: translateY(8px); transition: opacity .22s ease, transform .22s ease; }
 .toast.is-visible { opacity: 1; transform: translateY(0); }
 
+/* Motion is gated on the app's own setting, not directly on the media query, so a reader
+   whose system asks for less motion can still switch it on here. The media query is the
+   default only until the script sets data-motion. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+  :root:not([data-motion="on"]) *, :root:not([data-motion="on"]) *::before, :root:not([data-motion="on"]) *::after {
+    scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+  }
 }
+:root[data-motion="off"] *, :root[data-motion="off"] *::before, :root[data-motion="off"] *::after {
+  scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+}
+.icon-button.is-off { color: var(--faint); border-style: dashed; }
 @media (max-width: 1280px) {
   .progress-wrap { display: none; }
   .lesson { padding: 20px 18px 0; }
