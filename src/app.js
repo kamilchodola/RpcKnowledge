@@ -93,8 +93,8 @@ const state = {
 const STORAGE_KEYS = {
   bookmarks: 'ethereum-rpc-map:bookmarks',
   learned: 'ethereum-rpc-map:learned',
-  theme: 'ethereum-rpc-map:contrast',
-  split: 'ethereum-rpc-map:split',
+  theme: 'ethereum-rpc-map:theme',
+  split: 'ethereum-rpc-map:lesson-width',
   view: 'ethereum-rpc-map:view',
   quiz: 'ethereum-rpc-map:quiz'
 };
@@ -139,12 +139,19 @@ function readLocks() {
 state.bookmarks = readSet(STORAGE_KEYS.bookmarks);
 state.learned = readSet(STORAGE_KEYS.learned);
 state.quizLocks = readLocks();
-if (readItem(STORAGE_KEYS.theme) === '1') document.body.classList.add('high-contrast');
+// Dark is the default. An explicit choice wins; otherwise the system preference does.
+const storedTheme = readItem(STORAGE_KEYS.theme);
+const systemLight = window.matchMedia?.('(prefers-color-scheme: light)').matches ?? false;
+document.documentElement.dataset.theme = storedTheme === 'light' || storedTheme === 'dark'
+  ? storedTheme
+  : systemLight ? 'light' : 'dark';
 if (readItem(STORAGE_KEYS.view) === 'overview') state.view = 'overview';
 const viewParam = new URLSearchParams(location.search).get('view');
 if (viewParam === 'overview' || viewParam === 'focus') state.view = viewParam;
 const savedSplit = Number.parseFloat(readItem(STORAGE_KEYS.split) ?? '');
-if (Number.isFinite(savedSplit) && savedSplit > 0.15 && savedSplit < 0.8) document.documentElement.style.setProperty('--map-height', `${Math.round(savedSplit * 100)}vh`);
+if (Number.isFinite(savedSplit) && savedSplit >= 0.18 && savedSplit <= 0.62) {
+  document.documentElement.style.setProperty('--lesson-width', `${(savedSplit * 100).toFixed(2)}%`);
+}
 
 const WORLD = { size: 4800, c: 2400 };
 const BRANCH_LIMIT = 18;
@@ -1292,11 +1299,13 @@ function setSavedPopover(open) {
   els.savedButton.setAttribute('aria-expanded', String(open));
 }
 
-function setMapHeight(pixels) {
-  const total = els.workspace.clientHeight || window.innerHeight;
-  const clamped = Math.min(Math.max(pixels, 170), total * 0.8);
-  document.documentElement.style.setProperty('--map-height', `${clamped}px`);
-  writeItem(STORAGE_KEYS.split, String(clamped / window.innerHeight));
+/** Width of the lesson column, in pixels, clamped so neither side collapses. */
+function setLessonWidth(pixels) {
+  const total = els.workspace.clientWidth || window.innerWidth;
+  const clamped = Math.min(Math.max(pixels, 296), total * 0.62);
+  const fraction = clamped / total;
+  document.documentElement.style.setProperty('--lesson-width', `${(fraction * 100).toFixed(2)}%`);
+  writeItem(STORAGE_KEYS.split, String(fraction));
 }
 
 /* ---------- events ---------- */
@@ -1355,8 +1364,10 @@ function bindEvents() {
   els.quizOverlay.addEventListener('click', event => { if (event.target === els.quizOverlay) closeQuiz(); });
   els.savedButton.addEventListener('click', () => setSavedPopover(els.savedPopover.hidden));
   els.theme.addEventListener('click', () => {
-    document.body.classList.toggle('high-contrast');
-    writeItem(STORAGE_KEYS.theme, document.body.classList.contains('high-contrast') ? '1' : '0');
+    const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = next;
+    writeItem(STORAGE_KEYS.theme, next);
+    els.theme.setAttribute('aria-label', next === 'light' ? 'Switch to the dark theme' : 'Switch to the light theme');
   });
 
   els.search.addEventListener('input', event => { state.query = event.target.value; state.activeResult = 0; showSearchResults(); });
@@ -1415,14 +1426,15 @@ function bindEvents() {
 
   let splitDrag = null;
   els.splitter.addEventListener('pointerdown', event => {
-    splitDrag = { id: event.pointerId, startY: event.clientY, startHeight: els.mapPane.getBoundingClientRect().height };
+    splitDrag = { id: event.pointerId, startX: event.clientX, startWidth: els.lessonPane.getBoundingClientRect().width };
     els.splitter.classList.add('is-dragging');
     els.splitter.setPointerCapture(event.pointerId);
     event.preventDefault();
   });
   els.splitter.addEventListener('pointermove', event => {
     if (!splitDrag || event.pointerId !== splitDrag.id) return;
-    setMapHeight(splitDrag.startHeight + event.clientY - splitDrag.startY);
+    // Dragging left widens the lesson, so the delta is inverted.
+    setLessonWidth(splitDrag.startWidth - (event.clientX - splitDrag.startX));
     applyViewport();
   });
   const releaseSplit = event => {
@@ -1434,13 +1446,13 @@ function bindEvents() {
   els.splitter.addEventListener('pointerup', releaseSplit);
   els.splitter.addEventListener('pointercancel', releaseSplit);
   els.splitter.addEventListener('keydown', event => {
-    const delta = event.key === 'ArrowUp' ? -40 : event.key === 'ArrowDown' ? 40 : 0;
+    const delta = event.key === 'ArrowLeft' ? 40 : event.key === 'ArrowRight' ? -40 : 0;
     if (!delta) return;
     event.preventDefault();
-    setMapHeight(els.mapPane.getBoundingClientRect().height + delta);
+    setLessonWidth(els.lessonPane.getBoundingClientRect().width + delta);
     renderGraph({ refit: true });
   });
-  els.splitter.addEventListener('dblclick', () => { setMapHeight(window.innerHeight * .48); renderGraph({ refit: true }); });
+  els.splitter.addEventListener('dblclick', () => { setLessonWidth((els.workspace.clientWidth || window.innerWidth) * .3); renderGraph({ refit: true }); });
 
   window.addEventListener('hashchange', () => {
     const match = /^#(t|c)\/([a-z0-9-]+)$/i.exec(location.hash);

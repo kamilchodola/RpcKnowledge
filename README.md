@@ -1,6 +1,6 @@
 # Ethereum RPC knowledge map
 
-A dependency-free field guide to Ethereum RPC. The map sits on top, the lesson sits below it, and every term a lesson introduces is its own node you can open. Nothing is explained twice: if a word needs explaining, it gets a leaf.
+A dependency-free field guide to Ethereum RPC. The map fills the left of the screen, the lesson reads down the right, and every term a lesson introduces is its own node you can open. Nothing is explained twice: if a word needs explaining, it gets a leaf.
 
 ## Run it
 
@@ -28,9 +28,13 @@ A well-connected lesson can name thirty terms, which would shrink every label pa
 
 **Overview** shows all topics at once, clustered by category around the root. Press `f` to switch views.
 
-The topic you arrived from stays on the map, on the left, marked *you came from here* with an orange edge, even when the new lesson does not link back to it. The breadcrumb above the map is the same path in text, and every step in it is clickable.
+The map takes roughly seventy percent of the width and the lesson thirty. Drag the bar between them to change that, double-click it to reset, or focus it and use the left and right arrow keys. The width is remembered. Below 1000 pixels the two stack instead, map above lesson.
 
-Drag the bar between map and lesson to resize; the split is remembered. Drag the canvas to pan, scroll to zoom, `Fit` frames everything.
+The topic you arrived from stays on the map, marked *you came from here* with a flowing orange edge, even when the new lesson does not link back to it. The breadcrumb above the map is the same path in text, and every step in it is clickable.
+
+Drag the canvas to pan, scroll to zoom, `Fit` frames everything.
+
+The app is dark by default, because a luminous graph on a dark canvas is easier to read than dark ink on paper. The ◐ button switches to the light theme and remembers the choice; with no choice saved it follows your system setting.
 
 ## Learning state
 
@@ -44,7 +48,7 @@ A topic becomes learned only by passing its checkpoint. Press `Take the checkpoi
 - A failed attempt locks the checkpoint for 20 seconds, doubling with each consecutive failure up to five minutes, and reshuffles both the questions and the option order.
 - The correct answer is never written into the page, so reading the DOM does not help.
 
-Questions come from the topic's own `quiz` array when it has one, topped up with questions generated from the lesson: fill the gap in a sentence, pick the definition, spot the real pitfall. Bookmarks, learned topics, the split position, and the contrast toggle live in browser storage.
+Questions come from the topic's own `quiz` array when it has one, topped up with questions generated from the lesson: fill the gap in a sentence, pick the definition, spot the real pitfall. Bookmarks, learned topics, the split position, and the theme live in browser storage.
 
 `/` focuses search, `Escape` clears it, `Backspace` goes back, `q` opens the checkpoint, `f` toggles the view.
 

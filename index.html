@@ -3,7 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#f8f5ee">
+    <meta name="theme-color" content="#0a0f12" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)">
     <meta name="description" content="A clickable knowledge map of Ethereum RPC: every topic explained precisely, every new term its own leaf.">
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
     <title>Ethereum RPC — knowledge map</title>
@@ -46,7 +47,7 @@
               <div id="bookmarked-topics" class="bookmarked-topics"><span class="saved-empty">Nothing saved yet. Use ☆ on a lesson.</span></div>
             </div>
           </div>
-          <button id="theme-toggle" class="icon-button" type="button" aria-label="Toggle high contrast" title="Toggle high contrast">◐</button>
+          <button id="theme-toggle" class="icon-button" type="button" aria-label="Switch between dark and light" title="Switch between dark and light">◐</button>
         </div>
       </header>
 
@@ -71,7 +72,7 @@
           </div>
         </section>
 
-        <div id="splitter" class="splitter" role="separator" aria-orientation="horizontal" aria-label="Resize the map. Use the arrow keys to adjust." tabindex="0" title="Drag to resize"></div>
+        <div id="splitter" class="splitter" role="separator" aria-orientation="vertical" aria-label="Resize the lesson column. Use the left and right arrow keys to adjust." tabindex="0" title="Drag to resize"></div>
 
         <section id="lesson" class="lesson-pane" tabindex="-1" aria-live="polite">
           <article id="lesson-content" class="lesson" hidden>
@@ -100,12 +101,11 @@
                   <p class="eyebrow">Primary references</p>
                   <div id="topic-sources" class="topic-sources"></div>
                 </section>
-                <div class="learn-block">
-                  <button id="learned-button" class="learned-button" type="button"><span aria-hidden="true">◆</span> Take the checkpoint</button>
-                  <button id="learned-reset" class="text-button" type="button" hidden>Mark as not learned</button>
-                  <p class="learn-note">A topic counts as learned once you answer every checkpoint question correctly.</p>
-                </div>
               </aside>
+            </div>
+            <div class="learn-block">
+              <button id="learned-button" class="learned-button" type="button"><span aria-hidden="true">◆</span> Take the checkpoint</button>
+              <button id="learned-reset" class="text-button" type="button" hidden>Mark as not learned</button>
             </div>
           </article>
 
