@@ -78,6 +78,7 @@ const state = {
   layout: { positions: new Map(), edges: [], nodes: new Map() },
   nodeEls: new Map(),
   edgeEls: [],
+  lastCenter: null,
   drawn: new Map(),
   layoutFrame: 0,
   pan: { x: 0, y: 0 },
@@ -472,15 +473,37 @@ function renderGraph({ refit = false, animate = true } = {}) {
   els.graphNodes.style.width = `${WORLD.size}px`;
   els.graphNodes.style.height = `${WORLD.size}px`;
   const keep = new Set();
+  const motion = animate && !prefersReducedMotion();
+  const centerKey = [...layout.nodes].find(([, meta]) => meta.kind === 'center' || meta.center)?.[0] ?? null;
+  const centerChanged = centerKey !== state.lastCenter;
+  state.lastCenter = centerKey;
+  let entering = 0;
   layout.nodes.forEach((meta, key) => {
     keep.add(key);
     const node = ensureNode(key);
+    const fresh = !node.isConnected;
+    // decorateNode rewrites className, so motion classes go on afterwards. Without this,
+    // every node on screen would replay its entrance on every render.
     decorateNode(node, meta);
-    if (!node.isConnected) els.graphNodes.append(node);
+    if (fresh) els.graphNodes.append(node);
+    if (!motion) return;
+    if (fresh) {
+      node.style.setProperty('--enter-delay', `${Math.min(entering * 16, 240)}ms`);
+      node.classList.add('is-entering');
+      entering += 1;
+      node.addEventListener('animationend', () => node.classList.remove('is-entering'), { once: true });
+      return;
+    }
+    // The topic you just opened lands with a pop, so the switch is unmistakable even when
+    // most of the ring around it stayed put.
+    if (key === centerKey && centerChanged) {
+      node.classList.add('is-arriving');
+      node.addEventListener('animationend', () => node.classList.remove('is-arriving'), { once: true });
+    }
   });
   state.nodeEls.forEach((node, key) => { if (!keep.has(key)) retireNode(key, node); });
   buildEdges(layout);
-  tweenLayout(layout, { animate: animate && !prefersReducedMotion() });
+  tweenLayout(layout, { animate: motion });
   if (refit) fitView({ animate });
 }
 
@@ -545,6 +568,10 @@ function tweenLayout(layout, { animate = true } = {}) {
     return Math.abs(start.x - target.x) > 0.5 || Math.abs(start.y - target.y) > 0.5;
   });
   if (!animate || !moved) { paint(new Map(targets)); return; }
+
+  // Put everything at its starting point in this frame. Waiting for the first animation
+  // frame would leave freshly appended nodes at the canvas origin for one paint.
+  paint(new Map(starts));
 
   const started = performance.now();
   const duration = 520;
@@ -1152,8 +1179,16 @@ function updateHash() {
   if (location.hash !== hash) history.replaceState(null, '', hash);
 }
 
+function flashLesson() {
+  const panel = state.selectedCategory ? els.categoryContent : els.lessonContent;
+  panel.classList.remove('is-switching');
+  void panel.offsetWidth;
+  panel.classList.add('is-switching');
+}
+
 function afterNavigate({ refit }) {
   renderGraph({ refit });
+  flashLesson();
   // In overview the whole atlas stays put; navigation only pans to the node, keeping
   // whatever zoom the reader chose. In focus the tree is rebuilt, so it refits.
   if (state.view === 'overview' && !refit) centerOnKey(state.selectedCategory ? `hub:${state.selectedCategory.id}` : state.selected.id, 0);

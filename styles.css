@@ -240,17 +240,25 @@ code { padding: 1.5px 5px; border-radius: 4px; background: var(--accent-soft); c
   line-height: 1.18;
   text-align: center;
   pointer-events: auto;
-  transition: box-shadow .2s ease, background .2s ease, opacity .26s ease, border-color .2s ease;
-  animation: node-in .32s cubic-bezier(.2, .8, .2, 1) both;
+  transition: box-shadow .2s ease, background .2s ease, border-color .2s ease, opacity .26s ease, transform .26s ease;
 }
-@keyframes node-in { from { opacity: 0; transform: translate(-50%, -50%) scale(.82); } }
+/* Only nodes that were not on the map a moment ago play the entrance, staggered so the
+   branch sprouts rather than snapping into place all at once. */
+.topic-node.is-entering { animation: node-in .42s cubic-bezier(.18, .9, .25, 1) var(--enter-delay, 0ms) both; }
+@keyframes node-in { from { opacity: 0; transform: translate(-50%, -50%) scale(.62); } }
+.topic-node.is-arriving { animation: center-pop .52s cubic-bezier(.2, .9, .25, 1) both; }
+@keyframes center-pop {
+  0% { transform: translate(-50%, -50%) scale(.84); }
+  58% { transform: translate(-50%, -50%) scale(1.05); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
 .topic-node:hover, .topic-node:focus-visible {
   z-index: 14;
   border-color: var(--node-color);
   background: var(--surface-2);
   box-shadow: var(--shadow-lift), 0 0 0 4px color-mix(in oklab, var(--node-color) 16%, transparent);
 }
-.topic-node.is-exiting { opacity: 0; pointer-events: none; }
+.topic-node.is-exiting { opacity: 0; transform: translate(-50%, -50%) scale(.72); pointer-events: none; }
 
 .node-badge { position: absolute; top: -7px; right: -7px; display: grid; width: 15px; height: 15px; place-items: center; border-radius: 50%; font-size: 9px; line-height: 1; }
 .is-learned > .node-badge { color: var(--accent-ink); background: var(--known); box-shadow: 0 0 10px rgba(53, 224, 161, var(--halo)); }
@@ -325,6 +333,10 @@ code { padding: 1.5px 5px; border-radius: 4px; background: var(--accent-soft); c
 .lesson-pane::-webkit-scrollbar { width: 10px; }
 .lesson-pane::-webkit-scrollbar-thumb { border: 3px solid var(--bg); border-radius: 6px; background: var(--line-strong); }
 .lesson { display: flex; min-height: 100%; flex-direction: column; padding: 22px 24px 0; }
+/* Replayed when the topic changes, so the panel reads as a new page rather than a swap. */
+.lesson.is-switching .lesson-head { animation: lesson-in .4s cubic-bezier(.18, .9, .25, 1) both; }
+.lesson.is-switching .lesson-grid, .lesson.is-switching .category-topics { animation: lesson-in .44s cubic-bezier(.18, .9, .25, 1) .07s both; }
+@keyframes lesson-in { from { opacity: 0; transform: translateY(12px); } }
 .lesson-head { padding-bottom: 18px; border-bottom: 1px solid var(--line); }
 .lesson-topline { display: flex; align-items: center; gap: 9px; }
 .lesson-spacer { flex: 1; }
