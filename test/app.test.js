@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { safeFilePath, server } from '../server.js';
 import { normalizeDataset, topicText, linkedIds, plainText, wordCount, LINK_PATTERN } from '../src/dataset.js';
 import { buildAttempt, buildQuestionPool, MIN_QUESTIONS, QUIZ_LENGTH } from '../src/quiz.js';
-import { PUBLISHED, HEADERS } from '../scripts/build.js';
+import { PUBLISHED, HEADERS, build } from '../scripts/build.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
@@ -302,6 +302,37 @@ test('the publish list covers the site and nothing else', async () => {
   assert.match(HEADERS, /X-Content-Type-Options: nosniff/, 'published headers lost nosniff');
   assert.match(HEADERS, /Content-Security-Policy: [^\n]*script-src 'self'/, 'published headers lost the script policy');
   assert.ok(!/unsafe-inline|unsafe-eval/.test(HEADERS), 'the content security policy must not allow inline or eval');
+});
+
+// What `npm run share` puts on the internet: the server pointed at dist/. This spawns it
+// the same way and checks that only the site is reachable and that the Pages headers
+// arrive, so a tunnel can never expose the repo.
+test('serving dist exposes only the site, with its security headers', async () => {
+  await build();
+  const { spawn } = await import('node:child_process');
+  const port = 4300 + Math.floor(Math.random() * 500);
+  const child = spawn(process.execPath, [path.resolve(root, 'server.js')], {
+    env: { ...process.env, SITE_ROOT: 'dist', HOST: '127.0.0.1', PORT: String(port) },
+    stdio: 'ignore'
+  });
+  try {
+    const base = `http://127.0.0.1:${port}`;
+    let page;
+    for (let attempt = 0; attempt < 40 && !page; attempt += 1) {
+      page = await fetch(`${base}/`).catch(() => null);
+      if (!page) await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.ok(page, 'the dist server never started');
+    assert.equal(page.status, 200);
+    assert.match(page.headers.get('content-security-policy') ?? '', /script-src 'self'/, 'dist must be served with its content security policy');
+    assert.equal(page.headers.get('x-frame-options'), 'SAMEORIGIN');
+    assert.equal((await fetch(`${base}/data/foundations.js`)).status, 200, 'the dataset must be reachable');
+    for (const hidden of ['_headers', 'server.js', 'README.md', 'KNOWN-ISSUES.md', 'package.json', 'scripts/share.js', 'test/app.test.js']) {
+      assert.equal((await fetch(`${base}/${hidden}`)).status, 404, `${hidden} must not be reachable from the published site`);
+    }
+  } finally {
+    child.kill();
+  }
 });
 
 test('required browser entry files are present', async () => {

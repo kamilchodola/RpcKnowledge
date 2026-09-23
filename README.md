@@ -76,6 +76,31 @@ A topic record looks like this:
 
 `[[topic-id|Visible label]]` becomes a safe button, never injected HTML. Text in backticks becomes inline code. A link to the topic you are already reading renders as plain text.
 
+## Sharing it from your machine
+
+```sh
+npm run share
+```
+
+That builds the site, serves `dist/` on `127.0.0.1` only, and opens a Cloudflare quick tunnel to it. It prints a public address:
+
+```
+  Public address
+  https://some-random-words.trycloudflare.com
+```
+
+Anyone with that link can open the map until you press Ctrl+C. It needs no Cloudflare account and costs nothing. It needs `cloudflared` installed once:
+
+```sh
+winget install --id Cloudflare.cloudflared
+```
+
+The tunnel dials out to Cloudflare rather than accepting connections, so it needs no router port forward and no firewall rule, and your public IP never appears. Because the server listens on loopback, nothing is exposed on your local network either. Only `dist/` is served, with the same security headers as a Pages deployment, and a test checks that the dev server, notes, and tests all return 404 through it.
+
+Two limits. The address is random and changes on every run, and quick tunnels come with no uptime guarantee, so this is for showing someone the map, not hosting it. For a stable address, deploy to Cloudflare Pages as below, or use a named tunnel, which is also free but needs a Cloudflare account and a domain on it.
+
+If a freshly printed address fails to resolve on your own machine for a minute, that is your local DNS having cached the name as missing from before the tunnel came up. Other people are unaffected.
+
 ## Publishing
 
 The map is static, so it needs no server in production.
