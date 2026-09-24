@@ -50,38 +50,6 @@ export const topics = [
       "Calling [[eth-get-transaction-receipt|eth_getTransactionReceipt]] once per transaction instead of `eth_getBlockReceipts` once per block, which multiplies the request count by the block's transaction count.",
       "Treating the derived database as authoritative; it is a cache of a chain that changes under it, so anything irreversible must key off a finalized block.",
     ],
-    quiz: [
-      {
-        question: "An indexer fetches block N and finds that its parentHash does not match the hash it stored for block N-1. What should it do before writing anything?",
-        options: [
-          "Roll back the derived rows for the orphaned blocks, then apply the new branch",
-          "Skip block N and continue from N+1, since the gap will close itself",
-          "Re-request block N-1 and overwrite its row, leaving the derived data alone",
-          "Nothing; parentHash only differs when the node is out of sync",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why is (blockHash, logIndex) preferred over (blockNumber, logIndex) as the primary key for indexed logs?",
-        options: [
-          "A replacement block after a reorg reuses the number but never the hash",
-          "logIndex restarts at zero for every transaction, so the number is ambiguous",
-          "Block numbers are not returned by eth_getLogs",
-          "Hashes sort faster than integers in most databases",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which pair of calls is the cheapest way to ingest one block's full log set from a standard endpoint?",
-        options: [
-          "eth_getBlockByNumber with fullTransactions false, plus eth_getBlockReceipts",
-          "eth_getBlockByNumber with fullTransactions true, plus one eth_getTransactionReceipt per transaction",
-          "eth_blockNumber, plus eth_getFilterChanges on a standing filter",
-          "eth_subscribe on newHeads, plus debug_traceBlockByNumber",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["event-log", "reorg", "cursor-pagination", "eth-get-logs", "eth-get-block-receipts", "indexing-database", "etl-pipeline", "the-graph", "confirmations", "historical-data"],
     sources: [
       { title: "ethereum.org: JSON-RPC API", url: "https://ethereum.org/developers/docs/apis/json-rpc/" },
@@ -129,38 +97,6 @@ export const topics = [
       "Trusting an event to mean a real transfer; any contract can emit `Transfer`, so always check `address` against the token you actually care about.",
       "Decoding `data` positionally from the ABI's full parameter list; indexed parameters are absent from `data` and appear as topics instead.",
       "Expecting logs from a reverted transaction; the receipt has `status` `0x0` and an empty `logs` array.",
-    ],
-    quiz: [
-      {
-        question: "Where do the indexed parameters of an event end up?",
-        options: [
-          "In topics[1] onwards, one 32-byte word each",
-          "At the start of data, followed by the non-indexed ones",
-          "In topics[0], concatenated after the signature hash",
-          "In a separate indexedData field of the log object",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A contract wants to read an event that another contract emitted earlier in the same transaction. How does it do that?",
-        options: [
-          "It cannot; there is no EVM opcode that reads logs",
-          "With the LOG0 opcode in read mode",
-          "By calling eth_getLogs through a precompile",
-          "By reading the receiptsRoot from the block header",
-        ],
-        answer: 0,
-      },
-      {
-        question: "When does a log object arrive with removed set to true?",
-        options: [
-          "When a subscription or polling filter withdraws it because its block left the canonical chain",
-          "When the emitting transaction reverted after writing it",
-          "When the log is older than the node's history retention window",
-          "When the contract that emitted it has since self-destructed",
-        ],
-        answer: 0,
-      },
     ],
     related: ["event-signature", "eth-get-logs", "transaction-receipt", "logs-bloom", "abi", "eth-subscribe", "indexer", "smart-contract", "reorg"],
     sources: [
@@ -210,38 +146,6 @@ export const topics = [
       "Expecting to read an indexed `string` or `bytes` parameter from its topic; only its keccak-256 hash is stored, so the value has to come from `data` or be known in advance.",
       "Assuming a log with three topics has three indexed parameters; for a non-anonymous event the first topic is the signature, so it has two.",
     ],
-    quiz: [
-      {
-        question: "An event declares four indexed parameters and still produces a topic0. What must be true?",
-        options: [
-          "Nothing; a non-anonymous event cannot index more than three parameters",
-          "The contract used LOG4 directly in assembly, which allows it",
-          "The fourth indexed parameter was a dynamic type, which does not consume a topic",
-          "The event was declared anonymous, which adds a topic slot",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A filter asks for topics [sigHash, null, [aliceTopic, bobTopic]]. Which logs match?",
-        options: [
-          "That event type, any first indexed parameter, second indexed parameter equal to Alice or Bob",
-          "That event type, first indexed parameter equal to Alice or Bob, any second one",
-          "That event type only, since null cancels the rest of the array",
-          "Any event whose topics contain the signature hash anywhere",
-        ],
-        answer: 0,
-      },
-      {
-        question: "How does an indexed string parameter appear in a log?",
-        options: [
-          "As the keccak-256 hash of its encoding, so the original text is unrecoverable from the topic",
-          "As the first 32 bytes of the UTF-8 text, zero-padded",
-          "As a pointer into data, like non-indexed dynamic types",
-          "It cannot be indexed; the compiler rejects it",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["event-log", "eth-get-logs", "abi", "keccak-256", "indexer", "token-standards", "logs-bloom", "smart-contract"],
     sources: [
       { title: "Solidity: contract ABI specification, events", url: "https://docs.soliditylang.org/en/latest/abi-spec.html#events" },
@@ -290,38 +194,6 @@ export const topics = [
       "Recording only block numbers, so there is nothing to compare `parentHash` against and no way to tell which rows to delete.",
       "Assuming a one-block reorg is impossible on a well-connected node; single-block reorgs happen on mainnet regularly and are normal fork-choice behavior.",
     ],
-    quiz: [
-      {
-        question: "Which RPC access path tells a consumer that a previously delivered log has been withdrawn?",
-        options: [
-          "An eth_subscribe logs stream or eth_getFilterChanges, which deliver it again with removed set to true",
-          "eth_getLogs, which returns the orphaned log with removed set to true",
-          "eth_getBlockReceipts, which includes a removedLogs array",
-          "eth_blockNumber, which regresses and implies which logs were dropped",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A transaction you were tracking is reorged out and re-included in the next block. What changes?",
-        options: [
-          "Its blockHash, blockNumber, transactionIndex and logIndex, while the transaction hash stays the same",
-          "Its transaction hash, because the signature is recomputed for the new block",
-          "Nothing, since the receipt is stored under the transaction hash",
-          "Its nonce, which is incremented to avoid a replay",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which block is guaranteed not to be reorged out under normal protocol assumptions?",
-        options: [
-          "One at or below the finalized tag, since reverting it requires slashing at least a third of the stake",
-          "One at or below the safe tag, which is by definition irreversible",
-          "Any block more than one slot old, since proof of stake allows only depth-1 reorgs",
-          "The latest block, because the node has already executed it",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["confirmations", "fork-choice", "block-tag", "indexer", "finality", "eth-get-logs", "head-lag", "block-hash", "eth-get-transaction-receipt", "indexing-database"],
     sources: [
       { title: "ethereum.org: proof-of-stake attack and defense", url: "https://ethereum.org/developers/docs/consensus-mechanisms/pos/attack-and-defense/" },
@@ -339,7 +211,7 @@ export const topics = [
       {
         heading: "A heuristic inherited from proof of work",
         paragraphs: [
-          "Under proof of work, reverting a block meant out-mining the honest chain, so the chance of a reversal fell exponentially with depth and 'six confirmations' became a rule of thumb. Ethereum no longer works that way. [[finality|Casper FFG]] finalizes checkpoints explicitly: a block at or below `finalized` can only be reverted if at least a third of all staked ETH is slashed, which normally happens two [[slot-epoch|epochs]] after inclusion, about 12.8 minutes. `safe` marks the latest justified checkpoint and usually trails the head by under one epoch.",
+          "Under proof of work, reverting a block meant out-mining the honest chain, so the chance of a reversal fell exponentially with depth and 'six confirmations' became a rule of thumb. Ethereum no longer works that way. [[finality|Casper FFG]] finalizes checkpoints explicitly: a block at or below `finalized` can only be reverted if at least a third of all staked ETH is slashed, which normally happens two to three [[slot-epoch|epochs]] after inclusion, about 13 to 19 minutes, with 12.8 minutes the fastest case. `safe` marks the latest justified checkpoint and usually trails the head by one to two epochs.",
           "Depth still carries information for the window before finality. Single-block [[reorg|reorganizations]] are routine, two blocks are unusual, and anything deeper implies a real consensus problem rather than bad luck. So a confirmation count is a cheap way to price the risk in the first minute, and `finalized` is the correct answer once you can afford to wait.",
         ],
       },
@@ -363,38 +235,6 @@ export const topics = [
       "Waiting for `finalized` inside an interactive flow; that is roughly 13 minutes of spinner, where a few blocks plus a later settlement check would do.",
       "Reusing an L1 confirmation threshold on an L2, where blocks are seconds apart and produced by one sequencer.",
       "Mixing providers when counting; head numbers from a lagging node make the count jump around or briefly decrease.",
-    ],
-    quiz: [
-      {
-        question: "Why is a confirmation count a weaker guarantee on Ethereum today than the finalized block tag?",
-        options: [
-          "Depth is a probabilistic heuristic, while finalization is an explicit protocol commitment backed by slashing",
-          "Confirmation counts are not exposed by any RPC method",
-          "Finalized blocks are produced faster, so they arrive sooner",
-          "Depth only counts blocks from the same proposer",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A transaction shows ten confirmations but your integration still credits the wrong outcome. What check was most likely missing?",
-        options: [
-          "Re-reading the receipt and confirming the blockHash is unchanged and still canonical",
-          "Converting the block number from hex before subtracting",
-          "Waiting for the transaction to leave the pool",
-          "Verifying that the gas used matched the estimate",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which comparison yields a stable confirmation count?",
-        options: [
-          "Head and receipt both read from the same endpoint",
-          "Head from a public endpoint, receipt from your own node",
-          "Head from whichever endpoint answers fastest, receipt from a cached copy",
-          "Head from an L2 endpoint, receipt from the L1 it settles to",
-        ],
-        answer: 0,
-      },
     ],
     related: ["reorg", "finality", "block-tag", "eth-get-transaction-receipt", "indexer", "head-lag", "l2-rpc", "proof-of-stake"],
     sources: [
@@ -444,38 +284,6 @@ export const topics = [
       "Retrying a rejected range from the middle instead of the original `fromBlock`, which silently drops the first half of the window.",
       "Hard-coding one range width for every endpoint; limits vary by provider, by plan, and by how log-dense the contract is.",
     ],
-    quiz: [
-      {
-        question: "An eth_getLogs call fails with 'query returned more than 10000 results'. What is the correct response?",
-        options: [
-          "Retry from the same fromBlock with a narrower toBlock",
-          "Retry the same range and paginate with an offset parameter",
-          "Advance past the range and record a gap to fill later",
-          "Switch the filter to use the pending block tag",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why must the cursor be written in the same database transaction as the rows it covers?",
-        options: [
-          "So that a crash cannot leave the cursor ahead of, or behind, the data it claims to describe",
-          "Because eth_getLogs refuses a fromBlock that is lower than the last query",
-          "So the database can compute confirmations without another RPC call",
-          "Because block ranges must be contiguous for the bloom filter to work",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which filter form is immune to an endpoint's maximum block range limit?",
-        options: [
-          "The blockHash form, which selects exactly one block",
-          "A filter with fromBlock and toBlock both set to latest",
-          "A filter with no address, since the limit only applies per contract",
-          "A filter created with eth_newFilter and drained with eth_getFilterChanges",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["indexer", "eth-get-logs", "rate-limits", "retries", "reorg", "etl-pipeline", "indexing-database", "historical-data"],
     sources: [
       { title: "ethereum.org: eth_getLogs", url: "https://ethereum.org/developers/docs/apis/json-rpc/#eth_getlogs" },
@@ -518,38 +326,6 @@ export const topics = [
       "Expecting blob contents to be retrievable months later; only the versioned hash is permanent, and the sidecar is pruned after about 18 days.",
       "Treating 'full node' as meaning it can answer historical `eth_call`; it holds history, not the state those calls need.",
     ],
-    quiz: [
-      {
-        question: "A node answers eth_getBlockByNumber for a block from 2019 but fails eth_getBalance at that same block. What kind of node is it?",
-        options: [
-          "A full node, which keeps all history but only recent state",
-          "A pruned node that has dropped that block's body",
-          "An archive node with a corrupted index",
-          "A light client, which has neither history nor state",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which data is deliberately not retained forever by the protocol?",
-        options: [
-          "Blob sidecars, which consensus clients keep for about 18 days",
-          "Block headers, which are dropped once finalized",
-          "Transaction receipts, which are never stored after execution",
-          "The state root, which is recomputed on demand",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why can eth_getProof fail at a deep block on a node that answers eth_getBalance for it?",
-        options: [
-          "A flat storage layout can serve the value without being able to rebuild that block's trie nodes",
-          "eth_getProof is only defined for the latest block by specification",
-          "Proofs require the transaction index, which is pruned first",
-          "The account was touched by a reorg, which invalidates old proofs",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["archive-node", "pruned-node", "history-expiry", "indexer", "portal-network", "eth-get-logs", "client-storage", "state", "blob", "etl-pipeline"],
     sources: [
       { title: "EIP-4444: Bound historical data in execution clients", url: "https://eips.ethereum.org/EIPS/eip-4444" },
@@ -591,38 +367,6 @@ export const topics = [
       "Decoding during extraction only, so an ABI mistake forces a complete re-extract instead of a cheap re-transform.",
       "Mixing checksummed and lowercase addresses across tables, which turns joins into silent empty results.",
       "Assuming traces are available; many endpoints expose neither `trace_` nor `debug_`, and those that do meter them far more heavily than `eth_` calls.",
-    ],
-    quiz: [
-      {
-        question: "Why should an ETL pipeline keep the raw log rows after decoding them?",
-        options: [
-          "A decoder or ABI fix then becomes a re-transform instead of a second full extraction",
-          "Raw logs compress better than decoded columns",
-          "The node refuses to serve the same range twice",
-          "Decoded rows cannot carry a block hash",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which column type is appropriate for an ERC-20 transfer amount?",
-        options: [
-          "A wide decimal or a byte string, because uint256 overflows 64-bit integers",
-          "A 64-bit integer, since token amounts are bounded by total supply",
-          "A floating-point number, to accommodate the 18 decimals",
-          "A 32-bit integer, since amounts are stored in the log topics",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Reconstructing internal value transfers requires which extra data source?",
-        options: [
-          "Call traces from trace_ or debug_ methods, since internal transfers emit no logs",
-          "The logs bloom filter of each header",
-          "eth_getBlockReceipts with fullTransactions set to true",
-          "The pending block, which lists intra-transaction calls",
-        ],
-        answer: 0,
-      },
     ],
     related: ["indexer", "indexing-database", "cursor-pagination", "abi", "eth-get-block-receipts", "trace-api", "rate-limits", "historical-data", "hex-encoding"],
     sources: [
@@ -672,38 +416,6 @@ export const topics = [
       "Serving aggregates computed over unsettled head blocks, which makes totals wobble every time a single-block reorg happens.",
       "Assuming ClickHouse-style stores give you rollback; without cascading deletes the reorg logic has to live in the writer.",
     ],
-    quiz: [
-      {
-        question: "What does an ON DELETE CASCADE foreign key from every derived table to the blocks table buy an indexer?",
-        options: [
-          "Reorg rollback becomes one delete of the orphaned blocks, with no per-table cleanup code",
-          "It removes the need to store a cursor",
-          "It prevents the indexer from writing blocks out of order",
-          "It makes aggregate queries over the head consistent",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why is (block_hash, log_index) a better primary key than (block_number, log_index)?",
-        options: [
-          "Two competing blocks share a number, so the number-keyed row is ambiguous after a reorg",
-          "log_index is only unique within a transaction, so the hash disambiguates it",
-          "Block numbers are not returned in log objects",
-          "Hash comparisons are cheaper than integer comparisons",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which clock should derived rows be indexed on for time-series queries?",
-        options: [
-          "The block timestamp from the header",
-          "The wall-clock time the row was ingested",
-          "The time the RPC response was received",
-          "The database transaction commit time",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["indexer", "reorg", "etl-pipeline", "cursor-pagination", "event-log", "confirmations", "block-hash", "historical-data"],
     sources: [
       { title: "ethereum.org: data and analytics", url: "https://ethereum.org/developers/docs/data-and-analytics/" },
@@ -752,38 +464,6 @@ export const topics = [
       "Treating subgraph output as real-time confirmation of a transaction; it trails the head and should not gate a user-facing 'sent' state.",
       "Expecting a schema change to apply in place; most changes deploy a new subgraph version that has to sync from `startBlock` again.",
     ],
-    quiz: [
-      {
-        question: "What determines which logs a subgraph's event handler receives?",
-        options: [
-          "The contract address in the manifest plus the topic0 derived from the event signature string",
-          "The entity names declared in schema.graphql",
-          "A GraphQL query written by the consumer of the subgraph",
-          "The order of handlers in the mapping file",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why do call handlers need a different class of RPC endpoint than event handlers?",
-        options: [
-          "They depend on the tracing API, since a plain call emits no log",
-          "They require WebSocket subscriptions rather than HTTP",
-          "They read pending transactions from the pool",
-          "They need the endpoint to expose eth_getProof",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A subgraph handler needs to know a token's decimals. What is it allowed to do?",
-        options: [
-          "Perform an eth_call against the contract, since that is deterministic chain data",
-          "Fetch it from a token list over HTTPS",
-          "Read it from an environment variable set by the indexer operator",
-          "Query another subgraph at handler time",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["indexer", "event-log", "event-signature", "eth-get-logs", "abi", "block-explorer", "etl-pipeline", "indexing-database", "trace-api"],
     sources: [
       { title: "The Graph documentation", url: "https://thegraph.com/docs/" },
@@ -809,7 +489,7 @@ export const topics = [
         heading: "The three you will meet",
         paragraphs: [
           "Etherscan is the closed-source, hosted one, covering Ethereum and many other networks, with a REST API that needs an API key and enforces a low free-tier request rate. Blockscout is open source and self-hostable, runs as the default explorer for many testnets and [[rollup|rollups]], and exposes an Etherscan-compatible API alongside its own. Otterscan is different in kind: a self-hosted front end that talks directly to an [[erigon|Erigon]] node through the `ots_` namespace, so there is no separate index to maintain and no third party in the path.",
-          "None of the three speaks [[json-rpc|JSON-RPC]] for its own data. Their APIs are REST with their own parameter names, pagination, and key handling, which is why an explorer API is a research and tooling dependency rather than a drop-in for an [[rpc-provider|RPC provider]].",
+          "Otterscan has no API of its own: it is a browser app reading Erigon's [[json-rpc|JSON-RPC]] directly. Etherscan's and Blockscout's APIs are REST with their own parameter names, pagination, and key handling, which is why an explorer API is a research and tooling dependency rather than a drop-in for an [[rpc-provider|RPC provider]].",
         ],
       },
       {
@@ -825,38 +505,6 @@ export const topics = [
       "Building production logic on an explorer API, whose rate limits, key requirements, and response shapes are neither standard nor guaranteed.",
       "Trusting verified source for a proxy; the verified code at that address is the proxy, and the behavior lives at the implementation address.",
       "Reading an explorer's token balance as authoritative; it is recomputed from indexed transfers and can lag or miss non-standard token behavior.",
-    ],
-    quiz: [
-      {
-        question: "Where does an explorer get the internal transactions it shows for a transaction?",
-        options: [
-          "From call traces it collects with trace_ or debug_ methods, since internal calls emit no logs",
-          "From the logs array of the transaction receipt",
-          "From the transactionsRoot of the block header",
-          "From the pending pool before the transaction is mined",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What distinguishes Otterscan from Etherscan and Blockscout?",
-        options: [
-          "It runs directly against an Erigon node's ots_ namespace with no separate index database",
-          "It is the only one that verifies contract source code",
-          "It exposes its data as standard eth_ JSON-RPC methods",
-          "It indexes only finalized blocks, so it never shows a reorged transaction",
-        ],
-        answer: 0,
-      },
-      {
-        question: "An explorer shows a transaction, then it disappears an hour later. What most likely happened?",
-        options: [
-          "Its block was reorged out and the explorer rewrote its derived history",
-          "The explorer's API key for that page expired",
-          "The transaction was pruned because it is older than the retention window",
-          "The sender replaced it with a higher-fee transaction after inclusion",
-        ],
-        answer: 0,
-      },
     ],
     related: ["indexer", "execution-trace", "trace-api", "event-log", "erigon", "indexing-database", "eth-get-logs", "the-graph", "smart-contract"],
     sources: [

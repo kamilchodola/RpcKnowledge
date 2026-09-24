@@ -5,8 +5,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { safeFilePath, server } from '../server.js';
-import { normalizeDataset, topicText, linkedIds, plainText, wordCount, LINK_PATTERN } from '../src/dataset.js';
-import { buildAttempt, buildQuestionPool, MIN_QUESTIONS, QUIZ_LENGTH } from '../src/quiz.js';
+import { normalizeDataset, topicText, linkedIds, wordCount, LINK_PATTERN } from '../src/dataset.js';
+import { buildAttempt, QUIZ_LENGTH } from '../src/quiz.js';
 import { PUBLISHED, HEADERS, build } from '../scripts/build.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -167,103 +167,92 @@ test('the whole map is reachable from the Ethereum RPC root, and nothing is a de
     'these topics are never linked from another lesson');
 });
 
-test('every topic ships hand-written checkpoint questions', () => {
+// Checkpoints gate "learned", so their questions are held to the rules the reviewers wrote
+// to: six per topic, varied in kind, plain text, and never giving the answer away by shape.
+const QUIZ_KINDS = new Set(['scenario', 'cause', 'contrast', 'detail', 'consequence']);
+const allQuestions = topics.flatMap(topic => topic.quiz.map(question => ({ topic, question })));
+const describe = (topic, question) => `${topic.id}: "${question.question.slice(0, 60)}…"`;
+
+test('every topic has six hand-written checkpoint questions of varied kinds', () => {
   topics.forEach(topic => {
-    assert.ok(topic.quiz.length >= 3, `${topic.id} has ${topic.quiz.length} authored questions; write at least three`);
-    topic.quiz.forEach((question, index) => {
-      const where = `${topic.id} quiz[${index}]`;
-      assert.ok(wordCount(question.question) >= 5, `${where} has no real question`);
-      assert.ok(Array.isArray(question.options) && question.options.length >= 3 && question.options.length <= 5,
-        `${where} needs three to five options`);
-      assert.equal(new Set(question.options).size, question.options.length, `${where} repeats an option`);
-      question.options.forEach(option => {
-        assert.ok(typeof option === 'string' && option.trim(), `${where} has an empty option`);
-        assert.ok(!/\[\[|\*\*/.test(option), `${where} must be plain text`);
-      });
-      assert.ok(Number.isInteger(question.answer) && question.answer >= 0 && question.answer < question.options.length,
-        `${where} answer must index options`);
-      assert.ok(!question.question.toLowerCase().includes(String(question.options[question.answer]).toLowerCase()),
-        `${where} gives away its own answer`);
-    });
+    assert.equal(topic.quiz.length, 6, `${topic.id} has ${topic.quiz.length} checkpoint questions; it needs six`);
+    topic.quiz.forEach((question, index) => assert.ok(QUIZ_KINDS.has(question.kind), `${topic.id} quiz[${index}] has unknown kind "${question.kind}"`));
+    const kinds = new Set(topic.quiz.map(question => question.kind));
+    assert.ok(kinds.size >= 4, `${topic.id} uses only ${kinds.size} kinds of question`);
+    assert.ok(kinds.has('scenario'), `${topic.id} needs at least one scenario question`);
+    assert.equal(new Set(topic.quiz.map(question => question.question.toLowerCase())).size, topic.quiz.length, `${topic.id} repeats a question`);
   });
 });
 
-// Authored questions may all store the answer at index 0; what matters is the position the
-// reader sees, which is shuffled per attempt. This checks that, not the source order.
+test('checkpoint questions are well formed and plain text', () => {
+  allQuestions.forEach(({ topic, question }) => {
+    const where = describe(topic, question);
+    assert.ok(question.question.endsWith('?'), `${where} is not phrased as a question`);
+    assert.equal(question.options.length, 4, `${where} needs four options`);
+    assert.equal(new Set(question.options.map(option => option.toLowerCase())).size, 4, `${where} repeats an option`);
+    [question.question, ...question.options].forEach(text => assert.ok(!/\[\[|\*\*|`/.test(text), `${where} must be plain text`));
+    question.options.forEach(option => assert.ok(!/\b(all|none|both|neither) of (the above|these)\b/i.test(option), `${where} uses an "of the above" option`));
+    const correct = question.options[question.answer];
+    assert.ok(!question.question.toLowerCase().includes(correct.toLowerCase()), `${where} contains its own answer`);
+  });
+});
+
+test('the correct option never stands out by length', () => {
+  let longest = 0;
+  let correctChars = 0;
+  let wrongChars = 0;
+  allQuestions.forEach(({ topic, question }) => {
+    const correct = question.options[question.answer];
+    const wrong = question.options.filter((_, index) => index !== question.answer);
+    const longestWrong = Math.max(...wrong.map(option => option.length));
+    assert.ok(correct.length <= longestWrong * 1.2,
+      `${describe(topic, question)} has a correct option ${Math.round(100 * correct.length / longestWrong)}% the length of the longest wrong one`);
+    if (correct.length > longestWrong) longest += 1;
+    correctChars += correct.length;
+    wrongChars += wrong.reduce((sum, option) => sum + option.length, 0) / wrong.length;
+  });
+  const share = longest / allQuestions.length;
+  assert.ok(share <= 0.35, `the correct option is the longest in ${Math.round(share * 100)}% of questions, so "pick the longest" would pass`);
+  assert.ok(correctChars / wrongChars <= 1.12, `correct options average ${(correctChars / wrongChars).toFixed(2)}x the length of wrong ones`);
+});
+
+test('an attempt asks five of the topic\'s own questions, spread across kinds', () => {
+  topics.forEach(topic => {
+    const attempt = buildAttempt(topic, 'seed-a');
+    assert.equal(attempt.length, QUIZ_LENGTH, `${topic.id} built ${attempt.length} questions`);
+    attempt.forEach(asked => {
+      const source = topic.quiz.find(question => question.question === asked.prompt);
+      assert.ok(source, `${topic.id} asked a question that is not in its own set`);
+      assert.deepEqual([...asked.options].sort(), [...source.options].sort(), `${topic.id}: shuffling changed the options`);
+      assert.equal(asked.options[asked.answer], source.options[source.answer], `${topic.id}: shuffling lost track of the answer`);
+    });
+    const available = new Set(topic.quiz.map(question => question.kind)).size;
+    assert.ok(new Set(attempt.map(question => question.kind)).size >= Math.min(4, available), `${topic.id}: the attempt does not spread across kinds`);
+  });
+});
+
 test('the correct answer does not settle into one position', () => {
   const positions = new Map();
   let total = 0;
   topics.forEach((topic, index) => {
-    buildAttempt(topic, topics, byId, `spread-${index}`).forEach(question => {
+    buildAttempt(topic, `spread-${index}`).forEach(question => {
       positions.set(question.answer, (positions.get(question.answer) ?? 0) + 1);
       total += 1;
     });
   });
-  assert.ok(total > 50, 'expected a decent sample of questions');
   const worst = Math.max(...positions.values()) / total;
-  assert.ok(worst < 0.4, `${Math.round(worst * 100)}% of correct answers land in the same slot; the shuffle is not working`);
+  assert.ok(worst < 0.35, `${Math.round(worst * 100)}% of correct answers land in the same slot; the shuffle is not working`);
 });
 
-test('every topic can produce a checkpoint', () => {
-  topics.forEach(topic => {
-    const attempt = buildAttempt(topic, topics, byId, 'seed-a');
-    assert.ok(attempt.length >= MIN_QUESTIONS, `${topic.id} only generated ${attempt.length} questions`);
-    assert.ok(attempt.length <= QUIZ_LENGTH, `${topic.id} generated more than ${QUIZ_LENGTH} questions`);
+test('retrying a checkpoint changes the questions, their order, and the option layout', () => {
+  const shape = attempt => attempt.map(question => `${question.prompt}|${question.options.join('|')}`).join('\n');
+  const layoutChanged = topics.filter(topic => shape(buildAttempt(topic, 'attempt-1')) !== shape(buildAttempt(topic, 'attempt-2')));
+  assert.ok(layoutChanged.length >= topics.length * 0.95, 'most retries should lay the checkpoint out differently');
+  const setChanged = topics.filter(topic => {
+    const first = new Set(buildAttempt(topic, 'set-1').map(question => question.prompt));
+    return buildAttempt(topic, 'set-2').some(question => !first.has(question.prompt));
   });
-});
-
-test('checkpoint questions are answerable and unambiguous', () => {
-  topics.forEach(topic => {
-    buildAttempt(topic, topics, byId, 'seed-b').forEach(question => {
-      assert.ok(question.prompt.trim().length > 15, `${topic.id}: a question prompt is too short`);
-      assert.ok(question.options.length >= 3, `${topic.id}: a question has fewer than three options`);
-      assert.ok(Number.isInteger(question.answer) && question.answer >= 0 && question.answer < question.options.length,
-        `${topic.id}: the answer index is out of range`);
-      question.options.forEach(option => assert.ok(String(option).trim().length > 0, `${topic.id}: an option is empty`));
-      assert.equal(new Set(question.options).size, question.options.length, `${topic.id}: a question repeats an option`);
-      const correct = question.options[question.answer];
-      const wrong = question.options.filter((_, index) => index !== question.answer);
-      assert.ok(!wrong.includes(correct), `${topic.id}: the correct option appears twice`);
-      assert.ok(!question.prompt.includes(correct), `${topic.id}: the prompt gives away the answer`);
-    });
-  });
-});
-
-test('a checkpoint never asks a topic to identify itself', () => {
-  topics.forEach(topic => {
-    buildQuestionPool(topic, topics, byId, 'seed-c').forEach(question => {
-      const wrong = question.options.filter((_, index) => index !== question.answer);
-      assert.ok(!wrong.includes(topic.title), `${topic.id}: its own title is offered as a wrong answer`);
-      if (question.kind === 'definition') {
-        assert.ok(!question.prompt.toLowerCase().includes(topic.title.toLowerCase()),
-          `${topic.id}: the definition question contains the term it asks for`);
-      }
-    });
-  });
-});
-
-test('retrying a checkpoint reshuffles it, so answer positions cannot be memorised', () => {
-  const sample = topics.filter(topic => buildAttempt(topic, topics, byId, '1').length >= MIN_QUESTIONS).slice(0, 12);
-  assert.ok(sample.length, 'expected topics to sample');
-  const moved = sample.filter(topic => {
-    const first = buildAttempt(topic, topics, byId, 'attempt-1');
-    const second = buildAttempt(topic, topics, byId, 'attempt-2');
-    const shapeOf = attempt => attempt.map(question => `${question.kind}:${question.answer}`).join('|');
-    return shapeOf(first) !== shapeOf(second);
-  });
-  assert.ok(moved.length >= sample.length * 0.7, 'most retries should differ from the first attempt');
-});
-
-test('quiz options never leak through plain text helpers', () => {
-  const topic = byId.get('ethereum-rpc');
-  const attempt = buildAttempt(topic, topics, byId, 'seed-d');
-  attempt.forEach(question => {
-    question.options.forEach(option => {
-      assert.ok(!/\[\[|`/.test(option), 'options must be rendered as plain text');
-    });
-    assert.ok(!/\[\[/.test(question.prompt), 'prompts must be rendered as plain text');
-  });
-  assert.equal(plainText('see [[rpc|RPC]] and `eth_call`'), 'see RPC and eth_call');
+  assert.ok(setChanged.length >= topics.length * 0.3, 'retries should sometimes swap in a question the first attempt did not ask');
 });
 
 // The issues log is only useful if it stays current, so the gap list is machine-checked:

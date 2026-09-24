@@ -36,38 +36,6 @@ export const topics = [
       "Health-checking only the HTTP port without checking sync, finalized checkpoint, and Engine API status.",
       "Using a node’s block number as an application database cursor without recording the block hash.",
     ],
-    quiz: [
-      {
-        question: "What does the word full in full node actually describe?",
-        options: [
-          "That every historical state snapshot since genesis stays on disk",
-          "That it can answer eth_call at any block height, because it replayed from genesis",
-          "That it validates the chain itself, while how much history it keeps is a separate setting",
-          "That it exposes every JSON-RPC namespace, including trace and debug",
-        ],
-        answer: 2,
-      },
-      {
-        question: "A full node's HTTP port responds to requests normally. What can still be wrong?",
-        options: [
-          "Nothing; a responding listener means both halves of the pair are at the head",
-          "The node may be syncing, or the consensus half may be stalled, which a port check never reveals",
-          "Only that the enabled JSON-RPC modules were configured incorrectly",
-          "The chain id would have to be wrong, and the port check would surface that",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Why should an indexer store a block hash beside the block number it has processed?",
-        options: [
-          "Because block numbers are reused after each network upgrade",
-          "Because eth_getBlockByNumber is unavailable on pruned nodes",
-          "Because a number is only assigned once the block is finalized",
-          "Because a reorganization can put a different block at that height, and the number alone cannot detect it",
-        ],
-        answer: 3,
-      },
-    ],
     related: ["execution-client", "consensus-client", "archive-node", "pruned-node", "engine-api", "state", "json-rpc", "indexer", "state-proof", "sync-modes"],
     sources: [
       { title: "ethereum.org: Nodes and clients", url: "https://ethereum.org/developers/docs/nodes-and-clients/" },
@@ -108,38 +76,6 @@ export const topics = [
       "Confusing retained transactions and receipts with retained historical account state.",
       "Putting unbounded archive scans on the same resources that import and validate the head.",
       "Changing pruning or state-storage settings without a documented migration or resync plan.",
-    ],
-    quiz: [
-      {
-        question: "A provider advertises an archive endpoint. What does that label not guarantee on its own?",
-        options: [
-          "That account balances can be read at old block numbers",
-          "That a particular trace namespace or proof path works for those blocks",
-          "That the node validates incoming blocks like any other full node",
-          "That it holds more data on disk than a pruned node",
-        ],
-        answer: 1,
-      },
-      {
-        question: "How does an archive node differ from an ordinary full node at the protocol level?",
-        options: [
-          "It takes on an extra consensus role with its own duties",
-          "It applies a stricter rule set when validating payloads",
-          "It does not differ; archive is a retention policy layered on the same two clients",
-          "It replaces the consensus client with a checkpoint feed",
-        ],
-        answer: 2,
-      },
-      {
-        question: "Why put archive query traffic behind a separate gateway or read replica?",
-        options: [
-          "Because archive nodes cannot serve reads against the latest block",
-          "Because the Engine API refuses connections while a historical query runs",
-          "Because request batching is disabled once a client runs in archive mode",
-          "Because long historical scans compete for the same disk and CPU the node needs to import blocks",
-        ],
-        answer: 3,
-      },
     ],
     related: ["full-node", "pruned-node", "client-storage", "history-expiry", "eth-call", "eth-get-proof", "block-header", "rpc-provider", "rpc-gateway", "finality"],
     sources: [
@@ -183,38 +119,6 @@ export const topics = [
       "Assuming a client can reconstruct every deleted trie node on demand.",
       "Testing only `latest` and discovering after deployment that archive-dependent workloads fail.",
     ],
-    quiz: [
-      {
-        question: "What does pruning take away from a node, and what does it leave intact?",
-        options: [
-          "It gives up independent validation and starts trusting the snapshot it was given",
-          "It gives up the current state root, which it then fetches from peers on demand",
-          "It gives up immediate answers to some old-block questions, while validating new blocks unchanged",
-          "It gives up the transaction pool, which moves to the consensus client",
-        ],
-        answer: 2,
-      },
-      {
-        question: "An eth_call against a block from last year fails on a pruned node with a missing trie node. What does that tell you about the block?",
-        options: [
-          "Nothing about the block; it says this node no longer holds the state at that height",
-          "That the block was reorganized out and is no longer canonical",
-          "That the block never existed on this network",
-          "That the contract being called was destroyed at that height",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why can a pruned node return an old account value and still refuse to produce a proof for it?",
-        options: [
-          "Proof generation is disabled by default whenever pruning is enabled",
-          "Building the proof needs the whole trie path to that value, which is more than reading the value requires",
-          "Proofs can only be produced against the finalized block tag",
-          "The node would have to re-execute the block before it could sign the proof",
-        ],
-        answer: 1,
-      },
-    ],
     related: ["full-node", "archive-node", "client-storage", "sync-modes", "eth-call", "eth-get-proof", "state-root", "indexer", "execution-client"],
     sources: [
       { title: "ethereum.org: Nodes and clients", url: "https://ethereum.org/developers/docs/nodes-and-clients/" },
@@ -255,38 +159,6 @@ export const topics = [
       "Assuming light clients expose the complete execution JSON-RPC method set.",
       "Skipping weak-subjectivity or checkpoint management because headers are cryptographically signed.",
       "Using a light client as a validator or archive index without the required data and duties.",
-    ],
-    quiz: [
-      {
-        question: "What separates a light client from an application that simply calls a hosted provider?",
-        options: [
-          "The light client downloads the same full databases, only more slowly",
-          "Its protocol hands it enough to check the answer against a trusted commitment and reject a bad one",
-          "It connects over WebSocket instead of HTTP",
-          "It signs each request with a validator key the provider recognizes",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Which of these falls outside what a light client can do on its own?",
-        options: [
-          "Verify an account or storage value against a committed root",
-          "Follow beacon headers using sync committee signatures",
-          "Reject a response that contradicts its trusted header",
-          "Replay arbitrary historical traces and index logs across a block range",
-        ],
-        answer: 3,
-      },
-      {
-        question: "A light client is started for the first time. What does it need beyond the protocol rules themselves?",
-        options: [
-          "A funded account to pay peers for serving proofs",
-          "A full copy of the most recent state snapshot",
-          "A trust anchor, such as a weak-subjectivity checkpoint or an authenticated header chain",
-          "Nothing beyond the newest block a well-connected server advertises",
-        ],
-        answer: 2,
-      },
     ],
     related: ["full-node", "trusted-header", "consensus-proof", "state-proof", "rpc-provider", "consensus-client", "beacon-node", "json-rpc", "indexer"],
     sources: [
@@ -329,38 +201,6 @@ export const topics = [
       "Assuming snap sync determines archive or proof availability after synchronization.",
       "Taking a state snapshot from an unverified source without checking chain identity and commitments.",
     ],
-    quiz: [
-      {
-        question: "What does a snap-syncing client check the downloaded state chunks against?",
-        options: [
-          "A signature from the peer that served each chunk",
-          "An authenticated state root it obtained from chain data",
-          "A checksum published with the client release",
-          "The consensus client's finalized checkpoint root",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Snap sync has finished. Which historical queries can the node answer?",
-        options: [
-          "All of them, because the snapshot came from a node that held the history",
-          "Only blocks produced after the snapshot was taken",
-          "Whatever its configured retention allows; snap sync itself does not decide that",
-          "None, until a separate resync from genesis is run",
-        ],
-        answer: 2,
-      },
-      {
-        question: "Why is describing snap sync as skipping validation wrong?",
-        options: [
-          "It changes only the route to the head; from there blocks are validated under the same rules as a genesis-replayed node",
-          "It replays every transaction from genesis anyway, just in parallel",
-          "Validation is skipped only for blocks produced before the Merge",
-          "It is a consensus-layer mode that never touches execution state",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["sync-modes", "full-node", "pruned-node", "archive-node", "state-root", "eth-call", "eth-get-proof", "peer-to-peer", "node-hardware", "health-check"],
     sources: [
       { title: "Geth: Sync modes", url: "https://geth.ethereum.org/docs/fundamentals/sync-modes" },
@@ -401,38 +241,6 @@ export const topics = [
       "Using peer count as the only signal for sync or data freshness.",
       "Opening Engine API or administrative RPC ports to solve a peer discovery problem.",
       "Mixing mainnet, testnet, or private-network peers through loose firewall and discovery rules.",
-    ],
-    quiz: [
-      {
-        question: "An application submits a valid transaction over JSON-RPC. What does that earn it in the peer network?",
-        options: [
-          "A temporary peer slot on the execution network for the life of the connection",
-          "Nothing; the node may relay it, but the caller has no place in gossip or fork choice",
-          "A vote weighted by the transaction's gas price",
-          "The right to request blocks directly from other nodes",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Why is a healthy peer count weak evidence that a node has fresh data?",
-        options: [
-          "Peer counts are only recalculated once per epoch",
-          "Most clients count each outbound connection twice",
-          "Those peers may be stale, on another network, or unable to serve the data this sync phase needs",
-          "Peer count reflects only the consensus client, never the execution client",
-        ],
-        answer: 2,
-      },
-      {
-        question: "Which part of a node's networking does devp2p cover?",
-        options: [
-          "Both layers, since the Engine API multiplexes them onto one stack",
-          "The consensus layer's gossip topics and attestation subnets",
-          "Discovery only, with the actual data transfer handled over JSON-RPC",
-          "The execution layer's discovery and subprotocols, while consensus runs its own libp2p stack",
-        ],
-        answer: 3,
-      },
     ],
     related: ["devp2p", "execution-client", "consensus-client", "engine-api", "fork-choice", "full-node", "self-hosting", "health-check", "load-balancer", "sync-modes"],
     sources: [
@@ -476,38 +284,6 @@ export const topics = [
       "Exposing administrative JSON-RPC to compensate for blocked peer traffic.",
       "Declaring a node healthy from a port check while its sync phase is stalled.",
     ],
-    quiz: [
-      {
-        question: "Inside devp2p, what does RLPx provide?",
-        options: [
-          "The encrypted, authenticated session that the subprotocols run over",
-          "The state range downloads that speed up snap sync",
-          "The routing table a node walks to find candidate peers",
-          "The serialization format used for JSON-RPC responses",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A peer sends a block that conflicts with the node's current fork choice. What happens?",
-        options: [
-          "The node adopts it, because peers are the authority on the canonical chain",
-          "The node forwards it to RPC callers as a pending block",
-          "The node can reject it; peers supply candidate data, not authority over local validation",
-          "The session is torn down and the node restarts its sync from scratch",
-        ],
-        answer: 2,
-      },
-      {
-        question: "What do the eth and snap subprotocols do differently?",
-        options: [
-          "eth is used on mainnet and snap on test networks",
-          "eth carries chain and block exchange, while snap serves the state ranges that accelerate snap sync",
-          "eth performs discovery and snap performs the encrypted handshake",
-          "eth is the execution side and snap is the consensus side equivalent",
-        ],
-        answer: 1,
-      },
-    ],
     related: ["peer-to-peer", "execution-client", "snap-sync", "sync-modes", "engine-api", "json-rpc", "self-hosting", "health-check", "observability", "fork-choice"],
     sources: [
       { title: "Ethereum devp2p repository", url: "https://github.com/ethereum/devp2p" },
@@ -548,38 +324,6 @@ export const topics = [
       "Assuming an old block number can always be resolved by an ordinary execution RPC endpoint.",
       "Dropping block hashes from derived records and keeping only heights.",
       "Hiding expired-data fallbacks behind a provider URL without documenting provenance and verification.",
-    ],
-    quiz: [
-      {
-        question: "History expiry is easily confused with state pruning. Which data does it target?",
-        options: [
-          "Recent account state, which clients can rebuild on demand",
-          "Consensus blob sidecars once their retention window passes",
-          "Ancient execution block bodies and receipts, making them optional for ordinary clients",
-          "Transaction pool entries that were never included in a block",
-        ],
-        answer: 2,
-      },
-      {
-        question: "A node has expired its old block bodies. What happens when it is asked for an account's current balance?",
-        options: [
-          "It answers normally; dropping old history does not affect current state or validation",
-          "It fails, because balances are derived from the historical bodies",
-          "It forwards the request to an external retrieval network",
-          "It answers only after backfilling the expired range",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Where can data that an ordinary node has expired still be obtained?",
-        options: [
-          "From the beacon state, which consensus clients keep indefinitely",
-          "From dedicated archives, era files, peer retrieval networks, or an application's own store",
-          "Nowhere; expiry is designed to remove that history permanently",
-          "From the transaction index, which is never subject to expiry",
-        ],
-        answer: 1,
-      },
     ],
     related: ["archive-node", "pruned-node", "client-storage", "light-client", "indexer", "eth-call", "eth-get-proof", "block-header", "endpoint-capabilities", "historical-data"],
     sources: [
@@ -622,38 +366,6 @@ export const topics = [
       "Assuming a fast initial sync produces archive history.",
       "Restoring a snapshot without verifying chain identity, commitments, and workload-specific method support.",
     ],
-    quiz: [
-      {
-        question: "What decides how much history a node ends up able to serve?",
-        options: [
-          "The sync mode it bootstrapped with",
-          "Its configured retention policy, which is independent of how it bootstrapped",
-          "The checkpoint provider its consensus client used",
-          "Whether it was restored from a database snapshot",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Why is an open RPC port a poor admission test for a freshly started node?",
-        options: [
-          "The port opens only once the node is fully synchronized, so it lags real readiness",
-          "The RPC modules load after the peer stack, so early responses arrive out of order",
-          "The listener can answer while the head is low and some methods still fail, so gate on sync, head age and workload probes",
-          "Clients randomize the port number during initial sync",
-        ],
-        answer: 2,
-      },
-      {
-        question: "A node is healing state late in its sync and progress is slow. Which change is most likely to help?",
-        options: [
-          "More network bandwidth, since state healing is bandwidth bound",
-          "A higher JSON-RPC connection limit",
-          "A different checkpoint provider for the consensus client",
-          "Lower storage latency, because this phase is dominated by random database I/O",
-        ],
-        answer: 3,
-      },
-    ],
     related: ["snap-sync", "full-node", "archive-node", "pruned-node", "execution-client", "consensus-client", "endpoint-capabilities", "node-hardware", "health-check", "self-hosting"],
     sources: [
       { title: "Geth: Sync modes", url: "https://geth.ethereum.org/docs/fundamentals/sync-modes" },
@@ -695,38 +407,6 @@ export const topics = [
       "Filling a disk to the point that sync and recovery cannot complete.",
       "Keeping a resyncing node in the production RPC pool because its process is still running.",
     ],
-    quiz: [
-      {
-        question: "A node has plenty of CPU cores but keeps falling behind the head. What is the usual cause?",
-        options: [
-          "Too few peers on the consensus client",
-          "Storage that cannot sustain the random reads and compaction the database demands",
-          "A JSON-RPC worker pool sized too small",
-          "Bandwidth saturated by attestation gossip",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Why is a load test built only from eth_chainId calls misleading?",
-        options: [
-          "It exercises almost no storage or execution work, unlike log scans, traces and historical calls",
-          "It bypasses the JSON-RPC parser entirely",
-          "Chain id responses are cached by the operating system",
-          "It measures only the consensus client and never the execution client",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why alert on free disk well before the filesystem is actually full?",
-        options: [
-          "Because RPC starts rejecting requests once free space drops below ten percent",
-          "Because backups are written to the same volume as the chain data",
-          "Because a client whose writes fail can stop importing blocks and leave recovery in a worse state",
-          "Because the consensus client stops attesting when disk is low",
-        ],
-        answer: 2,
-      },
-    ],
     related: ["full-node", "archive-node", "pruned-node", "client-storage", "sync-modes", "eth-get-logs", "eth-call", "eth-get-proof", "rpc-gateway", "health-check"],
     sources: [
       { title: "ethereum.org: Run a node", url: "https://ethereum.org/developers/docs/nodes-and-clients/run-a-node/" },
@@ -757,7 +437,7 @@ export const topics = [
       {
         heading: "Running it",
         paragraphs: [
-          "[[lighthouse|Lighthouse]], [[prysm|Prysm]] and [[teku|Teku]] take `--checkpoint-sync-url`; Prysm also wants `--genesis-beacon-api-url`. [[lodestar|Lodestar]] spells it `--checkpointSyncUrl`, and [[nimbus|Nimbus]] runs a separate `trustedNodeSync` command before the node starts. Public checkpoint endpoints exist per network, and many teams point new nodes at a beacon node they already run.",
+          "[[lighthouse|Lighthouse]], [[prysm|Prysm]] and [[teku|Teku]] take `--checkpoint-sync-url`; Prysm also takes `--genesis-beacon-api-url` to fetch the genesis state, which matters on networks whose genesis is not built into the binary. [[lodestar|Lodestar]] spells it `--checkpointSyncUrl`, and [[nimbus|Nimbus]] runs a separate `trustedNodeSync` command before the node starts. Public checkpoint endpoints exist per network, and many teams point new nodes at a beacon node they already run.",
           "Treat the anchor as a recorded artifact: log the block root and slot the node started from and keep them with the deployment. If a node has been offline longer than the weak subjectivity period, resync it from a fresh checkpoint rather than restarting it. Reconstructing historic consensus states for an [[archive-node|archive node]] is a separate and much longer job.",
         ],
       },
@@ -765,7 +445,7 @@ export const topics = [
     example: {
       title: "Starting a beacon node from a checkpoint, then checking the anchor",
       language: "bash",
-      code: "lighthouse beacon_node \\\n  --network mainnet \\\n  --execution-endpoint http://127.0.0.1:8551 \\\n  --execution-jwt /secrets/jwt.hex \\\n  --checkpoint-sync-url https://checkpoint.example \\\n  --http\n\n# Prysm needs the genesis state from the same kind of endpoint\nbeacon-chain \\\n  --checkpoint-sync-url=https://checkpoint.example \\\n  --genesis-beacon-api-url=https://checkpoint.example\n\n# compare the root you just trusted against an independent node\ncurl -s https://checkpoint.example/eth/v1/beacon/headers/finalized\ncurl -s http://127.0.0.1:5052/eth/v1/beacon/headers/finalized",
+      code: "lighthouse beacon_node \\\n  --network mainnet \\\n  --execution-endpoint http://127.0.0.1:8551 \\\n  --execution-jwt /secrets/jwt.hex \\\n  --checkpoint-sync-url https://checkpoint.example \\\n  --http\n\n# Prysm can fetch the genesis state from the same kind of endpoint\nbeacon-chain \\\n  --checkpoint-sync-url=https://checkpoint.example \\\n  --genesis-beacon-api-url=https://checkpoint.example\n\n# compare the root you just trusted against an independent node\ncurl -s https://checkpoint.example/eth/v1/beacon/headers/finalized\ncurl -s http://127.0.0.1:5052/eth/v1/beacon/headers/finalized",
       note: "The two roots must match; if you never run the comparison, the checkpoint provider decides which chain your node follows.",
     },
     pitfalls: [
@@ -773,38 +453,6 @@ export const topics = [
       "Taking a checkpoint URL from a random list and never comparing the resulting block root with a second, independent source.",
       "Expecting Beacon API queries for slots below the anchor to work before backfill has finished, and reading the `404` as a node fault.",
       "Restarting a node that was offline longer than the weak subjectivity period instead of resyncing it from a fresh checkpoint.",
-    ],
-    quiz: [
-      {
-        question: "A checkpoint sync of the consensus client has just finished. What does the execution client typically report at that moment?",
-        options: [
-          "eth_syncing still returns a progress object while it completes its own sync",
-          "eth_syncing returns false, because the checkpoint covered both clients",
-          "eth_blockNumber returns null until the first attestation is received",
-          "It rejects every eth_ request until the next epoch is finalized",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What guarantees that the beacon state a checkpoint endpoint serves belongs to the canonical chain?",
-        options: [
-          "Nothing in the protocol; the operator trusts the endpoint and should cross-check the block root",
-          "The hash tree root of the state proves that it is canonical",
-          "A sync committee signature shipped alongside the state file",
-          "The TLS certificate of the checkpoint provider, which clients pin",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why can a freshly checkpoint-synced beacon node return 404 for a block from a slot last year?",
-        options: [
-          "It has not backfilled the history below its anchor checkpoint yet",
-          "Every client deletes blocks older than 4096 epochs",
-          "That slot was missed, so no node anywhere holds a block for it",
-          "The Beacon API only serves blocks from the current epoch",
-        ],
-        answer: 0,
-      },
     ],
     related: ["weak-subjectivity", "sync-modes", "beacon-api", "consensus-client", "beacon-node", "snap-sync", "block-tag", "finality", "eth-syncing", "engine-api"],
     sources: [
@@ -848,38 +496,6 @@ export const topics = [
       "Quoting a fixed number of days for the period rather than reading what the client computes for the current validator set.",
       "Believing a node is on the right chain because its responses are internally consistent and its finalized tag advances.",
     ],
-    quiz: [
-      {
-        question: "Why is a long-range attack cheap for validators who have already exited and withdrawn their stake?",
-        options: [
-          "They keep their old signing keys but no longer have any stake at risk to slash",
-          "Their withdrawal transaction gives them the right to re-sign old epochs",
-          "Exited validators keep voting weight for one weak subjectivity period",
-          "The protocol never slashes attestations older than two epochs",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What bounds the length of the weak subjectivity period?",
-        options: [
-          "The exit queue and churn limit, which cap how fast the active validator set can turn over",
-          "A fixed constant of 4096 epochs written into the consensus specification",
-          "The 12-second slot time multiplied by the number of active validators",
-          "The blob sidecar retention window on the consensus network",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A node was bootstrapped from a malicious checkpoint. Which symptom would an ordinary RPC caller see?",
-        options: [
-          "None from a single endpoint; its answers and finalized tag look internally consistent",
-          "eth_call returns an error because state roots will not verify",
-          "eth_syncing stays true forever on the execution client",
-          "eth_chainId returns a value that differs from the configured network",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["checkpoint-sync", "proof-of-stake", "finality", "light-client", "consensus-client", "sync-modes", "trusted-header", "block-tag", "sync-committee", "beacon-node"],
     sources: [
       { title: "ethereum.org: Weak subjectivity", url: "https://ethereum.org/developers/docs/consensus-mechanisms/pos/weak-subjectivity/" },
@@ -891,13 +507,13 @@ export const topics = [
     title: "Node discovery",
     category: "nodes",
     aliases: ["discv4", "discv5", "ENR", "enode", "bootnodes", "EIP-778", "EIP-1459"],
-    summary: "Node discovery is the UDP protocol family, discv4 for execution and discv5 for consensus, through which a client finds peers by walking a Kademlia-style table of signed Ethereum Node Records.",
+    summary: "Node discovery is the UDP protocol family, discv4 for the execution layer, which some execution clients supplement with discv5, and discv5 for consensus, through which a client finds peers by walking a Kademlia-style table of signed Ethereum Node Records.",
     sections: [
       {
         heading: "Finding peers with no peers",
         paragraphs: [
           "A client starts with a hardcoded bootnode list for its network and, optionally, a DNS list published as an `enrtree://` URL under [[eip|EIP-1459]]. From those seeds it performs Kademlia-style lookups over UDP, asking known nodes for records close to random target ids and filling a routing table bucketed by XOR distance. Discovery only exchanges records; the actual session is established afterwards.",
-          "The two layers run separate discovery networks on separate ports. [[devp2p|devp2p]] uses discv4 on UDP 30303, beside the RLPx TCP port of the same number, while a [[beacon-node|beacon node]] uses discv5 on UDP 9000 beside its [[libp2p-gossip|libp2p]] TCP port. The [[portal-network|Portal Network]] reuses the discv5 substrate for its own overlay.",
+          "The two layers run separate discovery networks on separate ports. [[devp2p|devp2p]] uses discv4 on UDP 30303, beside the RLPx TCP port of the same number, while a [[beacon-node|beacon node]] uses discv5 on its own UDP port, 9000 on most clients and 12000 on Prysm, beside its [[libp2p-gossip|libp2p]] TCP port. The [[portal-network|Portal Network]] reuses the discv5 substrate for its own overlay.",
         ],
       },
       {
@@ -926,38 +542,6 @@ export const topics = [
       "Leaving the advertised address at an internal NAT address, which gives the node outbound peers only and a slowly drifting head.",
       "Exposing `admin_` methods on the public RPC endpoint to inspect peers, which also hands callers `admin_addPeer`.",
       "Treating an enode URL and an ENR as interchangeable; only the record is signed, versioned, and able to carry fork and subnet data.",
-    ],
-    quiz: [
-      {
-        question: "What does an ENR provide that a plain enode URL does not?",
-        options: [
-          "A signed, sequence-numbered key/value record that can carry fork id and subnet entries",
-          "An encrypted transport for the peer session itself",
-          "The block height the peer is currently serving",
-          "A guarantee that the peer is on the canonical chain",
-        ],
-        answer: 0,
-      },
-      {
-        question: "An execution node sits behind NAT and advertises its private address. What does an RPC caller most likely observe?",
-        options: [
-          "Successful responses whose latest block gradually falls behind the network",
-          "An immediate connection refused on port 8545",
-          "eth_chainId returning the wrong network id",
-          "JSON-RPC errors with code -32601 for eth_ methods",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which pair of default UDP ports carries discovery for the two layers?",
-        options: [
-          "30303 for discv4 on the execution side and 9000 for discv5 on the consensus side",
-          "8545 for the execution side and 5052 for the consensus side",
-          "8551 for both, multiplexed behind the Engine API JWT",
-          "30303 for both layers, since they share one discovery table",
-        ],
-        answer: 0,
-      },
     ],
     related: ["peer-to-peer", "devp2p", "libp2p-gossip", "admin-api", "net-web3-api", "beacon-node", "portal-network", "health-check", "self-hosting", "node-hardware"],
     sources: [
@@ -990,7 +574,7 @@ export const topics = [
       {
         heading: "Why an RPC caller should care",
         paragraphs: [
-          "This network is where `safe` and `finalized` come from. Attestations gossiped here accumulate into the justified and finalized checkpoints the consensus client pushes to the [[execution-client|execution client]] on each `engine_forkchoiceUpdated` over the [[engine-api|Engine API]]. If the consensus side loses peers, [[eth-block-number|eth_blockNumber]] keeps answering while the `finalized` [[block-tag|block tag]] quietly stops advancing.",
+          "This network is where `safe` and `finalized` come from. Attestations gossiped here accumulate into the justified and finalized checkpoints the consensus client pushes to the [[execution-client|execution client]] on each `engine_forkchoiceUpdated` over the [[engine-api|Engine API]]. If the consensus side loses its peers, the execution client stops receiving blocks too, since it only learns of new ones through the consensus client: [[eth-block-number|eth_blockNumber]] keeps answering, but with a head that no longer moves, and the `finalized` [[block-tag|block tag]] stops with it.",
           "Blob data lives here too and nowhere else. A [[blob|blob transaction]] appears in execution RPC with its versioned hashes, but the blob contents are sidecars carried on this network and served from the [[beacon-api|Beacon API]] for 4096 epochs, about 18 days. After that not even an [[archive-node|archive node]] on the execution side brings them back.",
         ],
       },
@@ -1000,38 +584,6 @@ export const topics = [
       "Running a node with unsynchronized clocks, which costs gossip score because messages arrive outside their acceptance window.",
       "Opening TCP 9000 but not UDP 9000, leaving discv5 unable to find peers for the libp2p host.",
       "Expecting to fetch blob contents from an execution archive node after the 4096-epoch consensus retention window has passed.",
-    ],
-    quiz: [
-      {
-        question: "The consensus client loses most of its peers but the execution client is fine. What does an RPC caller see first?",
-        options: [
-          "latest keeps advancing for a while, but the finalized block tag stops moving",
-          "eth_blockNumber immediately returns an error",
-          "eth_getLogs starts returning removed logs for every block",
-          "The node reports eth_syncing as a progress object right away",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why are individual attestations spread across 64 subnets instead of one global topic?",
-        options: [
-          "So a node only carries traffic for the committees it cares about, instead of every vote in the slot",
-          "Because gossipsub cannot deliver more than one message per topic per slot",
-          "To give each of the 64 sync committee members a private channel",
-          "Because each subnet is validated by a different consensus client implementation",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Where does the actual content of a blob live once its transaction is a few weeks old?",
-        options: [
-          "Nowhere on the protocol networks; sidecars are retained for about 4096 epochs and then dropped",
-          "In the execution block body, retrievable from any archive node",
-          "In the beacon state, which archive consensus nodes keep forever",
-          "In the receipt, under the blobGasUsed field",
-        ],
-        answer: 0,
-      },
     ],
     related: ["peer-to-peer", "discovery", "devp2p", "beacon-node", "consensus-client", "attestation", "beacon-block", "blob", "ssz", "beacon-api"],
     sources: [
@@ -1056,7 +608,7 @@ export const topics = [
       {
         heading: "Clients and what they answer",
         paragraphs: [
-          "The implementations are Trin (Rust, Ethereum Foundation), Fluffy (Nim, from the [[nimbus|Nimbus]] team) and Shisui (Go). Each exposes a local [[json-rpc|JSON-RPC]] endpoint answering a narrow, history-oriented slice of `eth_` methods, such as [[eth-get-block-by-number|eth_getBlockByNumber]] and block lookups by hash, plus `portal_` methods for inspecting and managing the DHT itself.",
+          "Implementations include Trin (Rust, Ethereum Foundation), Fluffy (Nim, from the [[nimbus|Nimbus]] team), Shisui (Go), Ultralight (TypeScript) and Samba (Java). Each exposes a local [[json-rpc|JSON-RPC]] endpoint answering a narrow, history-oriented slice of `eth_` methods, such as [[eth-get-block-by-number|eth_getBlockByNumber]] and block lookups by hash, plus `portal_` methods for inspecting and managing the DHT itself.",
           "What it does not offer matters as much. Without the state network there is no [[eth-call|eth_call]], no [[eth-get-balance|eth_getBalance]] and no [[eth-get-proof|eth_getProof]]; there is no [[mempool|transaction pool]], so nothing accepts a raw transaction. The supported method set is still moving, so probe the [[endpoint-capabilities|capabilities]] of the specific release rather than assuming parity with an execution client.",
         ],
       },
@@ -1073,38 +625,6 @@ export const topics = [
       "Treating it as a lighter full node rather than a read-only retrieval network with no transaction pool at all.",
       "Assuming a fixed set of supported methods instead of probing the specific client release you deployed.",
       "Storing data pulled from a portal client without recording its provenance and the block hash it belongs to.",
-    ],
-    quiz: [
-      {
-        question: "How does a Portal Network node decide what to store?",
-        options: [
-          "It keeps only content whose identifier falls within a radius around its own node id",
-          "It keeps the most recent blocks up to a configured disk budget",
-          "It mirrors whichever archive node it was bootstrapped from",
-          "It stores everything, like an archive node, but compressed",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which request should you not expect a portal history client to answer today?",
-        options: [
-          "eth_call against an account at a historical block",
-          "A block lookup by number",
-          "A block lookup by hash",
-          "A portal_ method describing the local routing table",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What problem does the Portal Network exist to solve?",
-        options: [
-          "Keeping ancient block bodies and receipts retrievable once ordinary clients expire them",
-          "Reducing the latency of eth_getLogs on recent blocks",
-          "Replacing the consensus layer gossip network for attestations",
-          "Letting light wallets broadcast transactions without a full node",
-        ],
-        answer: 0,
-      },
     ],
     related: ["history-expiry", "light-client", "archive-node", "historical-data", "discovery", "peer-to-peer", "full-node", "indexer", "endpoint-capabilities", "eth-get-logs"],
     sources: [

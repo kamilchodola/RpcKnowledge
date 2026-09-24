@@ -42,38 +42,6 @@ export const topics = [
       "Treating a 429 or a `-32005` as 'no such data'. It is an operational answer about your quota, not a statement about the chain.",
       "Benchmarking a provider against your own node on latency alone; a provider's edge cache can answer faster and still be a block behind.",
     ],
-    quiz: [
-      {
-        question: "A provider returns an account balance. What have you actually received?",
-        options: [
-          "A proof that the value is correct at the block it names",
-          "A claim carrying no evidence either way, which you must verify separately when money depends on it",
-          "A finalized value, because providers answer only from finalized blocks",
-          "The agreed answer of every node in the provider's fleet",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Your provider benchmarks faster than your own node on the same read. What can that hide?",
-        options: [
-          "That the provider silently rewrites your request parameters",
-          "That your node's CPU is slower even though its disk is faster",
-          "That an edge cache answered, and the value may be a block behind",
-          "That the request was billed against a cheaper method tier",
-        ],
-        answer: 2,
-      },
-      {
-        question: "Which part of a provider's offering will not survive a move to your own node?",
-        options: [
-          "Core methods such as eth_getBalance and eth_call",
-          "The safe and finalized block tags",
-          "Batched requests",
-          "Token balance, NFT and decoded transaction history endpoints, which no execution client implements",
-        ],
-        answer: 3,
-      },
-    ],
     related: ["self-hosting", "endpoint-capabilities", "rate-limits", "load-balancer", "authentication", "caching", "verified-rpc", "private-rpc", "json-rpc"],
     sources: [
       { title: "ethereum.org: Nodes and clients", url: "https://ethereum.org/developers/docs/nodes-and-clients/" },
@@ -121,38 +89,6 @@ export const topics = [
       "Missing a fork deadline. An outdated client does not error loudly; it follows a dead chain and keeps answering.",
       "Assuming your own node answers historical state; a default [[pruned-node|pruned node]] keeps only recent state and will fail old [[eth-call|eth_call]] queries.",
       "Calling one node with no fallback 'self-hosted RPC'; a single machine reboot is an application outage.",
-    ],
-    quiz: [
-      {
-        question: "A self-hosted node misses a network upgrade deadline. What does an application calling it see?",
-        options: [
-          "Every request fails immediately with an internal error",
-          "The node keeps answering confidently, but from a chain the network left behind at the fork timestamp",
-          "The reported chain id changes to signal the mismatch",
-          "The consensus client refuses to start until the binary is upgraded",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Which benefit of self-hosting can no provider plan offer?",
-        options: [
-          "Nobody outside sees which addresses you query or which transactions you sign",
-          "High availability from a single machine",
-          "Lower latency for callers anywhere in the world",
-          "Client upgrades applied automatically before each network upgrade",
-        ],
-        answer: 0,
-      },
-      {
-        question: "You add a hosted endpoint as a fallback behind your own node. What must be checked before it takes traffic?",
-        options: [
-          "Only that it answers an HTTP request",
-          "Only that its monthly quota is not exhausted",
-          "Only that its latency is within the primary's p95",
-          "Chain id, sync status, head distance, and whether it exposes the namespaces you rely on",
-        ],
-        answer: 3,
-      },
     ],
     related: ["rpc-provider", "full-node", "node-hardware", "health-check", "rpc-gateway", "security", "archive-node", "engine-api"],
     sources: [
@@ -202,38 +138,6 @@ export const topics = [
       "Mixing upstreams with different [[chain-id|chain ids]] or different retention in one pool, so results depend on which node answered.",
       "Health-checking with a TCP connect or an HTTP 200 only; a syncing node accepts connections and answers `eth_blockNumber` with a stale height.",
     ],
-    quiz: [
-      {
-        question: "Why does eth_getFilterChanges fail with filter not found behind a round-robin balancer?",
-        options: [
-          "The id exists only in the memory of the node that created the filter, and a sibling never saw it",
-          "The filter expired because the balancer added latency",
-          "Filter ids are scoped to an API key rather than to a node",
-          "The balancer rewrites the id when it re-encodes the request",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which change most cheaply stops a caller from seeing the head jump backwards?",
-        options: [
-          "Polling the health check on a shorter interval",
-          "Adding more upstreams to the pool",
-          "A sticky session, so one caller's consecutive requests land on the same upstream",
-          "Disabling keep-alive so every request opens a fresh connection",
-        ],
-        answer: 2,
-      },
-      {
-        question: "A generic HTTP round-robin sits in front of four healthy nodes. What can it not do?",
-        options: [
-          "Spread requests evenly across them",
-          "Terminate TLS on the callers' behalf",
-          "Drop a node that stops accepting connections",
-          "See the method name, so it cannot send archive or tracing work to the pool that can serve it",
-        ],
-        answer: 3,
-      },
-    ],
     related: ["head-lag", "rpc-gateway", "failover", "health-check", "eth-filters", "eth-subscribe", "caching", "rpc-provider", "endpoint-capabilities"],
     sources: [
       { title: "ethereum.org: JSON-RPC API", url: "https://ethereum.org/developers/docs/apis/json-rpc/" },
@@ -281,38 +185,6 @@ export const topics = [
       "Failing over on a deterministic error such as `execution reverted`; every upstream will return the same thing and you have tripled the cost.",
       "Forgetting that the gateway terminates the caller's WebSocket, so [[eth-subscribe|subscriptions]] must be re-established upstream and gaps re-filled after an upstream switch.",
       "Running the gateway without an allow-list on the assumption that upstream providers already block dangerous [[namespaces|namespaces]]; self-hosted upstreams usually do not.",
-    ],
-    quiz: [
-      {
-        question: "What does decoding the JSON-RPC envelope let a gateway do that a plain TCP proxy cannot?",
-        options: [
-          "Terminate TLS on behalf of its callers",
-          "Hold connections open between retries",
-          "Route by method, key a cache on the block argument, and reject whole namespaces before a node sees them",
-          "Compress responses on the way back",
-        ],
-        answer: 2,
-      },
-      {
-        question: "A gateway splits a batch across upstreams and reassembles the answers. What must it never get wrong?",
-        options: [
-          "The id matching, because returning one request's result under another's id corrupts every client library above it",
-          "The order of the array, which callers depend on",
-          "The HTTP status code of the combined response",
-          "The content length of the merged body",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why does a method allow-list matter more in front of self-hosted upstreams than hosted ones?",
-        options: [
-          "Self-hosted nodes cannot enforce per-key rate limits",
-          "Providers bill extra for calls into blocked namespaces",
-          "The Engine API shares a port with public RPC on a self-hosted node",
-          "A hosted endpoint usually blocks the dangerous namespaces already, while a self-hosted node usually does not",
-        ],
-        answer: 3,
-      },
     ],
     related: ["load-balancer", "caching", "failover", "head-lag", "rate-limits", "observability", "reverse-proxy", "rpc-provider", "retries"],
     sources: [
@@ -362,38 +234,6 @@ export const topics = [
       "Assuming a provider URL is one node; it is a pool, and consecutive requests can go backwards in height.",
       "Alerting only on absolute block age, which fires during missed slots; compare each node against the best head you know instead.",
     ],
-    quiz: [
-      {
-        question: "You read a receipt from one endpoint and a balance at latest from another, and they contradict each other. Why?",
-        options: [
-          "One of the two nodes is following a different fork",
-          "The receipt was served from a cache while the balance was not",
-          "The two nodes sit at different heights, so each answer describes the chain at a different point",
-          "Balances are only updated once a block has been finalized",
-        ],
-        answer: 2,
-      },
-      {
-        question: "Why is passing an explicit block number better than sending latest on every related call?",
-        options: [
-          "Explicit numbers cost fewer compute units",
-          "A node that does not have that block fails loudly instead of quietly answering from an older one",
-          "The latest tag is being retired in favour of safe",
-          "Explicit numbers bypass the gateway cache",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Why is eth_syncing a weak signal for detecting a lagging upstream?",
-        options: [
-          "Most clients do not implement it",
-          "It reports only the consensus client's progress",
-          "It requires an authenticated connection",
-          "It returns false on a node that finished syncing and then stalled",
-        ],
-        answer: 3,
-      },
-    ],
     related: ["load-balancer", "health-check", "rpc-gateway", "block-tag", "reorg", "failover", "eth-syncing", "indexer", "confirmations"],
     sources: [
       { title: "EIP-1898: Add blockHash to defaultBlock methods", url: "https://eips.ethereum.org/EIPS/eip-1898" },
@@ -441,38 +281,6 @@ export const topics = [
       "Promoting a fallback without checking chain id, so a testnet or a fork endpoint starts answering production queries.",
       "Reading the nonce from whichever upstream answers, producing duplicate-nonce or gapped transactions under load.",
       "Counting a reconnected WebSocket as recovered without backfilling the blocks missed while it was down.",
-    ],
-    quiz: [
-      {
-        question: "Which of these failures is a genuine reason to move the request to a different upstream?",
-        options: [
-          "An eth_call answered with execution reverted and revert data",
-          "A -32602 invalid params response",
-          "A -32000 missing trie node, which an upstream with deeper history may be able to serve",
-          "An already known error on a resent transaction",
-        ],
-        answer: 2,
-      },
-      {
-        question: "Before a fallback upstream takes production traffic, what has to be confirmed?",
-        options: [
-          "Nothing beyond a successful connection, since it was configured in advance",
-          "That its chain id matches, that it is not syncing, that its head is close to the best you know, and that it exposes the namespaces you need",
-          "That its latency is lower than the primary's",
-          "That its monthly quota still has room",
-        ],
-        answer: 1,
-      },
-      {
-        question: "During a failover, which request must not be spread across two upstreams?",
-        options: [
-          "eth_sendRawTransaction with identical signed bytes",
-          "eth_getLogs over a settled block range",
-          "eth_getBlockByHash for a hash you already have",
-          "The next-nonce lookup, because each upstream's pending view is its own",
-        ],
-        answer: 3,
-      },
     ],
     related: ["retries", "health-check", "load-balancer", "rpc-gateway", "head-lag", "rpc-errors", "chain-id", "endpoint-capabilities", "observability"],
     sources: [
@@ -522,38 +330,6 @@ export const topics = [
       "Retrying without jitter, so every failed caller returns in lockstep and finishes the outage off.",
       "Treating `already known` or `nonce too low` on a resend as failure; both mean it is already out there.",
     ],
-    quiz: [
-      {
-        question: "Your eth_sendRawTransaction call times out with no response body. What is the safest next step?",
-        options: [
-          "Re-sign the transaction with the next nonce and submit that instead",
-          "Look up the hash you computed locally with eth_getTransactionByHash before deciding anything",
-          "Assume it was rejected and report the failure to the user",
-          "Call eth_getTransactionCount with the pending tag and treat an unchanged count as rejection",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Why is resending the exact same signed bytes of a transaction safe?",
-        options: [
-          "The pool deduplicates by sender address and drops the later arrival",
-          "The hash is derived from the signed bytes, so the resend is the same transaction rather than a new one",
-          "eth_sendRawTransaction ignores any request repeated within the same block",
-          "A node accepts at most one transaction per account per block",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Which failure should not be retried, on this endpoint or any other?",
-        options: [
-          "A 504 returned by the reverse proxy in front of the node",
-          "An eth_call answered with execution reverted and revert data",
-          "A connection reset partway through the response",
-          "An HTTP 429 carrying a Retry-After header",
-        ],
-        answer: 1,
-      },
-    ],
     related: ["failover", "rpc-errors", "eth-send-raw-transaction", "rate-limits", "head-lag", "rpc-gateway", "nonce", "client-libraries", "eth-get-transaction-by-hash"],
     sources: [
       { title: "EIP-1474: Remote procedure call specification", url: "https://eips.ethereum.org/EIPS/eip-1474" },
@@ -601,38 +377,6 @@ export const topics = [
       "Caching a `null` receipt and converting a few seconds of head lag into a permanent wrong answer.",
       "Caching between `finalized` and the head with no reorg invalidation, so a rewritten block keeps serving.",
       "Skipping parameter normalization, which halves the hit rate and hides that two keys hold one answer.",
-    ],
-    quiz: [
-      {
-        question: "Which of these answers is safe to cache indefinitely?",
-        options: [
-          "eth_getBalance for an address at the latest tag",
-          "eth_getLogs over a block range that ends at or below finalized",
-          "eth_getTransactionReceipt that returned null",
-          "eth_getTransactionCount at the pending tag",
-        ],
-        answer: 1,
-      },
-      {
-        question: "A cache keys entries on the raw JSON request body. What goes wrong?",
-        options: [
-          "Nothing, because the body uniquely identifies the answer",
-          "Requests at latest get a stable key even though the correct answer changes every block",
-          "Error responses can no longer be stored",
-          "Addresses have to be checksummed before they match",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Why is caching a null transaction receipt worse than not caching it at all?",
-        options: [
-          "Null responses are larger than receipts and waste memory",
-          "Null usually means the node has not imported the block yet, so the cache freezes a temporary lag into a lasting answer",
-          "Null is only returned when the endpoint is rate limited",
-          "A cached null prevents the transaction from being gossiped further",
-        ],
-        answer: 1,
-      },
     ],
     related: ["block-tag", "block-hash", "rpc-gateway", "head-lag", "reorg", "rate-limits", "eth-get-logs", "eth-call", "load-balancer", "batch-request"],
     sources: [
@@ -682,38 +426,6 @@ export const topics = [
       "Budgeting in requests when the provider bills in compute units, so one tracing job drains a month.",
       "Assuming a batch either fully succeeds or fully fails, and dropping the successful items with it.",
     ],
-    quiz: [
-      {
-        question: "An endpoint returns HTTP 200 with a JSON-RPC error whose code is -32005. What has happened?",
-        options: [
-          "The request was malformed and must be fixed before resending",
-          "You exceeded a quota on this endpoint and should back off or move elsewhere",
-          "The block you asked for was reorged out",
-          "The node is still syncing and has no answer yet",
-        ],
-        answer: 1,
-      },
-      {
-        question: "eth_getLogs fails with 'query returned more than 10000 results'. What is the correct response?",
-        options: [
-          "Retry the identical range after a short delay",
-          "Halve the block range and continue from the same cursor position",
-          "Switch to eth_newFilter, which has no result limit",
-          "Skip the range and continue from the next block after it",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Why is requests per second a poor way to budget against a provider plan?",
-        options: [
-          "Providers measure only bandwidth, not request counts",
-          "Plans are denominated in compute units, and a few traces can outweigh thousands of cheap head queries",
-          "Request counts reset every block rather than every month",
-          "Concurrency limits replace rate limits above a certain tier",
-        ],
-        answer: 1,
-      },
-    ],
     related: ["rpc-provider", "retries", "cursor-pagination", "eth-get-logs", "rpc-errors", "batch-request", "caching", "failover", "endpoint-capabilities", "rpc-gateway"],
     sources: [
       { title: "EIP-1474: Remote procedure call specification", url: "https://eips.ethereum.org/EIPS/eip-1474" },
@@ -739,7 +451,7 @@ export const topics = [
         heading: "The Engine API is the exception",
         paragraphs: [
           "Port 8551 is authenticated, and it is the one interface in this map where authentication is specified rather than improvised. The [[execution-client|execution client]] and the [[consensus-client|consensus client]] share a 32-byte hex secret in a file, and every request carries `Authorization: Bearer <token>` holding a JWT signed HS256 with that secret. The `iat` claim must be within 60 seconds of the receiving node's clock, so the protocol is also a loose proof of liveness.",
-          "That design has a practical consequence: clock drift presents as an authentication failure. A node whose time has slipped past the 60-second window stops accepting [[engine-payload|engine_forkchoiceUpdated]] and `engine_newPayload`, the pair falls apart, and the logs say 'invalid token' rather than anything about time. Run NTP, point both processes at the same secret file, and keep that file readable only by them. The JWT does not authorize a user; it proves the two processes are the intended pair, which is why 8551 still belongs on loopback.",
+          "That design has a practical consequence when the execution and consensus clients run on separate machines: clock drift between them presents as an authentication failure. On one machine both read the same clock, so drift cannot arise between them. A node whose time has slipped past the 60-second window stops accepting [[engine-payload|engine_forkchoiceUpdated]] and `engine_newPayload`, the pair falls apart, and the logs say 'invalid token' rather than anything about time. Run NTP, point both processes at the same secret file, and keep that file readable only by them. The JWT does not authorize a user; it proves the two processes are the intended pair, which is why 8551 still belongs on loopback.",
         ],
       },
       {
@@ -761,38 +473,6 @@ export const topics = [
       "Pointing the two clients at different secret files after a redeploy, which reads as a generic authentication error.",
       "Ignoring clock synchronization, so a node drifts past the 60-second `iat` window and silently stops following the chain.",
       "Sharing one key across environments, so revoking a leaked key takes production down with it.",
-    ],
-    quiz: [
-      {
-        question: "What does the Engine API JWT actually establish?",
-        options: [
-          "That the caller controls a validator key",
-          "That the consensus client and execution client share a secret and are the intended pair",
-          "That the execution payload inside the request is valid",
-          "That the connection was made over TLS",
-        ],
-        answer: 1,
-      },
-      {
-        question: "A consensus client suddenly cannot drive its execution client, which logs an authentication failure, and no configuration changed. What is the likeliest cause?",
-        options: [
-          "The JWT reached its expiry date and must be reissued",
-          "The machine clock drifted more than 60 seconds away from the iat claim",
-          "The Engine API moved to a different port at the last upgrade",
-          "The execution client ran out of peers and refuses authenticated calls",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Where should the API key for a browser dapp live?",
-        options: [
-          "In the frontend bundle, obfuscated so it is hard to read",
-          "In a backend the frontend calls, or behind a domain allow-list on the provider side",
-          "In localStorage, written on first page load",
-          "In a WebSocket subprotocol header, which browsers keep private",
-        ],
-        answer: 1,
-      },
     ],
     related: ["engine-api", "security", "reverse-proxy", "rpc-provider", "rate-limits", "namespaces", "self-hosting", "engine-payload", "rpc-gateway"],
     sources: [
@@ -843,38 +523,6 @@ export const topics = [
       "Forgetting `--http.vhosts` after TLS termination and reading `invalid host specified` as a proxy misconfiguration.",
       "Not forwarding the client address, so per-IP rate limits throttle everyone as one caller.",
     ],
-    quiz: [
-      {
-        question: "Subscriptions through a new nginx front end connect fine and then drop after about a minute. What is the likeliest cause?",
-        options: [
-          "The node's WebSocket port was never enabled",
-          "proxy_read_timeout defaults to 60 seconds and closes the idle upgraded connection",
-          "eth_subscribe requires TLS 1.3, which the proxy did not negotiate",
-          "The node drops all subscriptions at each epoch boundary",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Which job does not belong in a plain reverse proxy in front of a node?",
-        options: [
-          "Terminating TLS and renewing the certificate",
-          "Capping the request body size",
-          "Caching an eth_call result under the block it was computed at",
-          "Limiting requests per second per client IP",
-        ],
-        answer: 2,
-      },
-      {
-        question: "After putting Geth behind a proxy on rpc.example, every request fails with 'invalid host specified'. What fixes it?",
-        options: [
-          "Add the hostname to --http.vhosts",
-          "Set --http.corsdomain to '*'",
-          "Open port 8551 through the proxy as well",
-          "Restart the node with --http.addr 0.0.0.0",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["security", "websocket-transport", "rpc-gateway", "authentication", "http-transport", "eth-subscribe", "batch-request", "engine-api", "self-hosting", "geth"],
     sources: [
       { title: "Geth: command-line options", url: "https://geth.ethereum.org/docs/fundamentals/command-line-options" },
@@ -893,7 +541,7 @@ export const topics = [
         heading: "The namespaces that must never be public",
         paragraphs: [
           "[[namespaces|Namespaces]] are the first control, because they decide what the endpoint is able to do at all. `admin_` adds and removes peers and starts listeners. `personal_`, long deprecated and removed from [[geth|Geth]], unlocks keys and signs with them. `debug_` runs tracers that can occupy a core for minutes per call and dump raw internals. `txpool_` exposes the pending set, which is order-flow intelligence and a privacy leak for the users submitting through you. A public endpoint should expose `eth`, `net`, and `web3`, and nothing else.",
-          "Both major clients default to that narrow set; the damage is done by tutorials that widen it. [[geth|Geth]] takes `--http.api eth,net,web3`, [[nethermind|Nethermind]] takes `--JsonRpc.EnabledModules [Eth,Net,Web3]`, and the [[engine-api|Engine API]] lives on its own authenticated port rather than in that list. Where a namespace is genuinely needed by one internal consumer, expose it on a separate listener bound to a private interface instead of widening the public one.",
+          "Geth defaults to that narrow set; Nethermind's default module list is broader, so set it explicitly on any public listener, and beyond that the damage is done by tutorials that widen it. [[geth|Geth]] takes `--http.api eth,net,web3`, [[nethermind|Nethermind]] takes `--JsonRpc.EnabledModules [Eth,Net,Web3]`, and the [[engine-api|Engine API]] lives on its own authenticated port rather than in that list. Where a namespace is genuinely needed by one internal consumer, expose it on a separate listener bound to a private interface instead of widening the public one.",
         ],
       },
       {
@@ -923,38 +571,6 @@ export const topics = [
       "Treating `--http.corsdomain` as an access control; it constrains browsers only, never servers or scripts.",
       "Exposing port 8551 publicly because the Engine API has a JWT; the token pairs two processes, it does not survive exposure.",
       "Leaving `txpool_` open on a node your own users submit through, which publishes their pending transactions.",
-    ],
-    quiz: [
-      {
-        question: "What does the --http.vhosts allow-list actually protect against?",
-        options: [
-          "Cross-site scripting in block explorers that embed the endpoint",
-          "DNS rebinding, where a page resolves an attacker domain to 127.0.0.1 and reaches a loopback-bound node",
-          "Replay of signed transactions onto a second chain",
-          "Callers rotating IP addresses to evade a rate limit",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Which of these namespaces is safe to expose on a public endpoint?",
-        options: [
-          "admin_",
-          "debug_",
-          "net_",
-          "personal_",
-        ],
-        answer: 2,
-      },
-      {
-        question: "Setting --http.corsdomain to '*' on a node that is already reachable from the internet does what?",
-        options: [
-          "It lets any web page's JavaScript read responses; servers and scripts could already call it regardless",
-          "It authenticates browser callers by origin",
-          "It disables the Host header check performed by vhosts",
-          "It blocks non-browser clients from connecting",
-        ],
-        answer: 0,
-      },
     ],
     related: ["namespaces", "authentication", "reverse-proxy", "admin-api", "debug-api", "txpool-api", "self-hosting", "rate-limits", "eth-send-transaction", "geth", "nethermind"],
     sources: [
@@ -1005,38 +621,6 @@ export const topics = [
       "Monitoring only the execution client when the consensus client is what feeds it blocks.",
       "Logging the method without the block argument, which makes slow archive queries indistinguishable from a slow node.",
     ],
-    quiz: [
-      {
-        question: "Why is eth_syncing a poor liveness check for an RPC endpoint?",
-        options: [
-          "It is not implemented by every execution client",
-          "It returns false on a node that finished syncing and then stopped importing blocks",
-          "It is billed at a high compute-unit rate on most providers",
-          "It only works over a WebSocket connection",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Every HTTP dashboard is green but callers report failures. Which signal was missing?",
-        options: [
-          "TCP retransmission counts on the host",
-          "The JSON-RPC error codes carried inside HTTP 200 responses",
-          "DNS resolution latency from the caller side",
-          "Disk temperature on the node",
-        ],
-        answer: 1,
-      },
-      {
-        question: "latest keeps advancing but finalized has not moved for half an hour. What does that indicate?",
-        options: [
-          "A chain reorganization half an hour deep",
-          "The chain is not finalizing, or the execution client is no longer receiving finalized hashes from its consensus client",
-          "The node has pruned its historical state",
-          "The response cache is serving a stale block tag",
-        ],
-        answer: 1,
-      },
-    ],
     related: ["health-check", "head-lag", "rpc-gateway", "eth-syncing", "engine-api", "failover", "geth", "nethermind", "lighthouse", "block-tag", "rate-limits"],
     sources: [
       { title: "Geth: metrics and monitoring", url: "https://geth.ethereum.org/docs/monitoring/metrics" },
@@ -1086,38 +670,6 @@ export const topics = [
       "Ejecting and restoring on a single sample, which makes a marginal upstream flap in and out of rotation.",
       "Running the probe through your own cache or gateway, which can report a dead upstream as healthy.",
     ],
-    quiz: [
-      {
-        question: "eth_syncing returns false and the port answers. Why might the endpoint still be unusable?",
-        options: [
-          "false is only returned by nodes that never started syncing",
-          "The node may have finished syncing and then stopped importing, leaving its head hours old",
-          "eth_syncing is not part of the standard method set",
-          "An endpoint must also answer net_listening with true before it can serve reads",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Why compare the latest block's timestamp to wall clock instead of just reading eth_blockNumber?",
-        options: [
-          "Block numbers can decrease during a reorg and timestamps cannot",
-          "A block number alone does not say how long ago the block arrived, and the timestamp does",
-          "eth_blockNumber is billed at a higher rate than eth_getBlockByNumber",
-          "Timestamps are set by the consensus layer and cannot be influenced by the proposer",
-        ],
-        answer: 1,
-      },
-      {
-        question: "What is a reasonable 'head is fresh' threshold for an Ethereum mainnet endpoint?",
-        options: [
-          "12 seconds, the length of one slot",
-          "About 40 seconds, which tolerates a few missed slots",
-          "6.4 minutes, the length of one epoch",
-          "About 13 minutes, the usual time to finality",
-        ],
-        answer: 1,
-      },
-    ],
     related: ["failover", "head-lag", "load-balancer", "eth-syncing", "chain-id", "observability", "endpoint-capabilities", "eth-get-block-by-number", "net-web3-api", "rpc-gateway"],
     sources: [
       { title: "ethereum.org: JSON-RPC API", url: "https://ethereum.org/developers/docs/apis/json-rpc/" },
@@ -1165,38 +717,6 @@ export const topics = [
       "Probing once at signup and never again, so a client upgrade or an upstream swap breaks you silently.",
       "Treating archive state as proof that historical `eth_getProof` works; the two need different data on disk.",
       "Concluding there is no range limit because one scan succeeded; some endpoints cap on response size, which depends on how busy the blocks were.",
-    ],
-    quiz: [
-      {
-        question: "An endpoint answers -32601 for trace_block but -32000 'missing trie node' for an old eth_getBalance. What do those two answers together tell you?",
-        options: [
-          "The node is still syncing and will serve both later",
-          "The trace namespace is not enabled, and the node does not retain that historical state",
-          "Your API key lacks the quota for both methods",
-          "The block you referenced was reorged out of the canonical chain",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Which call identifies the client software and version behind an endpoint?",
-        options: [
-          "eth_syncing",
-          "web3_clientVersion",
-          "net_version",
-          "admin_nodeInfo",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Why should a capability probe be re-run after a network upgrade?",
-        options: [
-          "Chain ids are reassigned at every fork",
-          "Client versions change, and with them tracer support, new methods, result fields, and error strings",
-          "Archive retention is reset to zero at the fork block",
-          "API keys must be reissued for the new fork",
-        ],
-        answer: 1,
-      },
     ],
     related: ["rpc-provider", "rpc-errors", "archive-node", "eth-get-proof", "eth-simulate", "trace-api", "debug-api", "rate-limits", "rpc-gateway", "net-web3-api", "health-check"],
     sources: [
@@ -1246,38 +766,6 @@ export const topics = [
       "Submitting a bundle once and waiting, when bundles target one block and must be resubmitted for each subsequent block.",
       "Signing the `X-Flashbots-Signature` header with the key that holds the funds instead of a separate identity key.",
       "Assuming private submission removes MEV; a builder still chooses what to place around your transaction.",
-    ],
-    quiz: [
-      {
-        question: "You submitted through a private RPC and eth_getTransactionByHash on your own node returns null. What does that mean?",
-        options: [
-          "The transaction was rejected by the relay",
-          "Nothing is wrong: a private transaction never enters the public pool, so a public node cannot see it until it is mined",
-          "The nonce was already used by an earlier transaction",
-          "The signature failed verification at the endpoint",
-        ],
-        answer: 1,
-      },
-      {
-        question: "What does eth_sendBundle guarantee that eth_sendRawTransaction does not?",
-        options: [
-          "That the transaction is included in the very next block",
-          "That the listed transactions are included together, in the given order, in a single block, or not at all",
-          "That gas is refunded if any transaction in the list reverts on chain",
-          "That the transactions are broadcast to every node on the network",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Why can a privately submitted transaction take longer to be included?",
-        options: [
-          "Private transactions are charged a lower priority fee by protocol rule",
-          "Only a block produced by a participating builder can include it",
-          "The relay waits for the previous block to finalize before forwarding it",
-          "Private transactions are only processed at epoch boundaries",
-        ],
-        answer: 1,
-      },
     ],
     related: ["mev", "mempool", "eth-send-raw-transaction", "mev-boost", "eth-get-transaction-by-hash", "block-proposal", "rpc-provider", "devp2p", "transaction-receipt", "nonce"],
     sources: [

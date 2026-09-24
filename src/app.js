@@ -978,7 +978,7 @@ function openQuiz(topic) {
   const { remaining } = lockFor(topic.id);
   if (remaining > 0) { toast(`Checkpoint locked for ${Math.ceil(remaining / 1000)}s`); return; }
   const attemptSeed = `${Date.now()}-${Math.random()}`;
-  const questions = buildAttempt(topic, state.topics, state.byId, attemptSeed);
+  const questions = buildAttempt(topic, attemptSeed);
   if (questions.length < MIN_QUESTIONS) { toast('This topic does not have enough material for a checkpoint yet'); return; }
   state.quiz = { topic, questions, index: 0, correct: 0, stage: 'intro', dwellTimer: 0, tick: 0, locked: true };
   els.quizOverlay.hidden = false;

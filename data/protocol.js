@@ -41,38 +41,6 @@ export const topics = [
       "Requesting full transaction objects when hashes would do, which multiplies response size and provider cost for every block you scan.",
       "Assuming a number identifies a block; after a [[reorg|reorg]] the same number can name different content, which is why receipts and logs also carry `blockHash`.",
     ],
-    quiz: [
-      {
-        question: "In a post-Merge execution block, what does the uncles array contain?",
-        options: [
-          "Always an empty array, because ommers no longer exist",
-          "Up to two uncle headers, as under proof of work",
-          "The hashes of sibling beacon blocks for the same slot",
-          "The withdrawals credited in that block",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A block's timestamp is 24 seconds after its parent's. What is the most likely explanation?",
-        options: [
-          "A slot was missed, so no block was proposed for it",
-          "The block carried twice the usual number of transactions",
-          "The proposer chose a later timestamp to earn more fees",
-          "The chain reorganised and two blocks were merged into one",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which part of an RPC block object is derived by the node rather than taken from the header or body?",
-        options: [
-          "size, the byte length of the RLP encoding",
-          "gasUsed",
-          "baseFeePerGas",
-          "withdrawals",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["block-header", "transaction", "eth-get-block-by-number", "block-hash", "withdrawals", "execution-payload", "state", "reorg", "block-tag"],
     sources: [
       { title: "ethereum.org: Blocks", url: "https://ethereum.org/developers/docs/blocks/" },
@@ -127,38 +95,6 @@ export const topics = [
       "Confusing `parentBeaconBlockRoot` with `parentHash`; the first identifies a consensus block, the second an execution block.",
       "Treating `miner` as the validator that proposed the block; with external block building it is usually the builder's fee recipient.",
     ],
-    quiz: [
-      {
-        question: "Which two header fields commit to data that exists only after the block has been executed?",
-        options: [
-          "stateRoot and receiptsRoot",
-          "transactionsRoot and withdrawalsRoot",
-          "parentHash and number",
-          "gasLimit and timestamp",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Where does the blob fee market keep the state it needs between blocks?",
-        options: [
-          "In the header fields blobGasUsed and excessBlobGas",
-          "In the storage of a system contract read by the EVM",
-          "In extraData, written by the block builder",
-          "Only on the consensus layer, alongside the blob sidecars",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A block from 2020 has no baseFeePerGas field. What does that tell you?",
-        options: [
-          "It predates the London upgrade, which introduced the field",
-          "The client pruned the field to save space",
-          "The block was empty, so no base fee applied",
-          "The field is only returned when you request full transactions",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["block", "state-root", "block-hash", "logs-bloom", "eip-1559", "withdrawals", "merkle-patricia-trie", "blob", "eth-get-block-by-number", "execution-payload"],
     sources: [
       { title: "EIP-4399: Supplant DIFFICULTY opcode with PREVRANDAO", url: "https://eips.ethereum.org/EIPS/eip-4399" },
@@ -199,38 +135,6 @@ export const topics = [
       "Passing an execution block hash to a Beacon API route such as `/eth/v2/beacon/blocks/{block_id}`, which expects a beacon block root.",
       "Expecting `BLOCKHASH` in a contract to reach arbitrarily far back; outside the 256-block window it returns zero, which naive code reads as a valid hash.",
       "Comparing hashes as strings without normalising case; clients return lowercase hex, but user input and some tools do not.",
-    ],
-    quiz: [
-      {
-        question: "Two clients execute the same transactions but report different block hashes. What must be true?",
-        options: [
-          "At least one header field differs, for example a different stateRoot",
-          "One of them has a different peer set, which changes the hash",
-          "The block bodies differ but the headers agree",
-          "Nothing; block hashes are local to each node",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What does the BLOCKHASH opcode return for a block older than the 256 most recent?",
-        options: [
-          "Zero",
-          "The genesis block hash",
-          "The hash of the oldest block still stored",
-          "It reverts with an out-of-range error",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which identifier survives a reorg without ever naming different content?",
-        options: [
-          "The block hash",
-          "The block number",
-          "The block timestamp",
-          "The transaction index within the block",
-        ],
-        answer: 0,
-      },
     ],
     related: ["block-header", "block", "keccak-256", "rlp", "reorg", "block-tag", "eth-get-block-by-number", "state-root", "beacon-block"],
     sources: [
@@ -278,38 +182,6 @@ export const topics = [
       "Assuming a transaction hash means inclusion; a hash exists the moment the transaction is signed, even if no node ever accepts it.",
       "Reading `value` to measure a token transfer; token movements are calldata and [[event-log|logs]], and `value` stays `0x0`.",
       "Rebuilding and resigning a transaction to bump the fee without keeping the same [[nonce|nonce]], which sends a second transaction instead of replacing the first.",
-    ],
-    quiz: [
-      {
-        question: "Which field of a transaction object returned by eth_getTransactionByHash was never part of the signed payload?",
-        options: [
-          "from, which the node recovers from the signature",
-          "nonce",
-          "chainId",
-          "input",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A transaction object has to set to null. What does that mean?",
-        options: [
-          "It is a contract deployment, and input holds the init code",
-          "It is still pending and the recipient is not yet known",
-          "It is a withdrawal pushed in by the consensus layer",
-          "It burns its value by sending it to the zero address",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A contract calls another contract during a transaction. Where can you observe that inner call?",
-        options: [
-          "Only in a trace, since it is not a transaction and has no hash",
-          "As a second transaction in the same block",
-          "In the block body, after the outer transaction",
-          "In eth_getTransactionByHash, under an internal field",
-        ],
-        answer: 0,
-      },
     ],
     related: ["transaction-types", "transaction-receipt", "nonce", "ecdsa-signature", "eth-send-raw-transaction", "mempool", "gas", "eip-1559", "abi", "address"],
     sources: [
@@ -359,38 +231,6 @@ export const topics = [
       "Assuming a blob transaction you fetched over RPC contains its blobs; only `blobVersionedHashes` is in the transaction.",
       "Hardcoding a list of known types; each [[hardfork|upgrade]] can add one, and unknown types must be skipped rather than mis-parsed.",
     ],
-    quiz: [
-      {
-        question: "How is a type 0x2 transaction serialised on the wire?",
-        options: [
-          "The byte 0x02 followed by an RLP list of its fields",
-          "An RLP list whose first element is the type number",
-          "JSON with a type field, signed as a string",
-          "SSZ, like consensus-layer objects",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which transaction type cannot be used to deploy a contract?",
-        options: [
-          "Type 0x3, because a blob transaction must have a non-null to",
-          "Type 0x1, because access lists require a recipient",
-          "Type 0x2, because dynamic fees need a callee",
-          "Type 0x0, because legacy transactions predate CREATE",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A decoder reads a raw transaction whose first byte is 0xf8. What is it?",
-        options: [
-          "A legacy transaction, since the byte is an RLP list header",
-          "A type 0xf8 transaction from a future upgrade",
-          "A blob sidecar rather than a transaction",
-          "A corrupt payload, since 0xf8 is not a valid type",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["transaction", "eip-1559", "access-list", "blob", "eip-7702", "rlp", "eth-send-raw-transaction", "transaction-receipt", "l2-rpc"],
     sources: [
       { title: "EIP-2718: Typed Transaction Envelope", url: "https://eips.ethereum.org/EIPS/eip-2718" },
@@ -432,38 +272,6 @@ export const topics = [
       "Using `cumulativeGasUsed` as the transaction's cost; it includes every transaction before it in the block.",
       "Multiplying `gas` from the transaction by `effectiveGasPrice` to compute the fee; the limit is not what was spent, `gasUsed` is.",
     ],
-    quiz: [
-      {
-        question: "Which receipt field is a running total across the block rather than a per-transaction value?",
-        options: [
-          "cumulativeGasUsed",
-          "gasUsed",
-          "effectiveGasPrice",
-          "logsBloom",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which of these receipt fields is NOT committed to by the block's receiptsRoot?",
-        options: [
-          "effectiveGasPrice, which the client derives from the block",
-          "status",
-          "logs",
-          "cumulativeGasUsed",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A transaction reverted. What does its receipt contain?",
-        options: [
-          "status 0x0, a non-zero gasUsed, and an empty logs array",
-          "No receipt is written for a reverted transaction",
-          "status 0x1 plus an error field holding the revert reason",
-          "status 0x0 and gasUsed of 0x0, since nothing was applied",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["transaction", "eth-get-transaction-receipt", "event-log", "logs-bloom", "revert", "gas", "eth-get-block-receipts", "receipt-proof", "eip-1559"],
     sources: [
       { title: "ethereum.org: Transactions", url: "https://ethereum.org/developers/docs/transactions/" },
@@ -495,7 +303,7 @@ export const topics = [
         heading: "Contract nonces and RPC",
         paragraphs: [
           "Contracts have nonces too, but theirs count deployments rather than transactions: a contract's nonce increments on every `CREATE` it performs, and it starts at 1 when the contract is created, which is what makes [[address|CREATE addresses]] unique. [[eip-7702|Set code authorizations]] also carry and consume a nonce from the signing account.",
-          "[[eth-get-transaction-count|eth_getTransactionCount]] is the only way to read one: with `latest` it returns the count of included transactions, which is the next nonce to use; with `pending` it also counts what the node holds in its own pool. Two nodes can disagree on the `pending` answer, so a wallet that rotates across providers should track its nonce itself and use the node only as a floor. The unrelated `nonce` in a [[block-header|block header]] is a proof-of-work leftover, always `0x0000000000000000` since [[the-merge|the Merge]].",
+          "[[eth-get-transaction-count|eth_getTransactionCount]] is the usual way to read one, and [[eth-get-proof|eth_getProof]] also returns it alongside a proof: with `latest` it returns the count of included transactions, which is the next nonce to use; with `pending` it also counts what the node holds in its own pool. Two nodes can disagree on the `pending` answer, so a wallet that rotates across providers should track its nonce itself and use the node only as a floor. The unrelated `nonce` in a [[block-header|block header]] is a proof-of-work leftover, always `0x0000000000000000` since [[the-merge|the Merge]].",
         ],
       },
     ],
@@ -504,38 +312,6 @@ export const topics = [
       "Assuming a failed transaction leaves the nonce free; a reverted transaction is still included and still consumes its nonce.",
       "Bumping only `maxFeePerGas` when replacing; most pools want the priority fee raised by the same percentage too.",
       "Sending from one address in parallel across workers or providers, which produces gaps and 'nonce too low' rejections instead of throughput.",
-    ],
-    quiz: [
-      {
-        question: "eth_getTransactionCount returns 0x5 for an address at the latest block. What nonce should the next transaction use?",
-        options: [
-          "0x5, because the count of included transactions is also the next index",
-          "0x6, because the count is the last nonce used",
-          "0x4, because nonces are zero-based and the count is not",
-          "Any value above 0x5, since higher nonces are accepted",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Your transaction with nonce 12 is stuck in the pool and you sign a new one with nonce 13. What happens to it?",
-        options: [
-          "It waits until nonce 12 is included or replaced; it cannot run first",
-          "It replaces nonce 12, because the higher nonce wins",
-          "It is rejected immediately as nonce too low",
-          "It executes first and nonce 12 becomes invalid",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What increments a contract account's nonce?",
-        options: [
-          "Deploying another contract with CREATE",
-          "Receiving ether",
-          "Being called by a transaction",
-          "Writing to its own storage",
-        ],
-        answer: 0,
-      },
     ],
     related: ["transaction", "account", "eth-get-transaction-count", "mempool", "eth-send-raw-transaction", "address", "eip-7702", "eip-1559"],
     sources: [
@@ -577,38 +353,6 @@ export const topics = [
       "Treating an out-of-gas failure as free; the full limit is charged even though nothing was applied.",
       "Setting a limit above the block gas limit, which no proposer can include no matter what fee is offered.",
       "Assuming `eth_call` succeeding means a transaction will; the call ran under the node's gas cap, not under the sender's limit.",
-    ],
-    quiz: [
-      {
-        question: "A transaction runs out of gas halfway through. What is charged and what is kept?",
-        options: [
-          "The entire gas limit is charged and every state change is rolled back",
-          "Only the gas consumed before the failure is charged",
-          "Nothing is charged, because the transaction failed",
-          "The gas used is charged and the completed state changes are kept",
-        ],
-        answer: 0,
-      },
-      {
-        question: "How much of its remaining gas can a contract forward to a sub-call?",
-        options: [
-          "At most 63/64 of it, because one 64th is always kept back",
-          "All of it, if it passes the current gas value explicitly",
-          "Half of it, split evenly between caller and callee",
-          "Only the 21000 of intrinsic gas",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which pair of names is used correctly?",
-        options: [
-          "gas on the transaction is the limit; gasUsed on the receipt is the consumption",
-          "gas on the transaction is the consumption; gasUsed is the price paid",
-          "gasUsed on the transaction is the limit; gas on the receipt is the consumption",
-          "Both fields hold the same value once the transaction is mined",
-        ],
-        answer: 0,
-      },
     ],
     related: ["eip-1559", "evm", "transaction", "eth-estimate-gas", "transaction-receipt", "access-list", "wei", "block-header", "revert"],
     sources: [
@@ -658,38 +402,6 @@ export const topics = [
       "Estimating fees from `eth_gasPrice` alone on a chain where tips dominate, instead of reading base fee and tip separately.",
       "Assuming the burned base fee goes to the proposer, and then explaining validator revenue from a number that was destroyed.",
     ],
-    quiz: [
-      {
-        question: "By how much can the base fee change from one block to the next?",
-        options: [
-          "At most 12.5 percent, toward a 50 percent gas target",
-          "By any amount, since builders set it",
-          "At most 100 percent, doubling on a full block",
-          "It is fixed for an epoch of 32 blocks",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A block's base fee is 25 gwei. A transaction signs maxFeePerGas 30 gwei and maxPriorityFeePerGas 2 gwei. What is its effectiveGasPrice?",
-        options: [
-          "27 gwei",
-          "30 gwei",
-          "25 gwei",
-          "2 gwei",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Where does the base fee portion of a transaction fee go?",
-        options: [
-          "It is burned and leaves circulation",
-          "To the block proposer, together with the tip",
-          "To the builder that assembled the block",
-          "Into a protocol treasury contract",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["gas", "transaction-types", "eth-fee-history", "eth-gas-price", "transaction-receipt", "block-header", "blob", "mempool", "wei"],
     sources: [
       { title: "EIP-1559: Fee market change for ETH 1.0 chain", url: "https://eips.ethereum.org/EIPS/eip-1559" },
@@ -730,38 +442,6 @@ export const topics = [
       "Expecting a large saving; the best case is 100 gas per entry, minus the calldata cost of carrying it.",
       "Treating the list as a whitelist of state the transaction may touch, which it is not.",
       "Calling `eth_createAccessList` on every send; it costs a full simulation per transaction for a saving that is often smaller than the estimation overhead.",
-    ],
-    quiz: [
-      {
-        question: "What does pre-declaring a storage key in an access list save, at best?",
-        options: [
-          "100 gas, since 1900 up front plus 100 warm replaces a 2100 cold read",
-          "2100 gas, because the read becomes free",
-          "Nothing; the list only helps the client schedule work",
-          "1900 gas, which is refunded if the slot is read",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A transaction lists an address in its accessList but never touches it. What is the effect?",
-        options: [
-          "It pays 2400 extra gas for nothing",
-          "The entry is ignored and costs nothing",
-          "The transaction is rejected as invalid",
-          "The unused entry is refunded at the end",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Can a transaction touch state that is not in its access list?",
-        options: [
-          "Yes, and it pays the cold price for it",
-          "No, the EVM halts with an out-of-access error",
-          "Only if the state belongs to the sender",
-          "Only in a static call",
-        ],
-        answer: 0,
-      },
     ],
     related: ["transaction-types", "gas", "eth-create-access-list", "evm", "state", "contract-storage", "transaction", "eip-1559"],
     sources: [
@@ -805,38 +485,6 @@ export const topics = [
       "Assuming an account with zero balance does not exist; existence and balance are unrelated.",
       "Reading balance, nonce, and code with three `latest` calls and treating them as one snapshot of the account.",
     ],
-    quiz: [
-      {
-        question: "Which single RPC method returns all four account fields in one response?",
-        options: [
-          "eth_getProof",
-          "eth_getBalance",
-          "eth_getCode",
-          "eth_getStorageAt",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which of these is NOT one of the four fields stored in an account?",
-        options: [
-          "The address itself",
-          "nonce",
-          "balance",
-          "codeHash",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Where is an address's balance of an ERC-20 token stored?",
-        options: [
-          "In the token contract's storage, not in the holder's account",
-          "In the holder's account, next to its ether balance",
-          "In the token contract's codeHash",
-          "In the receipts of the transfers that moved it",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["address", "state", "nonce", "smart-contract", "eth-get-balance", "eth-get-proof", "contract-storage", "eip-7702", "state-root", "wei"],
     sources: [
       { title: "ethereum.org: Accounts", url: "https://ethereum.org/developers/docs/accounts/" },
@@ -875,41 +523,9 @@ export const topics = [
     ],
     pitfalls: [
       "Comparing addresses as raw strings; a checksummed and a lowercase form of the same address are not string-equal.",
-      "Using an address directly as a `topics` filter value without left-padding it to 32 bytes, which matches nothing.",
+      "Using an address directly as a `topics` filter value without left-padding it to 32 bytes; some clients reject it as an invalid topic length and others simply never match it.",
       "Sending to the zero address to burn tokens that do not treat it specially; the value is simply stuck at an address nobody controls.",
       "Assuming a `CREATE` address is stable across chains or retries; it depends on the deployer's nonce at that moment.",
-    ],
-    quiz: [
-      {
-        question: "Which deployment method lets you compute a contract's address before deploying it, independent of the deployer's transaction order?",
-        options: [
-          "CREATE2, which hashes the salt and the init code",
-          "CREATE, because the nonce is known in advance",
-          "Either one, since both use only the deployer address",
-          "Neither; addresses are assigned by the node at inclusion",
-        ],
-        answer: 0,
-      },
-      {
-        question: "How does a 20-byte address appear when it is an indexed event argument in a log topic?",
-        options: [
-          "Left-padded with twelve zero bytes to fill 32 bytes",
-          "Right-padded with twelve zero bytes to fill 32 bytes",
-          "Hashed with Keccak-256, like dynamic arguments",
-          "Truncated to the first 20 bytes of the topic",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Two strings for the same account differ only in capitalisation. What does that tell you?",
-        options: [
-          "Nothing about identity; EIP-55 uses case only as a checksum",
-          "They are different accounts, since addresses are case-sensitive",
-          "One of them is a contract and the other an EOA",
-          "The mixed-case one is on a different chain",
-        ],
-        answer: 0,
-      },
     ],
     related: ["account", "keccak-256", "smart-contract", "hex-encoding", "nonce", "event-signature", "ens", "eth-get-logs", "contract-storage"],
     sources: [
@@ -959,38 +575,6 @@ export const topics = [
       "Expecting internal calls in a receipt; only a trace shows them, because nothing about them is protocol data.",
       "Treating `PREVRANDAO` as private randomness; the proposer sees it before building the block.",
     ],
-    quiz: [
-      {
-        question: "What does DELEGATECALL do differently from CALL?",
-        options: [
-          "It runs the callee's code against the caller's storage, address, and value",
-          "It runs the caller's code in the callee's context",
-          "It forbids any state change for the duration of the call",
-          "It forwards all remaining gas instead of 63/64 of it",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which check does eth_call skip that a real transaction cannot?",
-        options: [
-          "Signature and nonce validation of the sender",
-          "Gas metering of each opcode",
-          "Reverting on a failed require",
-          "Reading the storage of the called contract",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Where does data written with TSTORE, the transient storage opcode, end up?",
-        options: [
-          "Nowhere after the transaction ends; it is discarded and never reaches eth_getStorageAt",
-          "In the contract's storage trie, like SSTORE",
-          "In the transaction receipt, next to the logs",
-          "In memory, which the next call in the same block can still read",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["gas", "smart-contract", "eth-call", "contract-storage", "revert", "state", "execution-trace", "debug-api", "state-override", "eth-estimate-gas"],
     sources: [
       { title: "ethereum.org: Ethereum Virtual Machine", url: "https://ethereum.org/developers/docs/evm/" },
@@ -1031,38 +615,6 @@ export const topics = [
       "Deciding an address is safe because `eth_getCode` returns bytes; a proxy's behaviour lives at whatever implementation its storage points to.",
       "Assuming a `view` function is free; it costs nothing as an `eth_call` but costs gas when a contract calls it on chain.",
       "Expecting a contract to read its own past [[event-log|events]]; logs are write-only from the EVM's point of view.",
-    ],
-    quiz: [
-      {
-        question: "What is stored at a contract's address after a successful deployment?",
-        options: [
-          "The runtime bytecode returned by the init code, not the init code itself",
-          "Exactly the bytes that were sent in the transaction's input field",
-          "The contract's source code, compiled on the node",
-          "The ABI plus the runtime bytecode",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A proxy contract delegates every call to an implementation contract. Whose storage is written?",
-        options: [
-          "The proxy's, because DELEGATECALL keeps the caller's storage context",
-          "The implementation's, because its code performs the write",
-          "Both, since the write is mirrored to each",
-          "Neither; delegated calls cannot write storage",
-        ],
-        answer: 0,
-      },
-      {
-        question: "How does an application learn which functions a deployed contract exposes?",
-        options: [
-          "From an ABI supplied off chain, since only bytecode is on chain",
-          "From eth_getCode, which returns the function list",
-          "From a dedicated RPC method that decompiles the contract",
-          "From the deployment receipt, which lists the selectors",
-        ],
-        answer: 0,
-      },
     ],
     related: ["evm", "contract-storage", "abi", "eth-call", "eth-get-code", "address", "event-log", "transaction", "block-explorer", "revert"],
     sources: [
@@ -1112,38 +664,6 @@ export const topics = [
       "Assuming slot numbers survive a contract upgrade; adding a variable to the middle of a declaration list shifts everything after it.",
       "Believing `private` hides a value from RPC; the keyword only stops other contracts from reading it.",
     ],
-    quiz: [
-      {
-        question: "A contract declares mapping(address => uint256) balances at slot 2. Where is the value for holder H?",
-        options: [
-          "At keccak256 of the 32-byte key followed by the 32-byte slot number",
-          "At keccak256 of the 32-byte slot number followed by the 32-byte key",
-          "At slot 2 plus the numeric value of the address",
-          "At keccak256 of the key alone",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Two uint128 variables are declared one after another at the start of a contract. How many storage slots do they use?",
-        options: [
-          "One, because both fit into a single 32-byte slot",
-          "Two, one per declared variable",
-          "Two, because only one value may occupy a slot",
-          "Four, since each uint128 is padded to 32 bytes twice",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which of these can eth_getStorageAt never show you?",
-        options: [
-          "Transient storage written with TSTORE during a transaction",
-          "A variable declared private",
-          "An element of a dynamic array",
-          "A value packed next to another in one slot",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["eth-get-storage-at", "smart-contract", "keccak-256", "state", "storage-proof", "eth-get-proof", "evm", "account", "abi"],
     sources: [
       { title: "Solidity: Layout of state variables in storage", url: "https://docs.soliditylang.org/en/latest/internals/layout_in_storage.html" },
@@ -1191,38 +711,6 @@ export const topics = [
       "Mixing a receipt from one node with state from another, which silently compares two different chain heads.",
       "Treating `pending` state as the network's view; it is one node's guess at the next block from its own [[mempool|pool]].",
     ],
-    quiz: [
-      {
-        question: "Which of these questions is answered from state rather than from history?",
-        options: [
-          "What is the current balance of an address",
-          "Which logs a contract emitted last week",
-          "What receipt did a transaction produce",
-          "Which transactions were in block 19,000,000",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A node returns a missing trie node error for an eth_call at a six-month-old block, but returns that block fine. Why?",
-        options: [
-          "It kept the history but pruned the state for that block",
-          "The block was reorged out and only its header survived",
-          "eth_call is disabled for historical blocks by the spec",
-          "The block predates the EVM version the node runs",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What changes account balances without any transaction being executed?",
-        options: [
-          "Validator withdrawals pushed in by the consensus layer",
-          "Base fee burning, which lowers every balance proportionally",
-          "eth_sendTransaction when the node holds the key",
-          "State overrides applied by eth_call",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["state-root", "account", "contract-storage", "block-tag", "archive-node", "eth-get-proof", "pruned-node", "historical-data", "withdrawals", "stateless-ethereum"],
     sources: [
       { title: "ethereum.org: Intro to Ethereum (state)", url: "https://ethereum.org/developers/docs/intro-to-ethereum/" },
@@ -1264,38 +752,6 @@ export const topics = [
       "Treating the state root as a commitment to the block's transactions or logs; those have their own roots in the header.",
       "Assuming an [[archive-node|archive node]] can produce a proof for any past block, when it may only be able to replay values.",
       "Reading a matching state root as proof the chain is canonical; it proves consistency, not that anyone else built on this block.",
-    ],
-    quiz: [
-      {
-        question: "The stateRoot in the header of block N commits to the state at which point?",
-        options: [
-          "After block N's transactions and withdrawals have been applied",
-          "Before block N executed, which is why it equals the parent's root",
-          "Halfway through, after transactions but before withdrawals",
-          "At the moment the proposer started building the block",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Two execution clients compute different state roots for the same block. What happens?",
-        options: [
-          "The one that disagrees rejects the block as invalid, and the network splits along client lines",
-          "Both accept the block and the chain resolves the difference at the next epoch",
-          "The consensus layer picks the majority root and rewrites the header",
-          "Nothing, since the state root is informational metadata",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Besides an eth_getProof response, what do you need to verify a balance yourself?",
-        options: [
-          "A header you already trust, containing the stateRoot for that block",
-          "The full state trie of the block",
-          "A second provider returning the same value",
-          "The transaction that last changed the balance",
-        ],
-        answer: 0,
-      },
     ],
     related: ["state", "merkle-patricia-trie", "block-header", "eth-get-proof", "state-proof", "account", "trusted-header", "client-storage", "keccak-256"],
     sources: [
@@ -1339,38 +795,6 @@ export const topics = [
       "Assuming a bloom miss on one node means the event does not exist; it only covers the block you checked.",
       "Reading `logsBloom` from a receipt as if it covered the block; the receipt's bloom covers that transaction's logs only.",
     ],
-    quiz: [
-      {
-        question: "A block's logsBloom does not match the address you are looking for. What can you conclude?",
-        options: [
-          "No log in that block was emitted by that address",
-          "Probably no log matches, but you still have to check the receipts",
-          "The block has no logs at all",
-          "Nothing, because blooms only cover topics",
-        ],
-        answer: 0,
-      },
-      {
-        question: "The bloom matches your filter. What does a correct client do next?",
-        options: [
-          "Load the block's receipts and compare the logs properly, because blooms have false positives",
-          "Return the match, since the bloom is authoritative",
-          "Recompute the bloom from the header to double-check it",
-          "Query the next block, since the match means the log is nearby",
-        ],
-        answer: 0,
-      },
-      {
-        question: "How many bits of the 2048 does one address or topic set?",
-        options: [
-          "Three",
-          "One",
-          "Eleven",
-          "Thirty-two",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["event-log", "eth-get-logs", "block-header", "transaction-receipt", "keccak-256", "event-signature", "indexer", "address"],
     sources: [
       { title: "ethereum.org: Logs and bloom filters", url: "https://ethereum.org/developers/docs/apis/json-rpc/#eth_getlogs" },
@@ -1410,38 +834,6 @@ export const topics = [
       "Hashing a signature string with argument names or spaces; the canonical form is `transfer(address,uint256)` with no names, no spaces, and no aliases like `uint`.",
       "Using Keccak-256 where the consensus layer expects SHA-256, for example when rebuilding a beacon root or a blob versioned hash.",
       "Hashing the hex string instead of the bytes it represents, which produces a valid-looking but meaningless digest.",
-    ],
-    quiz: [
-      {
-        question: "web3_sha3 of empty input returns a digest starting 0xc5d24601. What does that confirm?",
-        options: [
-          "The method computes Keccak-256, not NIST SHA3-256",
-          "The node is running an outdated hash implementation",
-          "The input was rejected and a placeholder was returned",
-          "The method computes SHA3-256, as its name suggests",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which of these values is NOT computed with Keccak-256?",
-        options: [
-          "A blob's versioned hash, which uses SHA-256",
-          "A four-byte function selector",
-          "A storage trie key",
-          "A block hash",
-        ],
-        answer: 0,
-      },
-      {
-        question: "How is the four-byte selector of transfer(address,uint256) derived?",
-        options: [
-          "The first four bytes of the Keccak-256 hash of that exact signature text",
-          "The first four bytes of the Keccak-256 hash of the function name alone",
-          "The first four bytes of the contract's address",
-          "An index assigned by the compiler in declaration order",
-        ],
-        answer: 0,
-      },
     ],
     related: ["abi", "address", "block-hash", "merkle-patricia-trie", "event-signature", "ssz", "rlp", "contract-storage", "net-web3-api"],
     sources: [
@@ -1484,38 +876,6 @@ export const topics = [
       "Assuming a decoded item's type; RLP returns bytes, and reading a 20-byte string as a number is a silent bug.",
       "Confusing RLP with the ABI encoding; both produce opaque hex strings, but nothing in calldata is RLP.",
     ],
-    quiz: [
-      {
-        question: "How does RLP encode the number zero?",
-        options: [
-          "As the empty byte string, 0x80",
-          "As the single byte 0x00",
-          "As 0x8100, a one-byte string containing zero",
-          "As 0xc0, the empty list",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What does an RLP encoding tell a decoder about the types of the values inside it?",
-        options: [
-          "Nothing; it carries only structure and lengths, so the schema must be known in advance",
-          "Each item is tagged with its type in the length prefix",
-          "Integers and strings use distinct prefix ranges",
-          "The first byte of the whole payload names the structure",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A raw transaction begins with the byte 0x02. Which part of it is RLP?",
-        options: [
-          "Everything after that first byte, which is the type tag",
-          "The whole payload including the first byte",
-          "None of it; typed transactions use SSZ",
-          "Only the signature fields at the end",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["keccak-256", "transaction-types", "block-header", "merkle-patricia-trie", "ssz", "eth-send-raw-transaction", "debug-api", "abi", "eth-get-proof"],
     sources: [
       { title: "ethereum.org: RLP serialization", url: "https://ethereum.org/developers/docs/data-structures-and-encoding/rlp/" },
@@ -1555,38 +915,6 @@ export const topics = [
       "Hashing SSZ with Keccak-256; Merkleization uses SHA-256, so the root will simply not match.",
       "Treating a beacon block root as an execution [[block-hash|block hash]]; they identify different objects and are computed differently.",
       "Requesting large states as JSON out of habit, when the SSZ representation is a fraction of the size.",
-    ],
-    quiz: [
-      {
-        question: "Which hash function does SSZ Merkleization use?",
-        options: [
-          "SHA-256",
-          "Keccak-256",
-          "Whichever the client prefers, since only the root matters",
-          "Blake3",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What is a hash tree root?",
-        options: [
-          "The root of a binary Merkle tree built over an object's 32-byte chunks",
-          "The hash of the object's serialised bytes, taken once",
-          "The root of the beacon state's account trie",
-          "A checksum over the offsets in the variable-size part",
-        ],
-        answer: 0,
-      },
-      {
-        question: "How do you ask a Beacon API endpoint for SSZ instead of JSON?",
-        options: [
-          "Send an Accept header of application/octet-stream",
-          "Add a format=ssz query parameter defined by the spec",
-          "Use a different port reserved for binary responses",
-          "You cannot; the Beacon API is JSON only",
-        ],
-        answer: 0,
-      },
     ],
     related: ["consensus-layer", "beacon-api", "rlp", "beacon-block", "consensus-proof", "light-client", "keccak-256", "inclusion-proof", "block-header"],
     sources: [
@@ -1629,38 +957,6 @@ export const topics = [
       "Signing a message that could be decoded as a transaction payload; prefixes and EIP-712 domains exist to keep those spaces apart.",
       "Assuming a valid signature means a valid transaction; nonce, balance, and fee checks are separate and come after.",
     ],
-    quiz: [
-      {
-        question: "How does a node determine who sent a transaction?",
-        options: [
-          "It recovers the sender's address from the signature; there is no signed sender field",
-          "It reads the from field that the sender included in the payload",
-          "It looks up the transaction hash in its sender index",
-          "The wallet tells it out of band when submitting",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why did EIP-155 fold the chain id into the v value of legacy transactions?",
-        options: [
-          "So a transaction signed for one chain cannot be replayed on another",
-          "To let nodes skip recovery for known chains",
-          "To make room for the second recovery bit",
-          "To allow one signature to cover several chains at once",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Someone flips a single byte of a signed transaction's value field in transit. What happens?",
-        options: [
-          "The signature recovers to a different address, so the transaction is not the sender's any more",
-          "The node repairs the field from the signature",
-          "The signature check passes and the altered value is executed",
-          "The transaction is accepted but marked as modified in the receipt",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["transaction", "address", "keccak-256", "chain-id", "eth-send-raw-transaction", "signing-methods", "eip-712", "eip-7702", "account"],
     sources: [
       { title: "EIP-155: Simple replay attack protection", url: "https://eips.ethereum.org/EIPS/eip-155" },
@@ -1679,7 +975,7 @@ export const topics = [
         heading: "One unit, three names",
         paragraphs: [
           "The protocol only knows wei. Ether is a display convention, and gwei is a convenience for fee prices, where numbers like 25000000000 wei are easier to talk about as 25 gwei. The [[evm|EVM]] carries balances and `value` as 256-bit integers of wei, and [[eip-1559|fee fields]] are wei per unit of [[gas|gas]], so a transaction's cost in wei is `gasUsed` multiplied by `effectiveGasPrice`.",
-          "Token amounts are not wei and not protocol data. An ERC-20 contract stores a plain integer and publishes a `decimals` value that says where to put the point, which is 18 for many tokens but 6 for USDC and 8 for wrapped bitcoin. Nothing enforces it; see [[token-standards|token standards]]. Reading a token balance without reading its decimals produces answers that are wrong by six orders of magnitude.",
+          "Token amounts are not wei and not protocol data. An ERC-20 contract stores a plain integer and publishes a `decimals` value that says where to put the point, which is 18 for many tokens but 6 for USDC and 8 for wrapped bitcoin. Nothing enforces it; see [[token-standards|token standards]]. Reading a token balance without reading its decimals produces answers off by ten to the power of that value: a factor of a million for USDC and of 10^18 for most other tokens.",
         ],
       },
       {
@@ -1703,41 +999,9 @@ export const topics = [
     },
     pitfalls: [
       "Parsing a wei quantity with `Number` or `parseFloat`; anything above about 0.009 ether loses precision without any error.",
-      "Assuming 18 decimals for every token, which turns a USDC balance into a number a trillion times too large.",
+      "Assuming 18 decimals for every token, which turns a USDC balance into a number a trillion times too small, since USDC uses six.",
       "Mixing units in one expression, for example multiplying a gas amount by a price already converted to gwei.",
       "Sending a `value` computed as a float; the field is an integer number of wei and a rounding artefact is a real payment.",
-    ],
-    quiz: [
-      {
-        question: "eth_getBalance returns 0xde0b6b3a7640000. How much ether is that?",
-        options: [
-          "Exactly 1 ether",
-          "0.1 ether",
-          "10 ether",
-          "1 gwei",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why does the JSON-RPC spec return balances as hex strings instead of JSON numbers?",
-        options: [
-          "Because wei amounts exceed the integer range a JSON number can hold exactly",
-          "Because hex is shorter on the wire than decimal",
-          "Because balances are byte arrays rather than numbers",
-          "Because the JSON-RPC 2.0 specification forbids numeric results",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A token contract reports decimals of 6 and a balance of 1000000. What does the holder own?",
-        options: [
-          "1 token, since decimals is a contract convention with no protocol meaning",
-          "1000000 tokens, since decimals only affects display in wallets",
-          "0.000001 ether worth of the token",
-          "1000000 wei of the token, which the protocol converts",
-        ],
-        answer: 0,
-      },
     ],
     related: ["hex-encoding", "eip-1559", "gas", "eth-get-balance", "transaction", "client-libraries", "token-standards", "evm"],
     sources: [
@@ -1786,38 +1050,6 @@ export const topics = [
       "Decoding a result with the wrong ABI; the bytes decode into plausible nonsense rather than failing.",
       "Assuming a four-byte selector identifies a function globally; collisions exist and a proxy can route it anywhere.",
     ],
-    quiz: [
-      {
-        question: "How is the four-byte selector for a function derived?",
-        options: [
-          "From the first four bytes of the Keccak-256 hash of its canonical signature",
-          "From the first four bytes of the contract's address",
-          "From an index the compiler assigns in declaration order",
-          "From the Keccak-256 hash of the function name without argument types",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A function takes a string argument. How does that argument appear in the calldata?",
-        options: [
-          "As a 32-byte offset in its position, with the length and bytes appended after the arguments",
-          "As the raw UTF-8 bytes in place, padded to a multiple of 32",
-          "As the Keccak-256 hash of the string",
-          "As a pointer into the contract's memory",
-        ],
-        answer: 0,
-      },
-      {
-        question: "eth_call returns 0x with no error. What are the two plausible explanations?",
-        options: [
-          "The function returned nothing, or there is no code at that address",
-          "The call reverted, or the node is out of sync",
-          "The gas cap was hit, or the ABI was wrong",
-          "The block tag was invalid, or the contract is a proxy",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["eth-call", "smart-contract", "keccak-256", "event-signature", "revert", "client-libraries", "event-log", "address", "block-explorer"],
     sources: [
       { title: "Solidity: Contract ABI specification", url: "https://docs.soliditylang.org/en/latest/abi-spec.html" },
@@ -1843,7 +1075,7 @@ export const topics = [
         heading: "Three shapes of revert data",
         paragraphs: [
           "Revert data is [[abi|ABI]]-encoded like a function call. `Error(string)` has the selector `0x08c379a0` and carries the human-readable reason of a `require`. `Panic(uint256)` has `0x4e487b71` and carries a code the compiler assigns: `0x01` for a failed assertion, `0x11` for arithmetic overflow, `0x12` for division by zero, `0x32` for an out-of-bounds array index. A custom error has its own selector derived from its own signature, so decoding it needs the contract's ABI; without it, a caller sees four bytes and arguments it cannot name.",
-          "Empty revert data is the fourth and least helpful case. A bare `revert()`, a call to an [[address|address]] with no code, or a failure in a library that never set a reason all produce `0x`, which says only that something failed.",
+          "Empty revert data is the fourth and least helpful case. A bare `revert()`, a Solidity contract calling a function on an [[address|address]] with no code, or a failure in a library that never set a reason all produce `0x`, which says only that something failed. An `eth_call` sent directly to an address with no code is different: nothing executes, and it succeeds with `0x`.",
         ],
       },
       {
@@ -1866,38 +1098,6 @@ export const topics = [
       "Assuming `status` `0x1` means every inner call succeeded; a caller can swallow a revert and finish normally.",
       "Hardcoding error code `3`; clients and providers disagree, and `data` is the field that actually matters.",
       "Showing a user the raw selector of a custom error; without the ABI it is meaningless, and with it the message is usually specific.",
-    ],
-    quiz: [
-      {
-        question: "Where is the revert reason of a transaction that was mined with status 0x0?",
-        options: [
-          "Nowhere on chain; you replay it with eth_call or trace the transaction to recover it",
-          "In the receipt, in an error field next to status",
-          "In the logs of the receipt, as a special event",
-          "In the transaction's input data, appended by the node",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Revert data begins with 0x4e487b71. What kind of failure is it?",
-        options: [
-          "A Panic, raised by an assertion or an arithmetic error, carrying a numeric code",
-          "A require failure with a human-readable string",
-          "A custom error defined by the contract",
-          "An out-of-gas failure reported by the node",
-        ],
-        answer: 0,
-      },
-      {
-        question: "How does eth_call report a revert?",
-        options: [
-          "As a JSON-RPC error whose data field holds the ABI-encoded revert bytes",
-          "As a successful result of 0x, leaving the caller to notice",
-          "As a null result with an HTTP 400 status",
-          "As a result object with a status field of 0x0",
-        ],
-        answer: 0,
-      },
     ],
     related: ["eth-call", "evm", "transaction-receipt", "rpc-errors", "abi", "eth-estimate-gas", "gas", "debug-api", "execution-trace", "smart-contract"],
     sources: [
@@ -1940,38 +1140,6 @@ export const topics = [
       "Assuming a pending transaction will eventually be mined; it can be evicted when the pool fills or when its fee cap falls below the base fee.",
       "Reading `newPendingTransactions` as an ordered queue of what the next block contains; the proposer's ordering is decided elsewhere.",
     ],
-    quiz: [
-      {
-        question: "eth_getTransactionByHash returns a transaction object whose blockNumber is null. What does that mean?",
-        options: [
-          "The node holds it in its pool but it is not in a block yet",
-          "The transaction was rejected and the node kept a record",
-          "The transaction was mined but its block was reorged out",
-          "The hash is unknown to the node",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A transaction from an account whose next nonce is 7 arrives with nonce 9. Where does it go?",
-        options: [
-          "Into the queued set, until nonces 7 and 8 fill the gap",
-          "Into the pending set, since its nonce is valid",
-          "Straight into the next block, out of order",
-          "It is rejected as nonce too high and dropped",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why can two well-connected nodes disagree about what is pending?",
-        options: [
-          "Pools are local: gossip timing, size limits, eviction, and private order flow all differ",
-          "Because the protocol assigns each node a shard of the pool",
-          "Because only the current proposer holds the complete pool",
-          "Because pending transactions are consensus data with a one-slot delay",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["transaction", "nonce", "eth-send-raw-transaction", "txpool-api", "eip-1559", "block-tag", "private-rpc", "devp2p", "mev", "eth-subscribe"],
     sources: [
       { title: "ethereum.org: Transactions", url: "https://ethereum.org/developers/docs/transactions/" },
@@ -2013,38 +1181,6 @@ export const topics = [
       "Assuming withdrawals appear in traces or receipts, which is how balance reconciliation quietly goes wrong.",
       "Expecting withdrawal fields on pre-Shapella blocks; both `withdrawals` and `withdrawalsRoot` are absent there.",
     ],
-    quiz: [
-      {
-        question: "In what unit is the amount field of a withdrawal expressed?",
-        options: [
-          "Gwei",
-          "Wei, like every other value in the JSON-RPC",
-          "Ether, as a decimal string",
-          "Whichever the client prefers, indicated by a unit field",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What does an indexer observe when a withdrawal credits an address?",
-        options: [
-          "Only a balance change, plus the entry in the block's withdrawals array",
-          "A transaction whose from field is the zero address",
-          "A log emitted by a system contract at a fixed address",
-          "A receipt with status 0x1 and no logs",
-        ],
-        answer: 0,
-      },
-      {
-        question: "How many withdrawals can a single execution block contain?",
-        options: [
-          "At most 16",
-          "As many as fit in the block gas limit",
-          "One per validator that exited in that slot",
-          "Unlimited, since they consume no gas",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["block", "block-header", "validator", "consensus-layer", "eth-get-balance", "execution-payload", "indexer", "address", "eth-get-block-by-number"],
     sources: [
       { title: "EIP-4895: Beacon chain push withdrawals as operations", url: "https://eips.ethereum.org/EIPS/eip-4895" },
@@ -2075,7 +1211,7 @@ export const topics = [
       {
         heading: "Genesis over RPC",
         paragraphs: [
-          "The `earliest` [[block-tag|block tag]] and `eth_getBlockByNumber` with `0x0` return the genesis block; `eth_chainId` and `net_version` return the configured chain id. Only the first of those is hard to fake by accident: a misconfigured node can report the chain id you expect while serving a different chain, so comparing the genesis hash is the strongest cheap identity check an application can make, and it is worth doing when adding a new [[rpc-provider|provider]] or a new [[testnets|testnet]].",
+          "The `earliest` [[block-tag|block tag]] and `eth_getBlockByNumber` with `0x0` return the genesis block; `eth_chainId` returns the configured chain id and `net_version` the network id; the two match on mainnet and the main testnets but are separate settings and differ on some chains. Only the first of those is hard to fake by accident: a misconfigured node can report the chain id you expect while serving a different chain, so comparing the genesis hash is the strongest cheap identity check an application can make, and it is worth doing when adding a new [[rpc-provider|provider]] or a new [[testnets|testnet]].",
           "Development networks lean on genesis heavily. [[local-devnet|Local nodes]] generate one with funded accounts and every fork active from block 0, which is why a contract that works locally can still fail on a chain where a newer opcode is not yet enabled.",
         ],
       },
@@ -2085,38 +1221,6 @@ export const topics = [
       "Copying a genesis file between clients without translating it; a Geth `genesis.json` and a Nethermind chainspec are different formats.",
       "Assuming a devnet's fork schedule matches mainnet, which hides upgrade-dependent bugs until deployment.",
       "Changing a chain config on a running node and expecting a restart to fix it; the node forks off at the first differing rule.",
-    ],
-    quiz: [
-      {
-        question: "Which check most reliably tells you which network an endpoint actually serves?",
-        options: [
-          "Comparing the hash of block 0 against the known genesis hash",
-          "Reading eth_chainId",
-          "Reading net_version",
-          "Reading the client name from web3_clientVersion",
-        ],
-        answer: 0,
-      },
-      {
-        question: "How are post-Merge upgrades scheduled in a chain configuration?",
-        options: [
-          "By timestamp, in fields such as cancunTime and pragueTime",
-          "By block number, as before the Merge",
-          "By epoch number on the consensus layer only",
-          "By a total difficulty threshold",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Where does the state of block 0 come from?",
-        options: [
-          "From the allocation in the genesis file, since no transactions were executed",
-          "From the first transactions, which are included in block 0",
-          "From the consensus layer's deposit contract at launch",
-          "It is empty; state begins at block 1",
-        ],
-        answer: 0,
-      },
     ],
     related: ["chain-id", "hardfork", "block", "state-root", "testnets", "local-devnet", "execution-client", "block-tag", "health-check", "block-hash"],
     sources: [
@@ -2143,7 +1247,7 @@ export const topics = [
         heading: "What changes for RPC callers",
         paragraphs: [
           "The oldest heuristic in Ethereum tooling, code means contract, no code means externally owned account, is now wrong in both directions. `eth_getCode` on a delegated account returns exactly 23 bytes starting `0xef0100`, and the useful answer is the address inside it, which must be fetched separately to learn what the account will actually do. [[eth-call|eth_call]] to such an account executes the delegate's code, and [[eth-get-storage-at|eth_getStorageAt]] reads the account's own slots, which now hold contract state.",
-          "On-chain checks shift too: a contract that guards with `EXTCODESIZE == 0` no longer proves it is talking to a plain key-controlled account. A delegated account can still send ordinary transactions, so both paths coexist, and type `0x4` transactions themselves cannot create contracts, since `to` must be set.",
+          "On-chain checks shift too: a key-controlled account can now have code, the 23-byte delegation designator, so a guard that reads 'has code' as 'is a contract, not a person' misclassifies delegated accounts, and a `tx.origin == msg.sender` check no longer guarantees that no contract code is running. A delegated account can still send ordinary transactions, so both paths coexist, and type `0x4` transactions themselves cannot create contracts, since `to` must be set.",
         ],
       },
       {
@@ -2158,38 +1262,6 @@ export const topics = [
       "Caching the delegate address; a later authorization can repoint or clear it, so re-read at the block you care about.",
       "Assuming the account that signed an authorization also paid for the transaction; a sponsor commonly sends it.",
       "Expecting an invalid authorization to fail the transaction; it is skipped, and the rest of the transaction still executes.",
-    ],
-    quiz: [
-      {
-        question: "eth_getCode on an account returns 0xef0100 followed by twenty bytes. What is that?",
-        options: [
-          "A delegation designator naming the contract whose code the account now runs",
-          "A contract whose runtime bytecode happens to be very short",
-          "An encoding error from a client that does not support type 0x4",
-          "A pointer to the account's storage root",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A delegated account executes its delegate's code and writes a storage slot. Whose storage changes?",
-        options: [
-          "The delegated account's own storage",
-          "The delegate contract's storage",
-          "Both, since the write is mirrored",
-          "Neither; delegated code cannot write storage",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Who must pay for a type 0x4 transaction that sets code on an account?",
-        options: [
-          "Its sender, who can be a sponsor rather than the authorizing account",
-          "The authorizing account, always",
-          "The delegate contract, from its own balance",
-          "The block proposer, who is compensated by the protocol",
-        ],
-        answer: 0,
-      },
     ],
     related: ["account", "smart-contract", "eth-get-code", "transaction-types", "erc-4337", "nonce", "evm", "address", "eth-call", "hardfork"],
     sources: [

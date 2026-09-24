@@ -48,38 +48,6 @@ export const topics = [
       "Treating a sequencer confirmation as settlement; until the batch is on L1 and the commitment is accepted, the only party asserting that block exists is the sequencer.",
       "Reusing an L1 gas estimate on an L2; the data fee, the gas schedule, and the fee parameters all differ.",
     ],
-    quiz: [
-      {
-        question: "What distinguishes a rollup from a sidechain that also runs an EVM and posts occasional checkpoints to Ethereum?",
-        options: [
-          "The rollup publishes enough data on Ethereum for anyone to reconstruct its state, and L1 contracts reject state commitments that a proof does not back",
-          "The rollup uses the same block time as Ethereum",
-          "The rollup runs a consensus client alongside its execution client",
-          "The rollup has a lower chain id than the sidechain",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why did L2 transaction fees fall sharply after the Dencun upgrade?",
-        options: [
-          "Batch data moved from calldata into blobs, which are priced by a separate and much cheaper gas market",
-          "Rollups stopped posting transaction data to L1 entirely",
-          "The EVM gas schedule was reduced for L2 chains",
-          "Proof verification was moved off-chain",
-        ],
-        answer: 0,
-      },
-      {
-        question: "On an OP Stack chain, which component plays the role that a consensus client plays on L1?",
-        options: [
-          "op-node, which derives the L2 chain from L1 data and drives the execution client over the Engine API",
-          "op-geth, which both derives and executes",
-          "The L1 bridge contract, which pushes payloads over JSON-RPC",
-          "The batcher, which signs each L2 block",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["optimistic-rollup", "zk-rollup", "l2-rpc", "sequencer", "data-availability", "blob", "bridge", "fraud-proof", "validity-proof", "block-tag"],
     sources: [
       { title: "ethereum.org: Layer 2 scaling", url: "https://ethereum.org/developers/docs/scaling/" },
@@ -121,38 +89,6 @@ export const topics = [
       "Polling an optimistic rollup for `finalized` and expecting it to move every few seconds; it advances in steps tied to L1 finality and batch posting.",
       "Comparing L2 block numbers across chains to judge elapsed time; 2-second OP Stack blocks and sub-second Arbitrum blocks measure very different intervals.",
     ],
-    quiz: [
-      {
-        question: "During normal operation, how many fraud proofs does an optimistic rollup verify on L1?",
-        options: [
-          "None; proofs are only produced when someone disputes a posted state commitment",
-          "One per L2 block",
-          "One per batch posted to L1",
-          "One per epoch, on a fixed schedule",
-        ],
-        answer: 0,
-      },
-      {
-        question: "On an OP Stack chain, what does the `safe` block tag refer to?",
-        options: [
-          "The L2 head derived from batch data that is already posted on L1",
-          "The most recent block the sequencer has signed",
-          "The L2 block whose number matches the L1 safe block number",
-          "The last block before the current challenge window opened",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which statement about the two main optimistic stacks is correct?",
-        options: [
-          "OP Stack splits derivation (op-node) from execution, while Arbitrum Nitro runs both inside one process",
-          "Both run op-node with different execution clients",
-          "Arbitrum verifies a validity proof for every batch, OP Stack does not",
-          "OP Stack produces blocks only when transactions arrive, Arbitrum every 2 seconds",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["rollup", "fraud-proof", "l2-rpc", "sequencer", "bridge", "zk-rollup", "block-tag", "data-availability", "nethermind"],
     sources: [
       { title: "ethereum.org: Optimistic rollups", url: "https://ethereum.org/developers/docs/scaling/optimistic-rollups/" },
@@ -193,38 +129,6 @@ export const topics = [
       "Reading `finalized` on a ZK chain and assuming the L1 lag; it is tied to proof submission, which can be an hour or more behind.",
       "Assuming every ZK rollup is bytecode-identical to Ethereum; gas costs, some opcodes, and native [[erc-4337|account abstraction]] behavior differ per chain, and Starknet is a different VM entirely.",
       "Treating a validity proof as covering [[data-availability|data availability]]; the proof shows the transition was correct, not that anyone can still obtain the data needed to rebuild the state.",
-    ],
-    quiz: [
-      {
-        question: "What does an L1 verifier contract check when a ZK rollup submits a batch?",
-        options: [
-          "A succinct proof that executing the batch against the old state root produces the claimed new state root",
-          "That no challenger has objected within seven days",
-          "That the sequencer's signature matches a registered key",
-          "That every transaction in the batch was individually re-executed on L1",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why can a ZK rollup transaction be 'confirmed' for the user well before it is provably final?",
-        options: [
-          "The sequencer confirms immediately, while committing data, generating the proof, and verifying it on L1 happen later",
-          "Because the proof is verified off-chain first and only archived on L1",
-          "Because L1 finality takes seven days for ZK chains",
-          "Because the receipt is issued before the transaction is executed",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which of these chains does not answer standard eth_ JSON-RPC methods for its own contracts?",
-        options: [
-          "Starknet, which runs Cairo and exposes a starknet_ API",
-          "zkSync Era",
-          "Scroll",
-          "Polygon zkEVM",
-        ],
-        answer: 0,
-      },
     ],
     related: ["validity-proof", "rollup", "l2-rpc", "optimistic-rollup", "data-availability", "sequencer", "bridge", "block-tag", "finality"],
     sources: [
@@ -268,38 +172,6 @@ export const topics = [
       "Expecting an RPC method that reports dispute status; you read the L1 dispute game contracts and their logs, not the L2 node.",
       "Confusing an [[execution-trace|execution trace]] from `debug_` with a fraud proof; a trace is one node's account of execution, not something L1 can adjudicate.",
     ],
-    quiz: [
-      {
-        question: "Why does a fraud proof bisect the disputed range instead of re-running the batch on L1?",
-        options: [
-          "So that L1 only has to execute a single instruction, which is cheap, rather than the whole batch",
-          "Because the EVM cannot execute more than one transaction per block",
-          "Because bisection is required to compute the state root",
-          "Because the challenger does not have the full batch data",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What does a successful fraud proof establish?",
-        options: [
-          "That the claimed state root does not follow from the agreed inputs",
-          "That the sequencer censored a specific transaction",
-          "That the batch data was never published to L1",
-          "That the challenger's own state root is correct by default",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why must the challenge window pass before a canonical withdrawal is finalized?",
-        options: [
-          "The state commitment the withdrawal is proved against is only provisional until the window closes",
-          "The L1 bridge needs that long to collect enough attestations",
-          "The proof system needs the time to generate the validity proof",
-          "The withdrawal transaction must be re-executed on every L2 node first",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["optimistic-rollup", "bridge", "rollup", "validity-proof", "sequencer", "data-availability", "l2-rpc", "execution-trace"],
     sources: [
       { title: "ethereum.org: Optimistic rollups and fault proofs", url: "https://ethereum.org/developers/docs/scaling/optimistic-rollups/" },
@@ -341,38 +213,6 @@ export const topics = [
       "Assuming proof verification cost scales with batch size; it is near-constant, which is exactly why batches are large.",
       "Treating a proved state as beyond governance risk; an upgradeable verifier or a circuit bug is a real part of the trust model.",
       "Expecting a validity proof to make the [[sequencer|sequencer]] trustworthy about inclusion or ordering; it only constrains execution.",
-    ],
-    quiz: [
-      {
-        question: "Roughly how does the L1 gas cost of verifying a validity proof scale with the number of transactions in the batch?",
-        options: [
-          "It is close to constant, which is why batches are made as large as possible",
-          "It grows linearly with the transaction count",
-          "It grows with the square root of the transaction count",
-          "It is zero, because verification happens off-chain",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which of these does a validity proof NOT establish?",
-        options: [
-          "That the data needed to reconstruct the L2 state has been published",
-          "That the listed transactions were executed according to the state transition function",
-          "That the new state root follows from the old one",
-          "That the batch's public inputs match what the verifier contract was given",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why can a validity rollup finalize a canonical withdrawal in hours rather than a week?",
-        options: [
-          "Correctness is proved before the state is accepted, so there is no challenge window to wait out",
-          "Its sequencer is bonded and can be slashed instantly",
-          "Withdrawals bypass the L1 bridge contracts entirely",
-          "L1 finality is faster for chains that submit proofs",
-        ],
-        answer: 0,
-      },
     ],
     related: ["zk-rollup", "fraud-proof", "rollup", "bridge", "data-availability", "state-root", "l2-rpc", "sequencer"],
     sources: [
@@ -420,38 +260,6 @@ export const topics = [
       "Treating a sequencer response as final; it is one operator's assertion until the batch and its state commitment reach L1.",
       "Expecting a populated pending pool on an L2; most rollups keep the queue private, so subscriptions to pending transactions stay empty.",
       "Assuming a stalled L2 means lost funds; the chain simply stops advancing, and forced inclusion through L1 remains available.",
-    ],
-    quiz: [
-      {
-        question: "You send a transaction to an L2 sequencer, get a hash back, then poll a public replica URL for the receipt and get null. What is the most likely cause?",
-        options: [
-          "The replica has not yet received the sequencer's block, so it has no record of the transaction",
-          "The transaction was rejected and the hash is invalid",
-          "Receipts on L2 are only available after the batch is posted to L1",
-          "The replica requires the finalized block tag for receipt lookups",
-        ],
-        answer: 0,
-      },
-      {
-        question: "How can a user get a transaction included if the sequencer refuses to accept it?",
-        options: [
-          "Submit it through the L1 portal or delayed inbox, which forces inclusion within the sequencing window",
-          "Broadcast it to the L2 peer-to-peer network directly",
-          "Resend it with a higher priority fee until the sequencer relents",
-          "Call the fault proof contract to open a dispute over the omission",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why do subscriptions to pending transactions return almost nothing on most rollups?",
-        options: [
-          "The sequencer holds the queue privately rather than gossiping a public mempool",
-          "WebSocket subscriptions are not implemented on L2 clients",
-          "Pending transactions are stored on L1 until the batch is posted",
-          "L2 blocks are too fast for a transaction to ever be pending",
-        ],
-        answer: 0,
-      },
     ],
     related: ["l2-rpc", "rollup", "optimistic-rollup", "head-lag", "block-tag", "bridge", "mempool", "data-availability", "mev"],
     sources: [
@@ -506,38 +314,6 @@ export const topics = [
       "Copying an L1 block-range or polling interval to an L2; 2-second and sub-second blocks mean far more blocks per hour and much tighter provider limits.",
       "Assuming `block.number` inside the EVM matches [[eth-block-number|eth_blockNumber]]; on Arbitrum the opcode returns the L1 block number while the RPC method returns the L2 one.",
     ],
-    quiz: [
-      {
-        question: "On an OP Stack chain, what determines the finalized block tag?",
-        options: [
-          "The L2 head derived from L1 data that L1 itself has finalized",
-          "The last L2 block signed by the sequencer",
-          "The L2 block 64 blocks behind the head",
-          "The last L2 block whose fraud proof window has closed",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A wallet shows the wrong total fee for an OP Stack transaction. Which mistake fits?",
-        options: [
-          "It used eth_estimateGas alone, which covers L2 execution gas but not the L1 data fee",
-          "It used the l1Fee field and ignored the L2 gas",
-          "It read effectiveGasPrice from a pending block",
-          "It applied the Arbitrum gasUsedForL1 field on an OP Stack chain",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Your decoder throws on an L2 transaction with type 0x7e and no signature fields. What is it?",
-        options: [
-          "An OP Stack deposit transaction created by the derivation pipeline from an L1 event",
-          "A blob transaction whose sidecar was stripped",
-          "A malformed transaction the sequencer should have rejected",
-          "An EIP-7702 set code transaction",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["rollup", "sequencer", "block-tag", "bridge", "transaction-types", "optimistic-rollup", "zk-rollup", "eth-estimate-gas", "head-lag", "namespaces"],
     sources: [
       { title: "Optimism docs: differences between Ethereum and OP Stack", url: "https://docs.optimism.io/" },
@@ -578,38 +354,6 @@ export const topics = [
       "Assuming a withdrawal is one transaction; on OP Stack it is initiate on L2, prove on L1, then finalize on L1 after the window.",
       "Proving a withdrawal against a block the proposer has not covered yet; the proof only works once an output root including that block exists on L1.",
       "Sending tokens to a bridge address directly instead of calling the deposit function; a bare transfer is not a bridge message and is usually unrecoverable.",
-    ],
-    quiz: [
-      {
-        question: "Why can a deposit be included on L2 even if the sequencer wants to censor it?",
-        options: [
-          "Every node's derivation pipeline reads the L1 event and must include the resulting transaction",
-          "The deposit is gossiped over the L2 peer-to-peer network to all nodes",
-          "The bridge contract calls the sequencer's RPC endpoint directly",
-          "Deposits carry a higher priority fee than ordinary L2 transactions",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which RPC call produces the evidence needed to prove an OP Stack withdrawal on L1?",
-        options: [
-          "eth_getProof against the L2 for the message slot in the L2ToL1MessagePasser predeploy",
-          "eth_getTransactionReceipt on the L1 deposit transaction",
-          "debug_traceTransaction on the L2 withdrawal transaction",
-          "eth_getLogs on the L1 portal contract",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why does a withdrawal take about a week on an optimistic rollup but hours on a ZK rollup?",
-        options: [
-          "The optimistic chain must wait out the challenge window, while the ZK chain waits only for its validity proof to be verified",
-          "ZK rollups skip the L1 bridge contracts",
-          "Optimistic rollups post withdrawal data less often",
-          "The ZK chain finalizes L1 blocks faster",
-        ],
-        answer: 0,
-      },
     ],
     related: ["rollup", "fraud-proof", "eth-get-proof", "optimistic-rollup", "validity-proof", "l2-rpc", "sequencer", "receipt-proof", "event-log"],
     sources: [
@@ -658,38 +402,6 @@ export const topics = [
       "Calling a validium a rollup; its availability rests on an external committee or network, not on Ethereum.",
       "Expecting blob contents from an execution endpoint; `eth_` methods return only the versioned hashes, and the bodies come from the Beacon API.",
     ],
-    quiz: [
-      {
-        question: "An operator posts a correct state root but never publishes the transactions behind it. What breaks?",
-        options: [
-          "Nobody else can reconstruct the state, so withdrawals cannot be proved and the commitment cannot be challenged",
-          "The state root will be rejected by L1 as invalid",
-          "Only the block explorer is affected; users can still exit normally",
-          "The chain halts automatically because nodes detect the gap",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What does PeerDAS change about how nodes handle blob data?",
-        options: [
-          "Each node stores only some erasure-coded columns and samples others, so blob limits can rise without more bandwidth per node",
-          "It moves blob data from the consensus layer to the execution layer",
-          "It extends blob retention from 18 days to permanent storage",
-          "It replaces KZG commitments with Merkle proofs",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Where do you fetch the actual bytes of a blob that a rollup posted?",
-        options: [
-          "From a consensus client's Beacon API blob sidecar endpoint, within the retention window",
-          "From eth_getTransactionByHash on the execution layer",
-          "From eth_getStorageAt against the batch inbox contract",
-          "From the blob's versioned hash, which encodes the data",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["blob", "rollup", "validity-proof", "fraud-proof", "beacon-api", "bridge", "zk-rollup", "optimistic-rollup", "beacon-endpoints"],
     sources: [
       { title: "ethereum.org: Data availability", url: "https://ethereum.org/developers/docs/data-availability/" },
@@ -714,8 +426,8 @@ export const topics = [
       {
         heading: "A separate fee market",
         paragraphs: [
-          "Blob gas is metered apart from execution [[gas|gas]] and burned entirely. Each blob costs 131072 blob gas, and the [[block-header|header]] carries `blobGasUsed` for the block plus `excessBlobGas`, a running counter of how far past target recent blocks have been. The blob base fee is an exponential function of `excessBlobGas`, so a run of full blocks raises it sharply and an idle period collapses it back to 1 wei. [[eth-gas-price|eth_blobBaseFee]] returns the current value and [[eth-fee-history|eth_feeHistory]] returns `baseFeePerBlobGas` and `blobGasUsedRatio` arrays for building an estimate.",
-          "The target and maximum per block have risen with each upgrade: 3 and 6 at Dencun in March 2024, 6 and 9 at Pectra in May 2025 under EIP-7691, and higher again through the blob-parameter-only forks that follow Fusaka. Because the two markets are independent, blobs can be nearly free while execution gas is expensive, or the reverse. [[transaction-receipt|Receipts]] for a blob transaction report `blobGasUsed` and `blobGasPrice` so the sender can see what it actually paid.",
+          "Blob gas is metered apart from execution [[gas|gas]] and burned entirely. Each blob costs 131072 blob gas, and the [[block-header|header]] carries `blobGasUsed` for the block plus `excessBlobGas`, a running counter of how far past target recent blocks have been. The blob base fee is an exponential function of `excessBlobGas`, so a run of full blocks raises it sharply and an idle period brings it back down. Before Fusaka it could sink to 1 wei; since Fusaka, EIP-7918 stops it falling below a reserve price tied to the execution base fee. [[eth-gas-price|eth_blobBaseFee]] returns the current value and [[eth-fee-history|eth_feeHistory]] returns `baseFeePerBlobGas` and `blobGasUsedRatio` arrays for building an estimate.",
+          "The target and maximum per block have risen with each upgrade: 3 and 6 at Dencun in March 2024, 6 and 9 at Pectra in May 2025 under EIP-7691, and higher again through the blob-parameter-only forks that follow Fusaka. Because the two markets are priced separately, blob space can be cheap while execution gas is expensive, or the reverse, though since EIP-7918 the blob price no longer drops arbitrarily far below the cost of execution. [[transaction-receipt|Receipts]] for a blob transaction report `blobGasUsed` and `blobGasPrice` so the sender can see what it actually paid.",
         ],
       },
       {
@@ -736,38 +448,6 @@ export const topics = [
       "Looking for blob contents in the transaction object; `blobVersionedHashes` are commitments, and the bodies come from the Beacon API within about 18 days.",
       "Sending a type `0x3` transaction with a plain signed encoding; `eth_sendRawTransaction` expects the network form carrying the blobs, commitments, and proofs.",
       "Estimating blob cost from the execution base fee; the two markets move independently and the blob base fee can sit at 1 wei for days.",
-    ],
-    quiz: [
-      {
-        question: "What does the EVM actually see of a blob?",
-        options: [
-          "Only its versioned hash, via the BLOBHASH opcode, plus point proofs through the precompile at 0x0a",
-          "The full 128 KiB, addressable as calldata",
-          "A Merkle root of the blob's 4096 field elements",
-          "Nothing at all; blobs are invisible to contracts in every form",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which header fields drive the blob fee market?",
-        options: [
-          "blobGasUsed and excessBlobGas",
-          "baseFeePerGas and gasUsed",
-          "blobGasPrice and maxFeePerBlobGas",
-          "blobVersionedHashes and requestsHash",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A service needs to re-derive a rollup's history from two years ago. Why can it not simply read the blobs?",
-        options: [
-          "Blob sidecars are retained for about 4096 epochs, roughly 18 days, and then deleted",
-          "Blobs older than one year are re-encoded into calldata",
-          "The versioned hashes are pruned from the execution chain after a year",
-          "The Beacon API does not expose blobs for finalized blocks",
-        ],
-        answer: 0,
-      },
     ],
     related: ["data-availability", "rollup", "transaction-types", "eth-fee-history", "beacon-api", "eip-1559", "block-header", "eth-gas-price", "beacon-endpoints"],
     sources: [

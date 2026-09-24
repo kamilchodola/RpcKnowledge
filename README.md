@@ -40,13 +40,15 @@ Every node carries a tick or a cross, and every link in the lesson text is colou
 
 A topic becomes learned only by passing its checkpoint. Press `Take the checkpoint` or hit `q`.
 
-- Five questions, drawn from that lesson. All five must be right.
+- Five questions, drawn from six written for that lesson. All five must be right.
 - You are never told *which* answers were wrong, only how many you got right.
 - Each question's options stay inert for a couple of seconds, so clicking through a checkpoint in four seconds is not possible.
 - A failed attempt locks the checkpoint for 20 seconds, doubling with each consecutive failure up to five minutes, and reshuffles both the questions and the option order.
 - The correct answer is never written into the page, so reading the DOM does not help.
 
-Questions come from the topic's own `quiz` array when it has one, topped up with questions generated from the lesson: fill the gap in a sentence, pick the definition, spot the real pitfall. Bookmarks, learned topics, the split position, and the theme live in browser storage.
+Every question is written by hand against its lesson, and each is tagged with the kind of thinking it asks for: a scenario to apply the lesson to, a cause, a contrast between two similar things, a precise detail, or a consequence. An attempt takes one of each kind before repeating any, then shuffles the question order and every question's options, so a retry differs in both content and layout. The wrong options are written to be as long and as specific as the right one, and a test fails if the correct option is the longest in more than 35% of questions, so picking the longest answer does not work.
+
+Bookmarks, learned topics, the split position, and the theme live in browser storage.
 
 `/` focuses search, `Escape` clears it, `Backspace` goes back, `q` opens the checkpoint.
 
@@ -54,7 +56,7 @@ Animations are on by default, including on systems set to reduce motion. The ⏵
 
 ## Content
 
-`knowledge.js` is the dataset the browser loads. `data/` holds the per-category source files and `data/categories.js` the eleven layers: foundations, protocol data, requests, clients, nodes and networking, consensus, indexing, proofs and verification, layer 2 and scaling, operations, and wallets and tooling.
+`knowledge.js` is the dataset the browser loads. `data/` holds the lessons, one file per category, `data/quizzes/` the checkpoint questions for each category, and `data/categories.js` the eleven layers: foundations, protocol data, requests, clients, nodes and networking, consensus, indexing, proofs and verification, layer 2 and scaling, operations, and wallets and tooling.
 
 A topic record looks like this:
 
@@ -68,11 +70,23 @@ A topic record looks like this:
   sections: [{ heading: "What it does", paragraphs: ["…", "…"] }],
   example: { title: "…", language: "json", code: "…", note: "…" },
   pitfalls: ["A concrete mistake and what to do instead."],
-  quiz: [{ question: "…?", options: ["…", "…", "…", "…"], answer: 0 }],
   related: ["state", "archive-node"],
   sources: [{ title: "…", url: "https://…" }],
 }
 ```
+
+Its checkpoint lives in `data/quizzes/<category>.js`, keyed by the same id, and `knowledge.js` joins the two:
+
+```js
+export const quizzes = {
+  "eth-call": [
+    { kind: "scenario", question: "…?", options: ["…", "…", "…", "…"], answer: 0 },
+    // six per topic
+  ],
+};
+```
+
+When writing checkpoint questions, each one must be answerable from its own lesson and have exactly one defensible answer. Wrong options should be mistakes a skimmer would actually make, as long and as specific as the right one. Avoid negatives like "which is NOT", "all of the above", and anything that is wrong only on a technicality. A topic's six questions use at least four of the five kinds, including a scenario. The tests enforce the mechanical parts; the rest is on the writer.
 
 `[[topic-id|Visible label]]` becomes a safe button, never injected HTML. Text in backticks becomes inline code. A link to the topic you are already reading renders as plain text.
 
@@ -135,6 +149,6 @@ The gap list names each wanted term as a slug, and a test asserts none of those 
 npm test
 ```
 
-The suite covers the static server, including MIME types and traversal protection, and the dataset: unique slugs, resolvable links, no self-links, at least three onward paths per topic, real source URLs, every topic reachable from the root, no topic that nothing links to, and no orphaned dead ends. It also exercises the checkpoint generator against every topic, checking that each one yields enough questions, that options are distinct and non-empty, that the prompt never contains its own answer, and that a retry reshuffles the attempt.
+The suite covers the static server, including MIME types and traversal protection, and the dataset: unique slugs, resolvable links, no self-links, at least three onward paths per topic, real source URLs, every topic reachable from the root, no topic that nothing links to, and no orphaned dead ends. It also holds the checkpoints to their rules: six questions per topic across at least four kinds including a scenario, four distinct plain-text options, no question that contains its own answer, a correct option never more than 1.2 times the longest wrong one, and attempts that draw only from the topic's own set, spread across kinds, and change on retry.
 
 Topics written against the section schema are additionally held to a depth bar: at least two headed sections, 240 words of lesson, an example for every request method.

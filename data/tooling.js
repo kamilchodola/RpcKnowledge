@@ -48,38 +48,6 @@ export const topics = [
       "Caching the chain id once at startup; the user can switch networks at any moment, and only `chainChanged` tells you.",
       "Routing bulk reads through the injected provider; you inherit the wallet's endpoint, its limits, and its unknown feature set.",
     ],
-    quiz: [
-      {
-        question: "A user clicks 'connect', then dismisses the wallet popup. What does the provider do?",
-        options: [
-          "Rejects the promise with a ProviderRpcError whose code is 4001",
-          "Resolves with an empty array of accounts",
-          "Resolves with the accounts anyway, marked as unauthorized",
-          "Throws a standard JSON-RPC -32601 method not found error",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which node answers an eth_getBalance call made through window.ethereum?",
-        options: [
-          "Whichever endpoint the wallet is configured to use, which the page does not choose or control",
-          "The page's own configured RPC URL",
-          "A node bundled inside the browser extension",
-          "The endpoint named in the params of the request",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What problem does EIP-6963 solve?",
-        options: [
-          "Multiple wallets overwriting window.ethereum, by having each announce itself so the page can offer a choice",
-          "Wallets answering methods a node cannot serve",
-          "Providers returning decimal numbers instead of hex",
-          "Subscriptions breaking when the WebSocket reconnects",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["wallet-rpc", "signing-methods", "dapp-architecture", "client-libraries", "json-rpc", "chain-id", "rpc-errors", "eth-send-transaction", "head-lag"],
     sources: [
       { title: "EIP-1193: Ethereum Provider JavaScript API", url: "https://eips.ethereum.org/EIPS/eip-1193" },
@@ -127,38 +95,6 @@ export const topics = [
       "Assuming a resolved `wallet_switchEthereumChain` means you are on the requested chain; re-read `eth_chainId` afterwards.",
       "Calling `wallet_addEthereumChain` for a chain the user already has, which overwrites nothing but does train users to approve network prompts.",
       "Offering batched calls without checking `wallet_getCapabilities`; support depends on the account, not only on the wallet.",
-    ],
-    quiz: [
-      {
-        question: "Why does posting wallet_switchEthereumChain to an https RPC endpoint fail?",
-        options: [
-          "The method is implemented by wallets, not nodes, so the node returns -32601 method not found",
-          "The endpoint requires authentication for wallet_ methods",
-          "The chainId parameter must be decimal over HTTP",
-          "Nodes only accept wallet_ methods over WebSocket",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What does error code 4902 from wallet_switchEthereumChain mean?",
-        options: [
-          "The wallet does not have a definition for that chain, so you may offer wallet_addEthereumChain",
-          "The user rejected the switch",
-          "The chain id was malformed",
-          "The wallet is disconnected from all chains",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which pair of methods lets a site submit several calls as one wallet action and then follow it?",
-        options: [
-          "wallet_sendCalls and wallet_getCallsStatus, from EIP-5792",
-          "wallet_requestPermissions and wallet_getPermissions, from EIP-2255",
-          "eth_sendRawTransaction and eth_getTransactionReceipt",
-          "wallet_watchAsset and wallet_showCallsStatus",
-        ],
-        answer: 0,
-      },
     ],
     related: ["eip-1193", "signing-methods", "dapp-architecture", "chain-id", "erc-4337", "eip-7702", "rpc-errors", "client-libraries"],
     sources: [
@@ -208,38 +144,6 @@ export const topics = [
       "Accepting a signature as authentication without a server-issued nonce, an origin, and an expiry, which makes it replayable forever.",
       "Passing an already-hashed value to `personal_sign`; the wallet prefixes and hashes again, so the digest is not what the contract expects.",
     ],
-    quiz: [
-      {
-        question: "Why is eth_sign considered dangerous compared with personal_sign?",
-        options: [
-          "It signs 32 arbitrary bytes with no prefix, so the bytes could be a transaction hash",
-          "It returns the private key alongside the signature",
-          "It signs with a deterministic nonce that leaks the key after two uses",
-          "It sends the message to the node instead of keeping it local",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A public RPC endpoint answers personal_sign with method not found. What does that indicate?",
-        options: [
-          "Correct configuration; the node holds no user keys and the personal_ namespace should not be exposed",
-          "The node is out of sync and cannot sign",
-          "The request needs an API key",
-          "The method was renamed to eth_personalSign",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Your login flow verifies signatures with ecrecover and fails for one user whose address is a smart account. What is the fix?",
-        options: [
-          "Call isValidSignature on the account per ERC-1271 and check for the 0x1626ba7e magic value",
-          "Ask the user to sign with eth_sign instead",
-          "Recover with v set to 0 or 1 rather than 27 or 28",
-          "Hash the message twice before recovering",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["eip-712", "eip-1193", "wallet-rpc", "ecdsa-signature", "erc-4337", "security", "namespaces", "eth-call"],
     sources: [
       { title: "EIP-191: Signed Data Standard", url: "https://eips.ethereum.org/EIPS/eip-191" },
@@ -286,38 +190,6 @@ export const topics = [
       "Omitting the `EIP712Domain` entry from `types`, which some wallets tolerate and others reject outright.",
       "Passing the typed data as an object where the wallet expects a JSON string, which fails with an unhelpful parameter error.",
       "Reordering fields between the front end and the contract's type string; the type hash changes and recovery silently returns the wrong address.",
-    ],
-    quiz: [
-      {
-        question: "What stops an EIP-712 signature from being replayed against the same contract deployed on another chain?",
-        options: [
-          "The chainId and verifyingContract are part of the domain separator, which is inside the signed digest",
-          "The wallet refuses to sign twice for the same message",
-          "The nonce field, which is always required by the standard",
-          "The 0x1901 prefix, which differs per network",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A contract recovers a different address than expected from a valid signature. Which cause fits?",
-        options: [
-          "The type string used on the front end does not match the one the contract hashes, so the digest differs",
-          "The signature has a v of 27 instead of 28",
-          "The wallet used eth_signTypedData_v4 rather than personal_sign",
-          "The message values were sent as strings rather than numbers in JSON",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What is the practical benefit of ERC-2612 permit over a normal approve transaction?",
-        options: [
-          "The approval is signed off-chain and submitted by someone else, so the user sends no transaction and pays no gas",
-          "It removes the allowance concept entirely",
-          "It lets the token contract skip the ecrecover check",
-          "It makes the approval valid on every chain at once",
-        ],
-        answer: 0,
-      },
     ],
     related: ["signing-methods", "eip-1193", "abi", "keccak-256", "ecdsa-signature", "smart-contract", "chain-id", "erc-4337"],
     sources: [
@@ -371,38 +243,6 @@ export const topics = [
       "Assuming a thrown send means nothing was broadcast; automatic retries and lost responses both leave a valid transaction in flight, so look it up by hash.",
       "Debugging library behaviour by reading library source when one raw `curl` against the same endpoint would show what the node returned.",
     ],
-    quiz: [
-      {
-        question: "Two balances read in the same function come from slightly different states. What is the usual cause?",
-        options: [
-          "Each read defaulted to the latest block, and the head advanced between them",
-          "The library cached the first result and reused it",
-          "Hex to BigInt conversion lost precision",
-          "The ABI decoded the second value with the wrong type",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which of these is NOT something a client library adds over raw JSON-RPC?",
-        options: [
-          "A guarantee that the endpoint supports the methods it offers",
-          "ABI encoding of calldata and decoding of results",
-          "Hex to native number conversion and address checksumming",
-          "Retries, batching, and transport management",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Your send throws a timeout, and you retry with a fresh nonce. What can go wrong?",
-        options: [
-          "The first transaction may already have been broadcast, so you now have two competing transactions",
-          "Nothing; a timeout always means the transaction was dropped",
-          "The nonce will be rejected because it must increase by two",
-          "The library will refuse to sign twice with the same key",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["json-rpc", "abi", "cli-tools", "eip-1193", "dapp-architecture", "multicall", "retries", "hex-encoding", "eth-call", "batch-request"],
     sources: [
       { title: "viem documentation", url: "https://viem.sh/" },
@@ -450,38 +290,6 @@ export const topics = [
       "Batching calls that read `msg.sender`; inside a multicall the sender is the multicall contract, not your account.",
       "Treating an empty `returnData` as a zero value; it usually means the target had no code or reverted without a reason.",
     ],
-    quiz: [
-      {
-        question: "What does multicall give you that a JSON-RPC batch of eth_call requests does not?",
-        options: [
-          "All the reads execute in one EVM call at one block, so the results are a single consistent snapshot",
-          "Lower latency, because batches are sent sequentially",
-          "Per-call error isolation, which batches lack",
-          "Access to historical state on a pruned node",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why is Multicall3 at the same address on Ethereum, Base, and Arbitrum?",
-        options: [
-          "It was deployed deterministically, so the same bytecode lands at the same address on every chain",
-          "Each chain's genesis includes it as a predeploy",
-          "The address is reserved by an EIP",
-          "Bridges replicate the contract automatically",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A view function that checks msg.sender returns the wrong answer inside a multicall. Why?",
-        options: [
-          "The multicall contract is the caller, so msg.sender is its address rather than yours",
-          "aggregate3 strips the from field from the call object",
-          "eth_call always sets msg.sender to the zero address",
-          "The sub-call runs as a delegatecall, which clears the sender",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["eth-call", "batch-request", "abi", "client-libraries", "token-standards", "rate-limits", "block-tag", "smart-contract"],
     sources: [
       { title: "Multicall3 repository", url: "https://github.com/mds1/multicall" },
@@ -507,7 +315,7 @@ export const topics = [
         heading: "Forward and reverse over RPC",
         paragraphs: [
           "Forward resolution is two reads: `eth_call` the registry's `resolver(node)` to find the resolver, then `eth_call` that resolver's `addr(node)`. A Universal Resolver contract collapses both into one call and handles the newer wildcard and offchain paths, which is what [[client-libraries|client libraries]] use behind `getEnsAddress` or `resolveName`. Reverse resolution goes the other way: namehash `<address without 0x>.addr.reverse`, read `name(node)`, and then forward-resolve the answer and check that it points back at the same address. Skipping that second step lets anyone set a reverse record claiming to be someone else.",
-          "ENS lives on Ethereum mainnet, so resolving from an L2 or a testnet means querying mainnet, not the local chain. Names also change: records are mutable and registrations expire, so cache a resolution for minutes, not forever.",
+          "ENS's registry lives on Ethereum mainnet, so resolving a name from an L2 means querying mainnet, not the local chain; testnets such as Sepolia run a separate ENS deployment of their own. Names also change: records are mutable and registrations expire, so cache a resolution for minutes, not forever.",
         ],
       },
       {
@@ -522,38 +330,6 @@ export const topics = [
       "Hashing a raw user-typed name without ENSIP-15 normalisation, which produces a different node for lookalike characters.",
       "Resolving against whichever chain the user is on; the registry is on mainnet, so L2 dapps need a mainnet endpoint for names.",
       "Reading an `OffchainLookup` revert as a broken resolver; it is EIP-3668 asking the client to fetch from a gateway and call back.",
-    ],
-    quiz: [
-      {
-        question: "Where are the address records for an ENS name stored?",
-        options: [
-          "In a resolver contract, which the registry only points to",
-          "In the registry contract, alongside the owner",
-          "In the name's own contract, deployed at registration",
-          "Off-chain in every case, retrieved via CCIP-Read",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why must a reverse lookup be confirmed with a forward lookup?",
-        options: [
-          "Anyone can set a reverse record to any name, so only the forward record proves the name points back at that address",
-          "Reverse records are stored on a different chain",
-          "The namehash of a reverse name is not unique",
-          "Reverse resolvers do not implement addr(bytes32)",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Your eth_call to a resolver reverts with OffchainLookup. What should the client do?",
-        options: [
-          "Fetch the data from one of the URLs in the revert and call the named callback function with the response",
-          "Retry the call at the finalized block tag",
-          "Fall back to reading the registry directly",
-          "Treat the name as unregistered",
-        ],
-        answer: 0,
-      },
     ],
     related: ["eth-call", "keccak-256", "smart-contract", "client-libraries", "abi", "revert", "dapp-architecture", "address"],
     sources: [
@@ -603,38 +379,6 @@ export const topics = [
       "Sending bundler methods to a normal RPC endpoint, which answers `-32601` because no execution client implements them.",
       "Deriving the next nonce from `eth_getTransactionCount`; 4337 nonces are key-and-sequence values held by the EntryPoint.",
     ],
-    quiz: [
-      {
-        question: "You have a userOpHash from eth_sendUserOperation. Which call tells you whether it landed?",
-        options: [
-          "eth_getUserOperationReceipt on the bundler",
-          "eth_getTransactionReceipt on any RPC endpoint",
-          "eth_getTransactionByHash on the bundler",
-          "eth_supportedEntryPoints on the EntryPoint contract",
-        ],
-        answer: 0,
-      },
-      {
-        question: "The bundle transaction containing your UserOperation has status 0x1. What does that prove?",
-        options: [
-          "Only that handleOps executed; your operation's inner call may still have reverted, so check its success field",
-          "That your operation executed successfully",
-          "That the paymaster accepted the sponsorship",
-          "That the account's validation step passed and the call was skipped",
-        ],
-        answer: 0,
-      },
-      {
-        question: "How does EIP-7702 relate to ERC-4337?",
-        options: [
-          "It lets an existing EOA delegate to contract code, so plain accounts gain smart-account behavior without a new contract account",
-          "It replaces bundlers with a protocol-level mempool for UserOperations",
-          "It removes the EntryPoint contract from the design",
-          "It is the transaction type bundlers must use to call handleOps",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["eip-7702", "transaction", "wallet-rpc", "signing-methods", "mempool", "dapp-architecture", "eth-get-transaction-receipt", "smart-contract", "rpc-provider"],
     sources: [
       { title: "ERC-4337: Account Abstraction Using Alt Mempool", url: "https://eips.ethereum.org/EIPS/eip-4337" },
@@ -681,38 +425,6 @@ export const topics = [
       "Writing application code around `eth_sendTransaction` and unlocked accounts because the devnet allows it; a real provider will not.",
       "Trusting a test suite that only ever ran with instant mining to catch nonce and ordering races.",
       "Assuming `safe` and `finalized` mean anything on Anvil or Hardhat Network; neither runs consensus.",
-    ],
-    quiz: [
-      {
-        question: "Why does a forked Anvil instance need an upstream endpoint while it runs?",
-        options: [
-          "It holds no state of its own and fetches accounts, code, and slots from the upstream node on first access",
-          "It replays every block from genesis against the upstream node",
-          "It forwards all writes to the upstream chain",
-          "It uses the upstream node to sign transactions",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which capability requires Kurtosis ethereum-package rather than Anvil or Hardhat Network?",
-        options: [
-          "Testing Engine API behavior and real finality across paired execution and consensus clients",
-          "Impersonating an account you have no key for",
-          "Forking mainnet at a specific block",
-          "Mining a block on demand from a test",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Your tests pass locally but the same code races in production. Which devnet property most likely hid the bug?",
-        options: [
-          "Instant mining, which confirms each transaction immediately and removes any pending window",
-          "The chain id being 31337 instead of 1",
-          "Prefunded accounts having large balances",
-          "console.log statements changing execution order",
-        ],
-        answer: 0,
-      },
     ],
     related: ["cli-tools", "eth-send-transaction", "state-override", "client-libraries", "block-tag", "genesis", "testnets", "dapp-architecture", "hardfork"],
     sources: [
@@ -761,38 +473,6 @@ export const topics = [
       "Fighting shell quoting by nesting double quotes inside `--data`; wrap the whole body in single quotes instead.",
       "Comparing a `cast` result with a library's and forgetting that `cast` applied its own defaults, such as the latest block.",
     ],
-    quiz: [
-      {
-        question: "Which cast subcommand sends an arbitrary method name that has no dedicated wrapper?",
-        options: [
-          "cast rpc",
-          "cast call",
-          "cast send",
-          "cast run",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A curl request returns HTTP 200 but your script treats it as success and later fails. What was missed?",
-        options: [
-          "The body contained a JSON-RPC error object, which is the normal way errors are returned",
-          "The node returned a 200 with an empty body",
-          "The response was gzipped and not decoded",
-          "The id field did not match the request",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why reproduce a suspected library bug with curl against the same endpoint and block?",
-        options: [
-          "It separates what the node returned from what the library's defaults and error handling did to it",
-          "curl retries automatically, which the library does not",
-          "Libraries cannot pin a block number",
-          "The node answers raw requests from different state than library requests",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["json-rpc", "client-libraries", "local-devnet", "endpoint-capabilities", "rpc-errors", "eth-call", "debug-api", "websocket-transport"],
     sources: [
       { title: "Foundry Book: cast", url: "https://book.getfoundry.sh/" },
@@ -840,38 +520,6 @@ export const topics = [
       "Treating every `Transfer` log with that topic0 as ERC-20; four topics and empty `data` means it is an ERC-721 token id.",
       "Calling `symbol()` and failing on old tokens that return a `bytes32` rather than a string, which decodes as garbage or throws.",
     ],
-    quiz: [
-      {
-        question: "How do you distinguish an ERC-721 Transfer log from an ERC-20 one when both share the same topic0?",
-        options: [
-          "ERC-721 indexes the token id, so it has four topics and empty data, while ERC-20 has three topics and the amount in data",
-          "They use different topic0 values despite the identical event name",
-          "ERC-721 logs always come from a contract implementing ERC-165",
-          "ERC-20 logs include the decimals in an extra topic",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which JSON-RPC method returns the list of all tokens an address holds?",
-        options: [
-          "None; you scan Transfer logs or use an indexer, because no standard method exists",
-          "eth_getTokenBalances",
-          "eth_getLogs with the address as the only filter",
-          "eth_getBalance with the token address as the second parameter",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A dashboard reconstructs balances by summing Transfer events and drifts over time for one token. What is the most likely reason?",
-        options: [
-          "The token rebases or takes a fee on transfer, so balances change without matching event amounts",
-          "eth_getLogs dropped logs with removed set to false",
-          "The topic0 changed after a contract upgrade",
-          "The sums need to be divided by decimals twice",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["eth-call", "eth-get-logs", "abi", "event-signature", "multicall", "indexer", "event-log", "smart-contract", "client-libraries"],
     sources: [
       { title: "ERC-20: Token Standard", url: "https://eips.ethereum.org/EIPS/eip-20" },
@@ -918,38 +566,6 @@ export const topics = [
       "Running historical `eth_getLogs` scans from the browser; that is indexer work, and providers cap the ranges anyway.",
       "Assuming the wallet and your read endpoint are at the same block, then treating a `null` receipt as a failed send.",
       "Skipping the `eth_call` simulation before prompting, so the user approves a transaction that was always going to revert.",
-    ],
-    quiz: [
-      {
-        question: "Why can a receipt be null immediately after the wallet reports a transaction was sent?",
-        options: [
-          "The wallet broadcast through its own endpoint, and yours has not seen the block yet",
-          "Receipts are only created once the transaction is finalized",
-          "The wallet returns a userOpHash rather than a transaction hash",
-          "eth_getTransactionReceipt requires a block tag that defaults to finalized",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Where does an API key for a hosted RPC provider belong in a dapp?",
-        options: [
-          "Behind a backend proxy that the frontend calls, since anything in browser JavaScript is public",
-          "In the frontend bundle, restricted by an allowed-origins setting alone",
-          "In the wallet's network settings, added with wallet_addEthereumChain",
-          "In a query parameter, which browsers do not log",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which of these is NOT a job for the direct RPC read path?",
-        options: [
-          "Listing every transfer a user has ever made across all tokens",
-          "Reading a single contract value at the latest block",
-          "Checking an account's ETH balance",
-          "Fetching one transaction's receipt by hash",
-        ],
-        answer: 0,
-      },
     ],
     related: ["eip-1193", "client-libraries", "indexer", "rpc-provider", "head-lag", "wallet-rpc", "token-standards", "eth-call", "confirmations", "the-graph"],
     sources: [

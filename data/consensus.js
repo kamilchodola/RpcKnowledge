@@ -36,38 +36,6 @@ export const topics = [
       "Monitoring only validator balances while ignoring Engine API, peer, and finalized-checkpoint health.",
       "Skipping weak-subjectivity or checkpoint provenance for a newly bootstrapped observer.",
     ],
-    quiz: [
-      {
-        question: "Who computes the state root for the transactions carried in a beacon block?",
-        options: [
-          "The consensus client, which executes the payload itself",
-          "The proposer's validator client, before it signs",
-          "The paired execution client, which validates the payload and reports its status back",
-          "The relay that delivered the winning bid",
-        ],
-        answer: 2,
-      },
-      {
-        question: "What determines a validator's voting weight under proof of stake?",
-        options: [
-          "Its effective balance, subject to the protocol's rules",
-          "How many RPC requests its node serves",
-          "How many epochs it has been active",
-          "The gas consumed by the blocks it proposed",
-        ],
-        answer: 0,
-      },
-      {
-        question: "An application sends a transaction and polls a consensus endpoint. How does that affect consensus?",
-        options: [
-          "The transaction counts as a weak vote for the head it was submitted against",
-          "Not at all; neither action is a validator vote, and RPC callers only consume the results",
-          "Polling the consensus endpoint registers the caller as a passive attester",
-          "It raises the node's weight in fork choice in proportion to its traffic",
-        ],
-        answer: 1,
-      },
-    ],
     related: ["consensus-client", "execution-client", "fork-choice", "finality", "engine-api", "execution-payload", "validator-client", "light-client", "slot-epoch"],
     sources: [
       { title: "ethereum.org: Proof-of-stake", url: "https://ethereum.org/developers/docs/consensus-mechanisms/pos/" },
@@ -108,38 +76,6 @@ export const topics = [
       "Using execution block number as if it were a Beacon slot or epoch.",
       "Calling one missed slot a reorganization without checking block ancestry and consensus state.",
       "Scheduling validator duties from a wall clock without obtaining the consensus client’s assigned duty.",
-    ],
-    quiz: [
-      {
-        question: "A slot passes and no block appears. What does that mean?",
-        options: [
-          "The chain inserts an empty execution block so numbering stays continuous",
-          "A reorganization removed the block that had been there",
-          "The node has lost its consensus peers and needs a restart",
-          "No proposer published for that slot, or this node has not received the block yet",
-        ],
-        answer: 3,
-      },
-      {
-        question: "Why is an execution block number not a substitute for a slot number?",
-        options: [
-          "Block numbers are hexadecimal while slots are decimal",
-          "Slots advance whether or not a block appears, so the two counters drift apart",
-          "Block numbers restart at every epoch boundary",
-          "Slots count only the blocks that have reached finality",
-        ],
-        answer: 1,
-      },
-      {
-        question: "You are joining consensus records to execution records. What goes wrong if you join on timestamp alone?",
-        options: [
-          "Nothing, since both layers stamp their blocks from the same clock",
-          "Timestamps are recorded only on the consensus side",
-          "A missed slot or a competing branch can attach the wrong consensus container to an execution block",
-          "Execution timestamps are set by the builder and are always later",
-        ],
-        answer: 2,
-      },
     ],
     related: ["proof-of-stake", "beacon-api", "consensus-client", "execution-client", "fork-choice", "finality", "validator-client", "beacon-block", "reorg", "execution-payload"],
     sources: [
@@ -182,38 +118,6 @@ export const topics = [
       "Assuming Engine API head selection replaces execution payload validation.",
       "Making an indexer irreversible at the first observation of a block.",
     ],
-    quiz: [
-      {
-        question: "What does the fork-choice rule actually weigh when it picks a head?",
-        options: [
-          "The total gas used along each competing branch",
-          "The latest available attestations from validators",
-          "The number of transactions in each candidate block",
-          "The accumulated difficulty of each branch",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Two endpoints each return latest and the block numbers match. Is that the same block?",
-        options: [
-          "Yes; only one valid block can exist at a given height",
-          "Yes, provided both report the same chain id",
-          "Not necessarily; during competing branches a height can hold different blocks, so compare hashes",
-          "Not necessarily, but only when one of the two endpoints is still syncing",
-        ],
-        answer: 2,
-      },
-      {
-        question: "Why is a finalized checkpoint a different kind of statement from the current head?",
-        options: [
-          "The head is chosen by the proposer while finality is decided by the relay",
-          "Finality is computed by the execution client and the head by the consensus client",
-          "The head is only advisory until an indexer accepts it",
-          "The head can be replaced when a competing block or a late vote arrives, while finalized history is expected to stand",
-        ],
-        answer: 3,
-      },
-    ],
     related: ["proof-of-stake", "consensus-client", "engine-api", "execution-payload", "finality", "reorg", "confirmations", "state-proof", "observability", "rpc-provider"],
     sources: [
       { title: "Consensus specs: Fork choice", url: "https://github.com/ethereum/consensus-specs/tree/dev/specs/phase0/fork-choice" },
@@ -255,38 +159,6 @@ export const topics = [
       "Assuming finalized data is available at identical times on every RPC endpoint.",
       "Ignoring consensus participation and Engine API health when finality stops advancing.",
     ],
-    quiz: [
-      {
-        question: "In the consensus rules, what has to happen to a checkpoint before it can be finalized?",
-        options: [
-          "It must first be justified, by attestations reaching the required supermajority",
-          "It must be referenced in an execution block header",
-          "It must be countersigned by the next slot's proposer",
-          "It must accumulate the configured number of block confirmations",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Two endpoints both implement the finalized tag. Why can they disagree at a given moment?",
-        options: [
-          "One of them is following a different chain id",
-          "The tag is defined against different epochs by different clients",
-          "Finalized data propagates and is processed at different times, so one node can expose it later than another",
-          "The tag is only refreshed when a caller explicitly requests it",
-        ],
-        answer: 2,
-      },
-      {
-        question: "Finality stops advancing while eth_blockNumber keeps rising. What should you inspect?",
-        options: [
-          "Only the execution client, since block production is its responsibility",
-          "Validator participation, peer connectivity, slot processing and Engine API payload statuses",
-          "The load balancer's sticky session configuration",
-          "The transaction pool, since unfinalized blocks come from stale transactions",
-        ],
-        answer: 1,
-      },
-    ],
     related: ["proof-of-stake", "consensus-client", "fork-choice", "beacon-api", "block-header", "state-proof", "light-client", "indexer", "confirmations", "engine-api"],
     sources: [
       { title: "ethereum.org: Proof-of-stake", url: "https://ethereum.org/developers/docs/consensus-mechanisms/pos/" },
@@ -310,7 +182,7 @@ export const topics = [
       {
         heading: "Builder and proposer flow",
         paragraphs: [
-          "A proposer may obtain a locally built payload or receive one through a block-building market such as [[mev-boost|MEV-Boost]]. The validator signs a Beacon block that commits to the chosen execution payload header. The consensus client and execution client still validate the payload according to protocol rules; a builder or relay does not replace those checks.",
+          "A proposer may obtain a locally built payload or receive one through a block-building market such as [[mev-boost|MEV-Boost]]. The validator signs a Beacon block that commits to the chosen execution payload header. The proposer signs that header before it has the payload, so at signing time it relies on the relay; afterwards every node's consensus and execution clients validate the published payload by protocol rules, so a builder cannot make an invalid block canonical, only cost the proposer its slot.",
           "RPC callers usually see the resulting execution block through `eth_getBlockByHash` or a subscription, not through Engine API. If an application needs to correlate a Beacon block to execution data, use explicit payload and block identifiers, account for reorgs, and avoid joining records by timestamp alone.",
         ],
       },
@@ -328,38 +200,6 @@ export const topics = [
       "Assuming a builder or relay bypasses local execution validation.",
       "Correlating Beacon and execution records only by timestamp.",
     ],
-    quiz: [
-      {
-        question: "The execution client answers SYNCING rather than INVALID for a payload. What is the difference?",
-        options: [
-          "They are the same status, spelled differently by different clients",
-          "SYNCING means the payload broke a rule, INVALID means it arrived too late",
-          "INVALID says the payload violates execution rules; SYNCING says the engine lacks the context to decide yet",
-          "SYNCING applies to consensus blocks and INVALID to execution blocks",
-        ],
-        answer: 2,
-      },
-      {
-        question: "A builder supplied the payload. What does the proposer's signed beacon block commit to?",
-        options: [
-          "The full transaction list, which the proposer inspected before signing",
-          "The chosen execution payload header, while the payload itself is still validated locally",
-          "The relay's bid amount, recorded as a consensus field",
-          "Only the parent root; the payload is attached afterwards",
-        ],
-        answer: 1,
-      },
-      {
-        question: "A node's storage is slow. How can that surface on the consensus side?",
-        options: [
-          "Peers reject its attestations for invalid signatures",
-          "The Engine API secret expires and has to be rotated",
-          "Beacon block bodies get truncated during gossip",
-          "Payload validation takes long enough that the consensus client misses proposal deadlines",
-        ],
-        answer: 3,
-      },
-    ],
     related: ["engine-api", "execution-client", "consensus-client", "beacon-block", "fork-choice", "mev-boost", "state-root", "node-hardware", "health-check", "indexer"],
     sources: [
       { title: "Ethereum Engine API", url: "https://github.com/ethereum/execution-apis/tree/main/src/engine" },
@@ -376,7 +216,7 @@ export const topics = [
       {
         heading: "Getting the duty",
         paragraphs: [
-          "A [[validator-client|validator client]] learns its proposer assignment from the [[consensus-client|consensus client]] and must act in the slot’s time window. The Beacon node supplies chain context and the execution client supplies a valid payload or collaborates with a builder. The validator signs the consensus block only after the required checks and returns it to the consensus network for propagation.",
+          "A [[validator-client|validator client]] learns its proposer assignment from the [[consensus-client|consensus client]] and must act in the slot’s time window. The Beacon node supplies chain context and the execution client supplies a valid payload or collaborates with a builder. With a locally built payload the node's own execution client has already executed it; with a builder's payload the validator signs a blinded block carrying only the payload header, relying on the relay to have checked the payload and to publish it. Either way the signed block then goes out to the consensus network.",
           "Proposal is different from attestation. An attester votes on a block and checkpoint; a proposer creates the block that others may attest to. Both duties depend on correct slot timing and a synchronized node, and both are affected by peer propagation and execution payload readiness.",
         ],
       },
@@ -400,38 +240,6 @@ export const topics = [
       "Assuming MEV-Boost makes the local execution client optional.",
       "Signing a payload before Engine API and consensus checks complete.",
       "Diagnosing a missed proposal from an application RPC response alone.",
-    ],
-    quiz: [
-      {
-        question: "Within a single slot, how does the proposer duty differ from the attester duty?",
-        options: [
-          "Both assemble a block, but only the proposer's is broadcast",
-          "The proposer assembles and signs the block for that slot, while committee members only vote on it",
-          "The attester builds the execution payload and the proposer wraps it",
-          "Attesters act once per slot and proposers once per epoch, but the duty is otherwise the same",
-        ],
-        answer: 1,
-      },
-      {
-        question: "A validator misses its proposal. Where does the evidence actually come from?",
-        options: [
-          "An application's JSON-RPC response for the missing block",
-          "The relay's public dashboard, which is authoritative",
-          "Logs from the validator client, the consensus client and the execution client together, plus the builder path",
-          "The execution client's transaction pool contents",
-        ],
-        answer: 2,
-      },
-      {
-        question: "The proposer takes its payload from a builder. What still has to happen locally?",
-        options: [
-          "The execution client validates the payload and returns its status over the Engine API",
-          "Nothing; the relay's signature stands in for local validation",
-          "The consensus client re-orders the transactions by effective gas price",
-          "The validator re-signs every transaction inside the payload",
-        ],
-        answer: 0,
-      },
     ],
     related: ["proof-of-stake", "validator-client", "consensus-client", "execution-client", "execution-payload", "engine-api", "mev-boost", "fork-choice", "health-check", "indexer"],
     sources: [
@@ -474,38 +282,6 @@ export const topics = [
       "Calling a proposer signature proof of execution payload validity.",
       "Indexing a latest Beacon block irreversibly before fork choice and finality policy allow it.",
     ],
-    quiz: [
-      {
-        question: "A beacon block is correctly signed by its assigned proposer, but the execution payload inside it is invalid. What is the block?",
-        options: [
-          "Valid at the consensus layer and a problem only for execution RPC",
-          "Invalid; a proposer signature does not make an invalid payload acceptable",
-          "Valid, because attestations on the block override payload errors",
-          "Provisional, until the next epoch boundary decides",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Why should an application avoid hard-coding the beacon block body shape?",
-        options: [
-          "Because each client implementation orders the fields differently",
-          "Because the consensus endpoint returns it as opaque bytes",
-          "Because the schema is versioned and changes across network upgrades",
-          "Because the body is withheld until the block finalizes",
-        ],
-        answer: 2,
-      },
-      {
-        question: "Which identifiers should you keep when correlating a beacon block with its execution block?",
-        options: [
-          "The timestamp and the block number, which both layers share",
-          "The proposer index and the gas used",
-          "The chain id and the epoch number",
-          "The slot, the beacon block root and the execution block hash",
-        ],
-        answer: 3,
-      },
-    ],
     related: ["consensus-client", "beacon-api", "execution-payload", "block-header", "state-root", "state-proof", "slot-epoch", "fork-choice", "finality", "reorg"],
     sources: [
       { title: "Ethereum Beacon APIs", url: "https://ethereum.org/developers/apis/ethereum-consensus-api/" },
@@ -523,7 +299,7 @@ export const topics = [
         heading: "Why it exists",
         paragraphs: [
           "Maximal extractable value can make block construction complex and competitive. MEV-Boost lets a validator’s setup receive candidate payload bids from external builders instead of assembling every transaction locally. The proposer’s [[consensus-client|consensus client]] asks the middleware for a bid, and the middleware communicates with configured relays and builders using the builder API. The resulting Beacon block still goes through the normal consensus process.",
-          "A builder creates a payload and bid; a relay mediates delivery and may apply its own policy; the proposer chooses whether to accept a bid. The execution client remains connected through [[engine-api|Engine API]] and must be able to validate the payload. MEV-Boost changes block-building topology, not the definition of a valid execution state transition.",
+          "A builder creates a payload and bid; a relay mediates delivery and may apply its own policy; the proposer chooses whether to accept a bid. The execution client stays connected through the [[engine-api|Engine API]] and builds a local fallback payload, but on the builder path the proposer signs a blinded block, only the payload header, without seeing the payload itself: the relay has checked the builder's block and publishes it after the signature, and every node's execution client, the proposer's included, validates it only on import. MEV-Boost changes block-building topology, not the definition of a valid execution state transition.",
         ],
       },
       {
@@ -546,38 +322,6 @@ export const topics = [
       "Giving builders or relays access to validator signing keys.",
       "Assuming a successful bid means the payload bypassed local validation.",
       "Measuring only RPC uptime while ignoring relay timeouts and missed proposal duties.",
-    ],
-    quiz: [
-      {
-        question: "What does MEV-Boost change about how a block comes to exist?",
-        options: [
-          "It replaces the execution client's state transition rules with the builder's own",
-          "It lets the consensus client finalize a block without waiting for attestations",
-          "It moves payload assembly to external builders, while the validity rules and local checks stay unchanged",
-          "It grants relays the right to sign on the proposer's behalf",
-        ],
-        answer: 2,
-      },
-      {
-        question: "Every configured relay times out during a proposer's slot. What should happen?",
-        options: [
-          "The validator signs the last bid it received, validated or not",
-          "The proposer falls back to a locally built payload, or loses the slot, but never signs an invalid one",
-          "The consensus client extends the previous block automatically",
-          "The duty is handed to the next validator in the committee",
-        ],
-        answer: 1,
-      },
-      {
-        question: "Which part of the setup must stay outside the builder and relay path?",
-        options: [
-          "The consensus client's read-only API endpoints",
-          "The execution client's transaction pool",
-          "The node's peer discovery configuration",
-          "The validator's signing key, which never leaves the operator's control",
-        ],
-        answer: 3,
-      },
     ],
     related: ["proof-of-stake", "validator-client", "consensus-client", "execution-client", "execution-payload", "block-proposal", "beacon-block", "engine-api", "finality", "client-diversity"],
     sources: [
@@ -626,38 +370,6 @@ export const topics = [
       "Confusing being offline with being slashed; downtime costs roughly what the missed reward was worth, equivocation costs far more.",
       "Indexing ETH movements from transactions alone and missing withdrawals, which credit an address with no transaction or receipt.",
     ],
-    quiz: [
-      {
-        question: "Which quantity decides a validator's attestation weight and its odds of being selected to propose?",
-        options: [
-          "Its effective balance, which is rounded down and capped by the protocol",
-          "Its actual balance in gwei, updated every slot",
-          "The age of its deposit in epochs",
-          "The number of slots since it last proposed a block",
-        ],
-        answer: 0,
-      },
-      {
-        question: "How does a validator's reward finally reach an ordinary Ethereum address?",
-        options: [
-          "As a withdrawal entry in an execution block, crediting the address with no transaction and no receipt",
-          "As a normal transaction sent from the beacon chain, visible in eth_getTransactionByHash",
-          "As an internal call that shows up in debug_traceBlockByNumber",
-          "As an ERC-20 style Transfer log emitted by the deposit contract",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which execution JSON-RPC method lists the validators on the network?",
-        options: [
-          "None; validators exist in the beacon state and are read through the Beacon API",
-          "eth_getValidators, added at the Merge",
-          "admin_peers, which includes validator public keys",
-          "eth_getProof against the deposit contract",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["attestation", "proof-of-stake", "validator-client", "slashing", "sync-committee", "block-proposal", "slot-epoch", "withdrawals", "beacon-api", "finality"],
     sources: [
       { title: "ethereum.org: Staking", url: "https://ethereum.org/staking/" },
@@ -682,7 +394,7 @@ export const topics = [
       {
         heading: "Committees and aggregation",
         paragraphs: [
-          "Every active [[validator|validator]] is placed in exactly one committee per epoch, so the whole set votes once across the 32 slots. Members with identical attestation data have their BLS signatures aggregated into a single signature plus an `aggregation_bits` bitfield marking who signed. Aggregates travel on dedicated [[libp2p-gossip|gossip subnets]] and the next proposer packs them into the block body.",
+          "Every active [[validator|validator]] is placed in exactly one committee per epoch, so the whole set votes once across the 32 slots. Members with identical attestation data have their BLS signatures aggregated into a single signature plus an `aggregation_bits` bitfield marking who signed. Individual attestations travel on 64 attestation [[libp2p-gossip|gossip subnets]], aggregates on one global topic, and the next proposer packs the aggregates into the block body.",
           "Aggregation is what makes the numbers work. Over a million validators voting individually could never fit in a block; as bitfields over committees they do. The cost is that an application reading attestations sees committee-level objects, and mapping a bit back to a validator index requires the committee assignment for that slot from the [[beacon-api|Beacon API]].",
         ],
       },
@@ -705,38 +417,6 @@ export const topics = [
       "Trying to identify a signer from `aggregation_bits` without fetching the committee assignment for that exact slot and index.",
       "Running a node with drifting clocks, which produces late attestations that earn less and degrade gossip peer scores.",
       "Watching only block height for chain health, when stalled participation shows up first as a `finalized` tag that stops advancing.",
-    ],
-    quiz: [
-      {
-        question: "Which three things does a single attestation commit to?",
-        options: [
-          "The head block root, the source checkpoint, and the target checkpoint",
-          "The head block root, the execution state root, and the proposer index",
-          "The slot, the validator balance, and the sync committee period",
-          "The parent block, the transaction root, and the epoch number",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Network participation drops sharply but blocks are still produced. What does an RPC caller notice first?",
-        options: [
-          "latest keeps advancing while the finalized block tag stops moving",
-          "eth_getBlockByNumber starts returning null for latest",
-          "Every eth_call reverts with an execution reverted error",
-          "eth_chainId changes to the fork's chain id",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why are individual attestations aggregated before inclusion in a block?",
-        options: [
-          "Over a million individual votes per epoch would not fit in blocks, but bitfields plus one BLS signature do",
-          "Because the fork-choice rule can only read one signature per slot",
-          "To hide which validator voted, for privacy reasons",
-          "Because a block body can hold at most 512 signatures",
-        ],
-        answer: 0,
-      },
     ],
     related: ["fork-choice", "finality", "validator", "beacon-block", "slot-epoch", "sync-committee", "slashing", "beacon-api", "engine-api", "libp2p-gossip"],
     sources: [
@@ -780,38 +460,6 @@ export const topics = [
       "Assuming the committee rotates per epoch; it is resampled once per 256-epoch period of roughly 27 hours.",
       "Expecting the sync aggregate to prove execution state directly, when it only authenticates a header that a separate proof must be checked against.",
     ],
-    quiz: [
-      {
-        question: "How many validators are in a sync committee, and how long does one serve?",
-        options: [
-          "512 validators for 256 epochs, roughly 27 hours",
-          "128 validators for one epoch, 6.4 minutes",
-          "512 validators for 4096 epochs, roughly 18 days",
-          "One validator per slot, rotating every 12 seconds",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why can a light client keep following the chain long after its original trusted point?",
-        options: [
-          "Each verified period lets it prove the next period's committee from the state it already checked",
-          "Committee keys never change once the client has downloaded them",
-          "It re-downloads the full validator set every epoch",
-          "The proposer signs a certificate that extends trust indefinitely",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A verified RPC proxy has a trusted header from sync committee updates. What does it still need to answer eth_getBalance without trust?",
-        options: [
-          "A state proof from some provider, checked against that header's state root",
-          "Nothing further; the header already contains account balances",
-          "A second sync committee signature over the account",
-          "An archive node to re-execute the block locally",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["light-client", "attestation", "validator", "consensus-proof", "verified-rpc", "finality", "beacon-block", "weak-subjectivity", "beacon-api", "eth-get-proof"],
     sources: [
       { title: "Consensus specs: Altair light client", url: "https://github.com/ethereum/consensus-specs/tree/dev/specs/altair/light-client" },
@@ -828,7 +476,7 @@ export const topics = [
       {
         heading: "Two offences, both equivocation",
         paragraphs: [
-          "A proposer slashing is two distinct signed [[beacon-block|beacon blocks]] for the same slot by the same [[validator|validator]]. An attester slashing is two [[attestation|attestations]] that either share a target epoch with different target roots, or where one vote’s source-to-target span strictly surrounds the other’s. Both are provable from the two signatures alone, with no reference to network conditions.",
+          "A proposer slashing is two distinct signed [[beacon-block|beacon blocks]] for the same slot by the same [[validator|validator]]. An attester slashing is two different [[attestation|attestations]] that either share a target epoch, whichever of their fields differs, or where one vote’s source-to-target span strictly surrounds the other’s. Both are provable from the two signatures alone, with no reference to network conditions.",
           "Because the evidence is self-contained, anyone can submit it: the whistleblower is rewarded and the proposer who includes the evidence takes a share. This is why being offline is a completely different category. Downtime forfeits rewards and applies a roughly matching penalty; equivocation forces an exit and destroys stake.",
         ],
       },
@@ -858,38 +506,6 @@ export const topics = [
       "Restoring a validator from a data-directory backup without the current slashing protection database, then signing an already-signed slot.",
       "Building an active-active failover for the same keys, which is the most common way operators slash themselves.",
       "Looking for slashing events in execution JSON-RPC, when the evidence only appears in the beacon block body and the Beacon API status.",
-    ],
-    quiz: [
-      {
-        question: "Which of these gets a validator slashed?",
-        options: [
-          "Signing two attestations whose source-to-target spans surround one another",
-          "Being offline for a full day and missing every attestation",
-          "Proposing a block that the network later reorgs out",
-          "Running an execution client that falls behind the head",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why is the correlation penalty proportional to how much other stake was slashed nearby in time?",
-        options: [
-          "To price an isolated operator mistake very differently from a coordinated attack on finality",
-          "To compensate the whistleblower who submitted the evidence",
-          "Because the protocol cannot measure an individual validator's balance at exit",
-          "To keep the total supply of ETH constant across epochs",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What is the slashing protection database actually storing?",
-        options: [
-          "Per key, the highest block slot signed and the highest source and target epochs attested",
-          "An encrypted copy of the validator's signing key",
-          "Every message the validator has ever broadcast, in full",
-          "The list of relays the validator is permitted to use",
-        ],
-        answer: 0,
-      },
     ],
     related: ["validator", "validator-client", "attestation", "block-proposal", "proof-of-stake", "beacon-block", "withdrawals", "client-diversity", "finality", "beacon-api"],
     sources: [
@@ -932,38 +548,6 @@ export const topics = [
       "Setting a generous slippage tolerance for reliability, which is exactly the parameter a sandwich needs in order to be profitable.",
       "Reading `pending` or txpool_ output as the network's view, when it is one node's local pool and no builder is bound by it.",
       "Assuming a private RPC endpoint hides a transaction from everyone, when the builder receiving it necessarily sees it.",
-    ],
-    quiz: [
-      {
-        question: "Which user-set parameter most directly limits how much a sandwich attack can extract?",
-        options: [
-          "The slippage bound, because too large a move makes the swap revert instead of filling",
-          "The gas limit on the transaction",
-          "maxFeePerGas, because a higher cap always wins the ordering",
-          "The nonce, which fixes the transaction's position in the block",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Who typically decides the transaction ordering in the block a mainnet transaction lands in today?",
-        options: [
-          "An external builder, whose payload the proposer signs blind after taking the bid",
-          "The node the transaction was submitted to, which assembles its own pool",
-          "The protocol, which orders transactions by effective gas price",
-          "The relay, which rewrites the order after the proposer signs",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What does a successful eth_call simulation against latest actually tell you?",
-        options: [
-          "The outcome against current state, which may differ once other transactions are ordered around yours",
-          "The exact outcome your transaction will have when included",
-          "That no searcher is currently targeting your address",
-          "That the transaction will be included in the very next block",
-        ],
-        answer: 0,
-      },
     ],
     related: ["mev-boost", "mempool", "private-rpc", "block-proposal", "eth-send-raw-transaction", "execution-payload", "block-tag", "eip-1559", "txpool-api", "proof-of-stake"],
     sources: [

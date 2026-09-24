@@ -44,38 +44,6 @@ export const topics = [
       "Treating a synced execution client as a working node; without a consensus client its head stops advancing, while [[eth-syncing|eth_syncing]] may still return `false`.",
       "Pointing two consensus clients at one execution client; each sends its own [[fork-choice|fork choice]] and they will fight over the head.",
     ],
-    quiz: [
-      {
-        question: "After the Merge, what tells an execution client which block is the head of the chain?",
-        options: [
-          "The paired consensus client, through engine_forkchoiceUpdated on the Engine API",
-          "The execution client's own total-difficulty comparison between competing branches",
-          "The first block received from a devp2p peer at each height",
-          "The RPC caller, through the block tag passed to eth_getBlockByNumber",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Two execution clients import the same block and compute different stateRoot values. What does that mean?",
-        options: [
-          "One of them has a consensus bug, and the network is at risk of splitting",
-          "Nothing; state roots are implementation-specific and only receipts must match",
-          "One of them is pruned and therefore computes a shorter trie",
-          "They are on different sync modes, which produce different roots until sync finishes",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which of these is NOT part of the standardized execution JSON-RPC that every client is expected to serve?",
-        options: [
-          "trace_replayBlockTransactions",
-          "eth_getLogs",
-          "eth_call",
-          "eth_getBalance",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["execution-layer", "geth", "engine-api", "json-rpc", "nethermind", "erigon", "reth", "besu", "consensus-client", "client-storage"],
     sources: [
       { title: "ethereum.org: Nodes and clients", url: "https://ethereum.org/developers/docs/nodes-and-clients/" },
@@ -100,7 +68,7 @@ export const topics = [
       {
         heading: "Storage and retention",
         paragraphs: [
-          "Since v1.13 Geth defaults to the path-based state scheme (`--state.scheme path`), which keeps one copy of each trie node keyed by its position rather than one per version; see [[client-storage|storage engines]]. That makes disk use predictable, but historical [[state|state]] survives only for a window of roughly 128 recent blocks. Ask for a balance or run [[eth-call|eth_call]] below that window on a [[pruned-node|pruned]] Geth and you get a `missing trie node` error. Serving old state requires `--gcmode archive`, which is a different database shape and costs multiple terabytes.",
+          "Since v1.14 Geth uses the path-based state scheme (`--state.scheme path`) by default for new databases, which keeps one copy of each trie node keyed by its position rather than one per version; see [[client-storage|storage engines]]. That makes disk use predictable, but historical [[state|state]] survives only for a window of roughly 128 recent blocks. Ask for a balance or run [[eth-call|eth_call]] below that window on a [[pruned-node|pruned]] Geth and you get a `missing trie node` error. Serving old state requires `--gcmode archive`, which is a different database shape and costs multiple terabytes.",
           "History is stored separately from state: old headers, bodies, and receipts move into append-only freezer files, which `--datadir.ancient` can place on a slower disk. The transaction lookup index is bounded by `--history.transactions`, which defaults to about 2,350,000 blocks, roughly a year. Past that, [[eth-get-transaction-receipt|eth_getTransactionReceipt]] and [[eth-get-transaction-by-hash|eth_getTransactionByHash]] return `null` for transactions whose blocks Geth still holds; `--history.transactions 0` keeps the full index at the cost of disk.",
         ],
       },
@@ -123,38 +91,6 @@ export const topics = [
       "Concluding that a node lost old transactions when `eth_getTransactionReceipt` returns `null`; the default `--history.transactions` index simply stops about a year back.",
       "Expecting `trace_filter` to work after adding it to `--http.api`; Geth has no `trace_` implementation, so the namespace cannot be enabled.",
       "Putting Geth behind a proxy and forgetting `--http.vhosts`, which produces a bare 403 with no JSON-RPC error body.",
-    ],
-    quiz: [
-      {
-        question: "A default Geth node returns null for eth_getTransactionReceipt on a transaction from four years ago, although eth_getBlockByNumber still returns that block. Why?",
-        options: [
-          "The transaction lookup index only covers the recent window set by --history.transactions",
-          "Receipts are never stored and are always recomputed, which fails for old blocks",
-          "The node is not an archive node, so all receipts before the pruning point are deleted",
-          "The transaction was replaced by a reorg and no longer exists on the canonical chain",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Geth answers 'the method trace_block does not exist/is not available'. What fixes it?",
-        options: [
-          "Nothing on Geth; it does not implement the trace_ namespace, so use debug_ tracers or another client",
-          "Adding trace to --http.api and restarting the node",
-          "Running with --gcmode archive so the traces can be recomputed",
-          "Switching the transport to WebSocket, where the trace_ namespace is served",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which Geth setting decides whether eth_call can be answered at an arbitrary historical block?",
-        options: [
-          "--gcmode archive, which retains historical state instead of only a recent window",
-          "--history.transactions 0, which keeps the full transaction index",
-          "--syncmode full, which re-executes the chain from genesis",
-          "--rpc.gascap 0, which removes the gas ceiling on simulated calls",
-        ],
-        answer: 0,
-      },
     ],
     related: ["execution-client", "client-storage", "debug-api", "snap-sync", "namespaces", "archive-node", "pruned-node", "ipc-transport", "history-expiry", "security"],
     sources: [
@@ -204,38 +140,6 @@ export const topics = [
       "Starting full pruning on a disk that is nearly full; it needs headroom for a copy of the state and will abort otherwise.",
       "Mixing a JSON config file with flags and forgetting that the flag wins, so an edit to the file appears to have no effect.",
     ],
-    quiz: [
-      {
-        question: "trace_replayBlockTransactions returns a method-not-found error on a synced Nethermind archive node. What is the most likely cause?",
-        options: [
-          "Trace is missing from the enabled JSON-RPC modules",
-          "Nethermind implements only Geth-style debug_ tracing",
-          "Replay tracing requires the node to be started with the Engine API disabled",
-          "The node has pruned the receipts the tracer needs",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What does --JsonRpc.EnginePort 8551 configure?",
-        options: [
-          "The authenticated Engine API listener used by the consensus client",
-          "A second public JSON-RPC port for heavy read traffic",
-          "The port Nethermind uses to reach its execution peers",
-          "The metrics endpoint scraped by Prometheus",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which pair of tracing APIs does Nethermind serve?",
-        options: [
-          "Geth-style debug_ tracers and Parity-style trace_ methods",
-          "Only Parity-style trace_ methods",
-          "Only Geth-style debug_ tracers",
-          "Otterscan ots_ methods and Geth-style debug_ tracers",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["execution-client", "trace-api", "debug-api", "eth-simulate", "client-storage", "pruned-node", "engine-api", "namespaces", "snap-sync", "archive-node"],
     sources: [
       { title: "Nethermind documentation", url: "https://docs.nethermind.io/" },
@@ -283,38 +187,6 @@ export const topics = [
       "Expecting a partially synced Erigon to answer queries; staged sync finishes one stage at a time, so RPC is incomplete until the pipeline reaches the head.",
       "Assuming an Erigon archive node can produce `eth_getProof` for any historical block; flat storage keeps values, not the trie nodes a proof needs.",
       "Running `rpcdaemon` against a data directory that the node has open in a mode that conflicts, instead of connecting over the private gRPC address.",
-    ],
-    quiz: [
-      {
-        question: "Which namespace lets you page through every transaction that touched an address on Erigon?",
-        options: [
-          "ots_, the Otterscan API",
-          "trace_, using trace_filter with an address filter",
-          "debug_, using debug_traceBlockByNumber",
-          "erigon_, using erigon_getLogsByHash",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why can an Erigon deployment restart its RPC layer without interrupting sync?",
-        options: [
-          "RPC is served by a separate rpcdaemon component that talks to the node over a private gRPC address or reads the datadir",
-          "Erigon buffers incoming requests on disk until the RPC process returns",
-          "The Engine API takes over serving eth_ methods while the RPC layer is down",
-          "Sync is paused automatically whenever the RPC listener closes",
-        ],
-        answer: 0,
-      },
-      {
-        question: "An Erigon archive node answers eth_call at block 5,000,000 but fails to produce eth_getProof there. What explains it?",
-        options: [
-          "Flat storage keeps historical values but not the trie nodes a Merkle proof is made of",
-          "eth_getProof is only defined for the latest block in the specification",
-          "The proof namespace was not listed in --http.api",
-          "Archive mode stores proofs only for blocks after the Merge",
-        ],
-        answer: 0,
-      },
     ],
     related: ["execution-client", "client-storage", "archive-node", "trace-api", "eth-get-logs", "eth-get-proof", "block-explorer", "consensus-client", "namespaces", "geth"],
     sources: [
@@ -364,38 +236,6 @@ export const topics = [
       "Building an ExEx and treating it as a substitute for an external [[indexer|indexer]]; it dies with the node and must replay on restart.",
       "Assuming `trace_` and `debug_` are reachable by default; both namespaces still have to be named in `--http.api`.",
     ],
-    quiz: [
-      {
-        question: "What kind of node does a plain `reth node` with no retention flags give you?",
-        options: [
-          "An archive node, because Reth keeps all historical state by default",
-          "A pruned node that keeps roughly 128 blocks of state",
-          "A node that keeps state but discards all receipts",
-          "A light node that must fetch state from peers on demand",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What does an Execution Extension (ExEx) give an indexer that polling RPC does not?",
-        options: [
-          "A stream of committed chain notifications, including reverts, delivered inside the node process",
-          "A cryptographic proof for every state value it reads",
-          "Access to historical state on a node started with --full",
-          "A guarantee that no reorg can affect the data it has already consumed",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Where does Reth put block bodies and receipts?",
-        options: [
-          "In append-only static files, separate from the MDBX database that holds mutable state",
-          "In the same MDBX table as the state trie nodes",
-          "In a PostgreSQL instance configured at startup",
-          "Only in memory, recomputing them from peers when asked",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["execution-client", "client-storage", "archive-node", "trace-api", "indexer", "erigon", "engine-api", "pruned-node", "namespaces", "debug-api"],
     sources: [
       { title: "Reth book", url: "https://reth.rs/" },
@@ -438,42 +278,10 @@ export const topics = [
       note: "API names are upper case here; `--rpc-http-api=eth` is rejected at startup rather than silently ignored.",
     },
     pitfalls: [
-      "Copying a Geth-style lowercase API list into `--rpc-http-api`; Besu expects upper-case names and fails to start.",
+      "Copying a Geth-style API list into `--rpc-http-api` without checking it against Besu's own module names, which its documentation writes in upper case: `ETH,NET,WEB3`.",
       "Debugging a 403 as an authentication problem when it is `--host-allowlist` rejecting the `Host` header sent by a proxy.",
       "Expecting historical [[eth-call|eth_call]] to work on a default Bonsai node; only a bounded window of historical state is kept.",
       "Forgetting `--engine-host-allowlist` after moving the [[consensus-client|consensus client]] to another container, which leaves the Engine API unreachable while HTTP RPC still works.",
-    ],
-    quiz: [
-      {
-        question: "A Besu node returns HTTP 403 with 'Host not authorized' for a valid eth_blockNumber call sent through a reverse proxy. What is wrong?",
-        options: [
-          "The proxy's hostname is not in --host-allowlist, so the request is rejected before JSON-RPC parsing",
-          "The ETH API is missing from --rpc-http-api",
-          "The JWT secret for the Engine API does not match",
-          "The node is still syncing and refuses read methods",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What is Bonsai in Besu?",
-        options: [
-          "The default flat state storage format, with trie logs that let the node roll back recent blocks",
-          "The name of Besu's peer discovery protocol",
-          "A tracing API that replaces the trace_ namespace",
-          "The permissioning plugin used on private networks",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Besu exposes a query interface that no other mainnet execution client offers. Which is it?",
-        options: [
-          "A GraphQL endpoint, enabled with --graphql-http-enabled",
-          "The Otterscan ots_ namespace",
-          "A gRPC streaming API for new blocks",
-          "A SQL endpoint over the receipts database",
-        ],
-        answer: 0,
-      },
     ],
     related: ["execution-client", "client-storage", "trace-api", "namespaces", "archive-node", "snap-sync", "reverse-proxy", "engine-api", "json-rpc", "security"],
     sources: [
@@ -524,38 +332,6 @@ export const topics = [
       "Treating `is_syncing: false` as healthy without checking `is_optimistic` and `el_offline` in the same response.",
       "Letting the JWT secret files of the two clients drift apart; the Engine API then rejects every call and the node stops following the chain while both processes look alive.",
     ],
-    quiz: [
-      {
-        question: "Where do the safe and finalized block tags served by an execution client come from?",
-        options: [
-          "The consensus client sends both hashes on every engine_forkchoiceUpdated call",
-          "The execution client derives them from the depth of the canonical chain",
-          "They are computed from the difficulty of competing branches",
-          "The RPC caller supplies them in the block parameter of each request",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A beacon node reports is_syncing false and is_optimistic true. What does that mean?",
-        options: [
-          "It is following the chain head, but the execution client has not validated the payloads behind it",
-          "It has finished syncing and is ready to serve validators",
-          "It is syncing from a checkpoint and will reach the head shortly",
-          "Its execution client has finished syncing but the beacon chain has not",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which request will a consensus client never answer?",
-        options: [
-          "eth_getLogs for a range of blocks",
-          "GET /eth/v1/node/syncing",
-          "GET /eth/v2/beacon/blocks/head",
-          "GET /eth/v1/beacon/states/finalized/finality_checkpoints",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["consensus-layer", "beacon-node", "beacon-api", "engine-api", "execution-client", "validator-client", "lighthouse", "checkpoint-sync", "fork-choice", "client-diversity"],
     sources: [
       { title: "ethereum.org: Nodes and clients", url: "https://ethereum.org/developers/docs/nodes-and-clients/" },
@@ -597,38 +373,6 @@ export const topics = [
       "Running two validator clients with the same keys and relying on doppelganger protection to save you; it reduces the risk window, it does not remove it.",
       "Binding `--http-address 0.0.0.0` without a firewall, which exposes validator endpoints alongside read-only ones.",
     ],
-    quiz: [
-      {
-        question: "A Lighthouse beacon node is syncing and attesting, but curl to port 5052 is refused. What is missing?",
-        options: [
-          "The --http flag, which enables the Beacon API listener",
-          "The --metrics flag, which also opens the REST API",
-          "A checkpoint sync URL, without which the API stays closed",
-          "The validator client, which proxies the API on the beacon node's behalf",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What does --beacon-nodes accepting several URLs on a Lighthouse validator client buy you?",
-        options: [
-          "The validator can keep signing duties if one beacon node goes down",
-          "The validator's keys are split across the listed nodes for safety",
-          "Duties are executed on every listed node for redundancy, producing several attestations",
-          "The beacon nodes share one slashing protection database",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which Lighthouse flag tells the beacon node where to find its execution client's authenticated endpoint?",
-        options: [
-          "--execution-endpoint, paired with --execution-jwt",
-          "--eth1-endpoint, paired with --jwt-secret",
-          "--web3-url, paired with --jwt-secret",
-          "--execution.urls, paired with --jwtSecret",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["consensus-client", "beacon-node", "validator-client", "beacon-api", "checkpoint-sync", "engine-api", "mev-boost", "slashing", "client-diversity", "observability"],
     sources: [
       { title: "Lighthouse book", url: "https://lighthouse-book.sigmaprime.io/" },
@@ -645,14 +389,14 @@ export const topics = [
       {
         heading: "What it is",
         paragraphs: [
-          "Prysm ships two programs, `beacon-chain` and `validator`, and stores chain data in an embedded key-value database. Its internal API was gRPC from the start, and the standard REST [[beacon-api|Beacon API]] is layered on top of it by a gateway process, which is why Prysm exposes two API ports where other clients expose one. It also requires `--accept-terms-of-use` on every start, a flag no other [[consensus-client|consensus client]] has.",
+          "Prysm ships two programs, `beacon-chain` and `validator`, and stores chain data in an embedded key-value database. Its internal API was gRPC from the start, and the standard REST [[beacon-api|Beacon API]] came later, which is why Prysm has long exposed two API ports, REST and gRPC, where other clients expose one. It also requires `--accept-terms-of-use` on every start, a flag no other [[consensus-client|consensus client]] has.",
           "Because the two ports carry different APIs, the [[validator-client|validator client]] can talk to the [[beacon-node|beacon node]] in two ways: `--beacon-rpc-provider=127.0.0.1:4000` uses the gRPC endpoint, and `--beacon-rest-api-provider` makes it a standard Beacon API consumer instead, which is what you need when pointing Prysm's validator at another client's beacon node.",
         ],
       },
       {
         heading: "RPC-relevant behavior",
         paragraphs: [
-          "The REST API listens on 3500 by default, configured with `--grpc-gateway-host` and `--grpc-gateway-port`; monitoring and [[health-check|health checks]] written against 5052 will silently fail here. Connection to the [[execution-client|execution client]] uses `--execution-endpoint http://127.0.0.1:8551` together with `--jwt-secret`, and on the network side Prysm defaults to TCP 13000 and UDP 12000 for libp2p rather than 9000, which matters when you write firewall rules from a generic guide; see [[libp2p-gossip|consensus networking]].",
+          "The REST API listens on 3500 by default, and the flags that set its host and port have been renamed across releases, so take them from the documentation for the version you run; monitoring and [[health-check|health checks]] written against 5052 will silently fail here. Connection to the [[execution-client|execution client]] uses `--execution-endpoint http://127.0.0.1:8551` together with `--jwt-secret`, and on the network side Prysm defaults to TCP 13000 and UDP 12000 for libp2p rather than 9000, which matters when you write firewall rules from a generic guide; see [[libp2p-gossip|consensus networking]].",
           "[[checkpoint-sync|Checkpoint sync]] needs two flags on Prysm: `--checkpoint-sync-url` for the recent finalized state and `--genesis-beacon-api-url` for the [[genesis|genesis]] state, usually pointing at the same provider. Giving only the first leaves the node unable to complete startup.",
         ],
       },
@@ -668,38 +412,6 @@ export const topics = [
       "Passing `--checkpoint-sync-url` alone and wondering why startup stalls; Prysm also wants `--genesis-beacon-api-url`.",
       "Opening firewall rules for port 9000 only; Prysm's libp2p defaults are TCP 13000 and UDP 12000.",
       "Pointing a non-Prysm validator client at port 4000; gRPC is not the standard Beacon API and other clients cannot speak it.",
-    ],
-    quiz: [
-      {
-        question: "Which Prysm port answers a standard Beacon API request such as GET /eth/v1/node/syncing?",
-        options: [
-          "3500, the REST gateway port",
-          "4000, the gRPC API port",
-          "5052, the same as other consensus clients",
-          "8551, shared with the Engine API",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Prysm refuses to finish checkpoint sync when given only --checkpoint-sync-url. What else does it need?",
-        options: [
-          "--genesis-beacon-api-url, so it can fetch the genesis state",
-          "--accept-terms-of-use on the validator process as well",
-          "--beacon-rest-api-provider pointing at itself",
-          "A second --checkpoint-sync-url for redundancy",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why does Prysm expose two API ports where Lighthouse exposes one?",
-        options: [
-          "Its native API is gRPC, and the standard REST Beacon API is served by a gateway in front of it",
-          "One port serves validators and the other serves the execution client",
-          "One port is for JSON and the other for SSZ responses",
-          "The second port is a read replica used for load balancing",
-        ],
-        answer: 0,
-      },
     ],
     related: ["consensus-client", "beacon-api", "beacon-node", "validator-client", "checkpoint-sync", "engine-api", "libp2p-gossip", "health-check", "lighthouse", "client-diversity"],
     sources: [
@@ -741,38 +453,6 @@ export const topics = [
       "Querying an old slot's state on a node running with `PRUNE` storage; historical states are simply not there.",
       "Running the combined beacon-plus-validator process on one machine and then starting a second copy with the same keys during a migration.",
     ],
-    quiz: [
-      {
-        question: "Which port does Teku serve the Beacon API on by default?",
-        options: [
-          "5051",
-          "5052",
-          "3500",
-          "9596",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What does --data-storage-mode=ARCHIVE change on a Teku beacon node?",
-        options: [
-          "It retains historical beacon states so the API can answer queries about old slots",
-          "It keeps every execution block body the node has ever seen",
-          "It disables pruning of blob sidecars beyond the usual retention period",
-          "It stores an extra copy of the database for crash recovery",
-        ],
-        answer: 0,
-      },
-      {
-        question: "How does Teku keep validator signing keys off the validator machine?",
-        options: [
-          "By delegating signing to an external signer such as Web3Signer over --validators-external-signer-url",
-          "By encrypting them with the JWT secret shared with the execution client",
-          "By storing them in the beacon node's database instead",
-          "By requiring the keys only at genesis and discarding them afterwards",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["consensus-client", "beacon-node", "validator-client", "beacon-api", "checkpoint-sync", "engine-api", "besu", "reverse-proxy", "client-diversity", "slashing"],
     sources: [
       { title: "Teku documentation", url: "https://docs.teku.consensys.io/" },
@@ -784,13 +464,13 @@ export const topics = [
     title: "Nimbus",
     category: "clients",
     aliases: ["nimbus_beacon_node", "trustedNodeSync", "Status", "Nim", "--web3-url", "verified proxy"],
-    summary: "Nimbus is the Nim [[consensus-client|consensus client]] from Status, built for small machines, reaching its [[execution-client|execution client]] with `--web3-url` and serving the [[beacon-api|Beacon API]] only when `--rest` is passed.",
+    summary: "Nimbus is the Nim [[consensus-client|consensus client]] from Status, built for small machines, reaching its [[execution-client|execution client]] with `--el` and serving the [[beacon-api|Beacon API]] only when `--rest` is passed.",
     sections: [
       {
         heading: "What it is",
         paragraphs: [
           "Nimbus is written in Nim and optimized for low memory and CPU use, which is why it is the usual choice on single-board computers and small cloud instances. The [[beacon-node|beacon node]] is `nimbus_beacon_node` and the [[validator-client|validator client]] is a separate `nimbus_validator_client`, though the beacon node can also hold keys directly. The same project maintains a light client and the Nimbus verified proxy, which answers a subset of `eth_` methods and checks the results against headers followed by a [[light-client|light client]]; see [[verified-rpc|verified RPC]].",
-          "Its flags use `=` and differ from most other clients: the execution endpoint is `--web3-url=http://127.0.0.1:8551` with `--jwt-secret=`, and the data directory is `--data-dir=`. A Nimbus execution client for the [[execution-layer|execution layer]] is a separate, longer-running project and is not what `nimbus_beacon_node` runs.",
+          "Its flags use `=` and differ from most other clients: the execution endpoint is `--el=http://127.0.0.1:8551` (older releases called it `--web3-url`) with `--jwt-secret=`, and the data directory is `--data-dir=`. A Nimbus execution client for the [[execution-layer|execution layer]] is a separate, longer-running project and is not what `nimbus_beacon_node` runs.",
         ],
       },
       {
@@ -804,46 +484,14 @@ export const topics = [
     example: {
       title: "Seeding Nimbus from a checkpoint, then running it",
       language: "bash",
-      code: "# one-time trusted node sync\nnimbus_beacon_node trustedNodeSync \\\n  --network=mainnet \\\n  --data-dir=/data/nimbus \\\n  --trusted-node-url=https://checkpoint.example\n\n# normal start\nnimbus_beacon_node \\\n  --network=mainnet \\\n  --data-dir=/data/nimbus \\\n  --web3-url=http://127.0.0.1:8551 \\\n  --jwt-secret=/secrets/jwt.hex \\\n  --rest --rest-address=127.0.0.1 --rest-port=5052",
+      code: "# one-time trusted node sync\nnimbus_beacon_node trustedNodeSync \\\n  --network=mainnet \\\n  --data-dir=/data/nimbus \\\n  --trusted-node-url=https://checkpoint.example\n\n# normal start\nnimbus_beacon_node \\\n  --network=mainnet \\\n  --data-dir=/data/nimbus \\\n  --el=http://127.0.0.1:8551 \\\n  --jwt-secret=/secrets/jwt.hex \\\n  --rest --rest-address=127.0.0.1 --rest-port=5052",
       note: "The trusted node URL is only used during that one command; afterwards the node follows the chain on its own.",
     },
     pitfalls: [
       "Expecting `/eth/v1/node/syncing` to answer on a default Nimbus node; the REST API is closed until `--rest` is passed.",
       "Looking for a `--checkpoint-sync-url` flag; Nimbus does checkpoint sync through the `trustedNodeSync` subcommand instead.",
-      "Passing the execution client's 8545 port to `--web3-url`; the beacon node needs the authenticated [[engine-api|Engine API]] on 8551.",
+      "Passing the execution client's 8545 port to `--el`; the beacon node needs the authenticated [[engine-api|Engine API]] on 8551.",
       "Confusing the Nimbus beacon node with the separate Nimbus execution client project when reading documentation.",
-    ],
-    quiz: [
-      {
-        question: "curl to http://127.0.0.1:5052/eth/v1/node/syncing is refused on a healthy, synced Nimbus beacon node. Why?",
-        options: [
-          "Nimbus does not serve the REST API unless --rest is passed",
-          "Nimbus serves the Beacon API on 5051 instead",
-          "The node must finish trustedNodeSync before the API opens",
-          "REST is only available to a validator client on the same host",
-        ],
-        answer: 0,
-      },
-      {
-        question: "How does a Nimbus operator start from a recent finalized state instead of genesis?",
-        options: [
-          "Run the trustedNodeSync subcommand once with --trusted-node-url before starting the node",
-          "Pass --checkpoint-sync-url on every start",
-          "Copy the execution client's database and let the beacon node derive state from it",
-          "Start with --rest and let the validator client supply the checkpoint",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which flag pair connects Nimbus to its execution client?",
-        options: [
-          "--web3-url and --jwt-secret",
-          "--execution-endpoint and --execution-jwt",
-          "--ee-endpoint and --ee-jwt-secret-file",
-          "--execution.urls and --jwt-secret",
-        ],
-        answer: 0,
-      },
     ],
     related: ["consensus-client", "beacon-node", "beacon-api", "checkpoint-sync", "light-client", "verified-rpc", "validator-client", "engine-api", "client-diversity", "node-hardware"],
     sources: [
@@ -885,38 +533,6 @@ export const topics = [
       "Ignoring Node.js heap limits on a busy node, which surface as slow API responses long before the process fails.",
       "Assuming the light client library gives the same guarantees as a full beacon node; it verifies headers, it does not validate execution.",
     ],
-    quiz: [
-      {
-        question: "Which port does Lodestar serve the Beacon API on by default?",
-        options: [
-          "9596",
-          "5052",
-          "5051",
-          "3500",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What does the Lodestar project provide beyond a beacon node and validator client?",
-        options: [
-          "A TypeScript light client library that browsers and Node applications can use to verify headers",
-          "A JSON-RPC proxy that serves eth_ methods from beacon state",
-          "An execution client written in the same language",
-          "A hosted checkpoint sync service bundled with the binary",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which flag points a Lodestar beacon node at its execution client's Engine API?",
-        options: [
-          "--execution.urls",
-          "--execution-endpoint",
-          "--web3-url",
-          "--ee-endpoint",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["consensus-client", "beacon-node", "beacon-api", "light-client", "checkpoint-sync", "validator-client", "verified-rpc", "engine-api", "client-diversity", "client-libraries"],
     sources: [
       { title: "Lodestar documentation", url: "https://chainsafe.github.io/lodestar/" },
@@ -950,38 +566,6 @@ export const topics = [
       "Assuming Grandine's flags match Lighthouse's because both are written in Rust; the option names are its own.",
       "Treating a combined beacon-and-validator process as equivalent to a separated setup; restarting it stops attesting as well as following the chain.",
       "Counting language diversity as full independence when two clients share the same BLS library.",
-    ],
-    quiz: [
-      {
-        question: "What makes it practical to replace one consensus client with another without changing the rest of a staking setup?",
-        options: [
-          "All of them implement the same standardized Beacon API and Engine API",
-          "They share a common database format on disk",
-          "The validator keys are stored on the execution client",
-          "Each client exposes the others' flags as aliases",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why is running two different Rust consensus clients not the same as full implementation diversity?",
-        options: [
-          "Shared language and shared cryptography libraries can carry the same bug into both",
-          "Rust clients are required to use identical fork-choice code",
-          "Two Rust clients cannot be connected to the same execution client",
-          "Rust clients validate blocks optimistically and skip execution checks",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Grandine runs beacon node and validator duties in one process. What does that cost you?",
-        options: [
-          "A restart of the process stops signing duties as well as chain following",
-          "The node can no longer use checkpoint sync",
-          "The Beacon API cannot be exposed to other tools",
-          "Validator keys must be stored on the execution client instead",
-        ],
-        answer: 0,
-      },
     ],
     related: ["consensus-client", "client-diversity", "beacon-node", "validator-client", "beacon-api", "checkpoint-sync", "lighthouse", "consensus-layer"],
     sources: [
@@ -1023,38 +607,6 @@ export const topics = [
       "Choosing a client for a validator setup by popularity, which is precisely the pressure that creates a supermajority.",
       "Testing an application against one client only, then discovering during a failover that error messages and namespace coverage differ.",
       "Running a diverse set of execution clients while every one of your [[beacon-node|beacon nodes]] is the same consensus client; the risk applies to both layers independently.",
-    ],
-    quiz: [
-      {
-        question: "A bug makes one client accept an invalid block. It runs on more than two thirds of validators. What is the worst outcome?",
-        options: [
-          "That client's validators can finalize the invalid chain, and recovery needs coordinated human intervention",
-          "The network keeps finalizing and only the buggy nodes fall behind",
-          "Finality stops until the bug is fixed, then the chain resumes automatically",
-          "The execution clients override the consensus clients and reject the block",
-        ],
-        answer: 0,
-      },
-      {
-        question: "The same bug exists in a client running on less than a third of validators. What happens to the network?",
-        options: [
-          "The network keeps finalizing, and the affected validators miss duties and lose stake",
-          "The network halts because no supermajority can be reached",
-          "The affected client's chain becomes canonical for one epoch and is then reverted",
-          "Nothing happens at all until the share grows past one half",
-        ],
-        answer: 0,
-      },
-      {
-        question: "How do you find out which consensus client is behind an endpoint?",
-        options: [
-          "GET /eth/v1/node/version on the Beacon API",
-          "web3_clientVersion on port 8545",
-          "engine_exchangeCapabilities on port 8551",
-          "net_version on the execution client",
-        ],
-        answer: 0,
-      },
     ],
     related: ["execution-client", "consensus-client", "net-web3-api", "endpoint-capabilities", "failover", "beacon-api", "geth", "lighthouse", "rpc-provider", "namespaces"],
     sources: [
@@ -1104,38 +656,6 @@ export const topics = [
       "Exposing the keymanager API on a public interface; it can import and delete keys.",
       "Assuming a validator client needs its own execution endpoint; the fee recipient reaches the execution layer through the beacon node.",
     ],
-    quiz: [
-      {
-        question: "Which process does a validator client connect to in order to learn its duties?",
-        options: [
-          "A beacon node, over the standard Beacon API",
-          "An execution client, over the Engine API on port 8551",
-          "A relay, over the builder API",
-          "Other validator clients, over libp2p gossip",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why must a slashing protection database never be restored from an older backup?",
-        options: [
-          "It would forget recent signatures and could approve a conflicting one, which is slashable",
-          "It stores the validator keys, which would be lost",
-          "The beacon node refuses to accept duties from a restored database",
-          "Restoring it resets the validator's effective balance",
-        ],
-        answer: 0,
-      },
-      {
-        question: "How does the fee recipient address configured on a validator client reach the execution client?",
-        options: [
-          "The beacon node passes it in payloadAttributes on engine_forkchoiceUpdated",
-          "The validator client sends eth_sendRawTransaction with the address",
-          "It is embedded in the validator's BLS public key at deposit time",
-          "The execution client reads it from the validator client's keystore file",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["beacon-node", "consensus-client", "beacon-api", "validator", "slashing", "mev-boost", "block-proposal", "attestation", "authentication", "lighthouse"],
     sources: [
       { title: "Beacon APIs specification", url: "https://ethereum.github.io/beacon-APIs/" },
@@ -1184,38 +704,6 @@ export const topics = [
       "Requesting beacon state at an arbitrary old slot from a normally configured node; states are reconstructed, not all stored.",
       "Expecting blob data from the execution client after roughly 18 days; the [[consensus-layer|consensus layer]] is where sidecars live, and it drops them after 4096 epochs.",
     ],
-    quiz: [
-      {
-        question: "Why can two beacon nodes not share one execution client?",
-        options: [
-          "Each sends its own head through engine_forkchoiceUpdated, so they would overwrite each other",
-          "The JWT secret can only authenticate one caller at a time",
-          "The execution client would run out of payload ids",
-          "They can share it, as long as both are the same client implementation",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A beacon node reports el_offline true while is_syncing is false. What does the paired execution client's finalized block tag do?",
-        options: [
-          "It stops advancing, because no new forkchoice update is arriving",
-          "It keeps advancing from the execution client's own peers",
-          "It falls back to the latest tag",
-          "It returns an error until the connection is restored",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Where does an application fetch blob sidecars for a recent block?",
-        options: [
-          "From the beacon node's Beacon API, which retains them for about 18 days",
-          "From the execution client with eth_getBlockByNumber",
-          "From the Engine API on port 8551",
-          "From the execution client's receipts, which embed the blob data",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["consensus-client", "beacon-api", "engine-api", "validator-client", "checkpoint-sync", "health-check", "fork-choice", "blob", "execution-client", "beacon-endpoints"],
     sources: [
       { title: "Beacon APIs specification", url: "https://ethereum.github.io/beacon-APIs/" },
@@ -1241,7 +729,7 @@ export const topics = [
         heading: "How the state trie is keyed",
         paragraphs: [
           "The original layout keys every node of the [[merkle-patricia-trie|Merkle-Patricia trie]] by the hash of its contents. Because a changed node gets a new hash, every version of every node accumulates, which makes an [[archive-node|archive node]] trivial — never delete anything — and makes an ordinary node expensive, since the database grows and random writes multiply.",
-          "The path-based layouts key a trie node by its position in the trie instead: [[geth|Geth]]'s path-based scheme, the default since v1.13, [[nethermind|Nethermind]]'s half-path layout, and [[besu|Besu]]'s Bonsai format. Each node then has exactly one current record, the database stops growing with history, and older versions survive only inside a bounded window of diff layers or trie logs — around 128 blocks on Geth. Past that window a [[pruned-node|pruned node]] answers `missing trie node`.",
+          "The path-based layouts key a trie node by its position in the trie instead: [[geth|Geth]]'s path-based scheme, the default for new databases since v1.14, [[nethermind|Nethermind]]'s half-path layout, and [[besu|Besu]]'s Bonsai format. Each node then has exactly one current record, the database stops growing with history, and older versions survive only inside a bounded window of diff layers or trie logs — around 128 blocks on Geth. Past that window a [[pruned-node|pruned node]] answers `missing trie node`.",
           "The flat layouts, used by [[erigon|Erigon]] and [[reth|Reth]] and in spirit by Bonsai, go further: the authoritative record is the value itself, keyed by address and slot, and trie nodes are computed only when a [[state-root|state root]] must be produced. History becomes a set of change sets, so keeping every past value costs far less than keeping a trie per block, which is why archive nodes on these clients are affordable.",
         ],
       },
@@ -1265,38 +753,6 @@ export const topics = [
       "Reading `missing trie node` as database corruption; it usually means the state at that block was pruned.",
       "Sizing a disk from a client's state size and forgetting history, or converting a node between storage schemes without budgeting for a full resync.",
       "Putting the live state database on network storage because the append-only history files tolerate it; state is random-write and will not.",
-    ],
-    quiz: [
-      {
-        question: "An archive node holds every historical account balance but cannot return eth_getProof for an old block. Why?",
-        options: [
-          "Its flat layout stores values, and the trie nodes a proof consists of are not kept",
-          "eth_getProof is only valid for the latest block by specification",
-          "The proof namespace is disabled by default on archive nodes",
-          "Proofs require the hash of the block, which archive nodes do not index",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What is the practical difference between keying trie nodes by hash and keying them by path?",
-        options: [
-          "Hash keying accumulates every version of every node; path keying keeps one current record per position",
-          "Hash keying is faster to read but cannot support pruning",
-          "Path keying stores accounts and storage in separate databases",
-          "Hash keying is required to compute a valid state root",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which statement about history and state on an execution client is correct?",
-        options: [
-          "A node can keep full block history while retaining state only for recent blocks",
-          "Pruning state always removes the corresponding blocks and receipts",
-          "History must live in the same database as state to stay consistent",
-          "Keeping all history automatically makes a node an archive node",
-        ],
-        answer: 0,
-      },
     ],
     related: ["execution-client", "archive-node", "pruned-node", "geth", "erigon", "reth", "nethermind", "besu", "eth-get-proof", "history-expiry", "merkle-patricia-trie", "node-hardware"],
     sources: [

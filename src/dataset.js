@@ -30,7 +30,7 @@ export function normalizeDataset(dataset) {
       })).filter(section => section.paragraphs.length)
       : [];
     // Older records carried a flat `details` array. Treat it as a single section so the
-    // renderer and the quiz only ever deal with one shape.
+    // renderer only ever deals with one shape.
     if (!sections.length && details.length) sections = [{ heading: 'Overview', paragraphs: details }];
     const rawExample = item?.example;
     const example = rawExample && typeof rawExample === 'object' && typeof rawExample.code === 'string'
@@ -38,7 +38,18 @@ export function normalizeDataset(dataset) {
       : null;
     const pitfalls = Array.isArray(item?.pitfalls) ? item.pitfalls.map(String).filter(Boolean) : [];
     const aliases = Array.isArray(item?.aliases) ? item.aliases.map(String) : [];
-    const quiz = Array.isArray(item?.quiz) ? item.quiz : [];
+    // Checkpoint questions are hand-written and the checkpoint gates "learned", so a
+    // malformed one is dropped rather than shown: four distinct non-empty options and an
+    // answer index that points at one of them.
+    const quiz = Array.isArray(item?.quiz)
+      ? item.quiz
+        .filter(q => q && typeof q.question === 'string' && q.question.trim()
+          && Array.isArray(q.options) && q.options.length >= 3
+          && q.options.every(option => typeof option === 'string' && option.trim())
+          && new Set(q.options.map(option => option.trim())).size === q.options.length
+          && Number.isInteger(q.answer) && q.answer >= 0 && q.answer < q.options.length)
+        .map(q => ({ kind: String(q.kind ?? 'detail'), question: q.question.trim(), options: q.options.map(option => option.trim()), answer: q.answer }))
+      : [];
     const related = Array.isArray(item?.related) ? [...new Set(item.related.map(String))] : [];
     const sources = Array.isArray(item?.sources)
       ? item.sources.filter(source => source && typeof source === 'object')

@@ -42,38 +42,6 @@ export const topics = [
       "Exposing the Engine API port publicly because it looks like ordinary JSON-RPC; it decides which block your node builds on and must stay authenticated and local.",
       "Mixing answers from two endpoints into one snapshot; pass an explicit block number or hash when several reads have to agree with each other.",
     ],
-    quiz: [
-      {
-        question: "Which interface does a consensus client use to tell an execution client which block is the head of the chain?",
-        options: [
-          "The Engine API, on a separate authenticated port",
-          "The public eth_ JSON-RPC, via eth_blockNumber",
-          "The Beacon API, over REST",
-          "The devp2p eth protocol",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A dapp frontend and a staking dashboard each need an endpoint. Which pairing is correct?",
-        options: [
-          "Dapp: execution JSON-RPC. Staking dashboard: Beacon API",
-          "Dapp: Beacon API. Staking dashboard: Engine API",
-          "Dapp: Engine API. Staking dashboard: execution JSON-RPC",
-          "Both should use the Engine API, since it is the authenticated one",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Two RPC endpoints on the same network return different answers to the same call at the same moment. What is the most likely explanation?",
-        options: [
-          "They are at different chain heads and each answered from its own current view",
-          "One of them computed an invalid state root",
-          "JSON-RPC does not define deterministic results for reads",
-          "One of them is serving a different chain id, which is the only way this happens",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["rpc", "json-rpc", "block", "execution-client", "full-node", "proof-of-stake", "indexer", "state-proof", "rollup", "rpc-provider", "dapp-architecture"],
     sources: [
       { title: "ethereum.org: JSON-RPC API", url: "https://ethereum.org/developers/docs/apis/json-rpc/" },
@@ -114,38 +82,6 @@ export const topics = [
       "Treating an RPC method as a pure function; the same call against `latest` samples a moving chain rather than a constant.",
       "Retrying a write the way you retry a read without first checking whether the earlier attempt landed; look the transaction up by hash instead.",
       "Assuming the HTTP status code describes the call; a JSON-RPC error normally arrives inside a `200 OK` response body.",
-    ],
-    quiz: [
-      {
-        question: "Why does an RPC gateway have to parse the JSON body of every request before routing it?",
-        options: [
-          "Because all calls are POSTs to a single URL, so the method name is only visible in the body",
-          "Because JSON-RPC requires a signature over the body",
-          "Because HTTP forbids routing on headers",
-          "Because the block number appears only in the URL query string",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which failure is possible with a remote call but not with a local function call?",
-        options: [
-          "The operation succeeds but the caller never learns the result",
-          "The operation raises an exception",
-          "The operation returns a wrong value because of a bug",
-          "The operation runs out of memory",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What is the main reason Ethereum's node interface is verb-first rather than REST-style?",
-        options: [
-          "Most node operations are computations, such as simulating a call, not reads of a stored resource",
-          "JSON cannot be transferred over REST endpoints",
-          "REST cannot express hexadecimal values",
-          "RPC is the only style that works over WebSocket",
-        ],
-        answer: 0,
-      },
     ],
     related: ["json-rpc", "request-response", "http-transport", "rpc-errors", "namespaces", "client-libraries", "retries", "head-lag"],
     sources: [
@@ -200,38 +136,6 @@ export const topics = [
       "Writing code against one provider's block-range and batch limits, then discovering another provider enforces stricter ones.",
       "Expecting an error when an object is unknown; unknown blocks, transactions, and receipts come back as `null` inside a successful response.",
     ],
-    quiz: [
-      {
-        question: "Which of these is defined by the execution-apis specification rather than by client convention?",
-        options: [
-          "eth_getLogs",
-          "debug_traceTransaction",
-          "trace_replayBlockTransactions",
-          "txpool_content",
-        ],
-        answer: 0,
-      },
-      {
-        question: "An endpoint returns a successful HTTP 200 with the body {\"jsonrpc\":\"2.0\",\"id\":1,\"result\":null} for eth_getTransactionReceipt. What does that mean?",
-        options: [
-          "This node does not know of that transaction in a block yet",
-          "The transaction reverted during execution",
-          "The request was malformed and the node ignored it",
-          "The node is not synced and refuses to answer",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why do two correctly implemented endpoints still behave differently for the same eth_getLogs query?",
-        options: [
-          "Block range caps, response size caps, and rate limits are deployment choices the spec does not fix",
-          "The log encoding differs between clients",
-          "Topic filters are interpreted differently by each client",
-          "Logs are stored only by the client that produced the block",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["request-response", "namespaces", "execution-apis", "hex-encoding", "block-tag", "rpc-errors", "http-transport", "eth-call", "endpoint-capabilities", "execution-layer"],
     sources: [
       { title: "ethereum.org: JSON-RPC API", url: "https://ethereum.org/developers/docs/apis/json-rpc/" },
@@ -281,38 +185,6 @@ export const topics = [
       "Omitting a trailing parameter such as the `fullTransactions` boolean; parameters are positional, so there is no way to skip one.",
       "Treating `\"result\": null` as a protocol failure; it is the normal answer for an object this node does not have.",
     ],
-    quiz: [
-      {
-        question: "A response arrives with both an id and a result member, but no error member. What does the absence of error tell you?",
-        options: [
-          "The call succeeded; result and error are mutually exclusive in one response",
-          "Nothing, since some clients send both members",
-          "The node is still processing and will send the error later",
-          "The request was a notification",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why must a WebSocket JSON-RPC client keep a map from request id to pending call?",
-        options: [
-          "Responses on a shared socket can come back in a different order than the requests were sent",
-          "The WebSocket protocol strips method names from responses",
-          "Each subscription consumes one id from a fixed pool",
-          "The server rejects a second request until the first is answered",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which frame in the Ethereum JSON-RPC envelope carries no id at all?",
-        options: [
-          "A subscription update, sent as method eth_subscription",
-          "An error response",
-          "Any response to a batch request",
-          "The first request on a new connection",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["json-rpc", "rpc-errors", "batch-request", "http-transport", "websocket-transport", "hex-encoding", "eth-subscribe", "namespaces"],
     sources: [
       { title: "JSON-RPC 2.0 Specification", url: "https://www.jsonrpc.org/specification" },
@@ -359,38 +231,6 @@ export const topics = [
       "Reading `result` without checking `error` on each element, which turns a per-item failure into a silent `undefined`.",
       "Using `latest` on several items and treating the answers as one snapshot; a new block can land midway through the batch.",
       "Sending one enormous batch and blaming the node for a timeout; the body size limit or the slowest item usually killed it.",
-    ],
-    quiz: [
-      {
-        question: "What is the correct way to associate a batch response element with the request that produced it?",
-        options: [
-          "Match on the id member of each object",
-          "Use the array index, which the spec preserves",
-          "Use the method name in the response",
-          "Sort both arrays and pair them",
-        ],
-        answer: 0,
-      },
-      {
-        question: "You batch eth_getBalance and eth_getTransactionCount, both at latest, for the same account. Why can the pair be inconsistent?",
-        options: [
-          "The items execute independently and a new block can land between them",
-          "Balance is read from state but nonce is read from the mempool",
-          "Batches are executed in reverse order by most clients",
-          "The node caches balances for one block longer than nonces",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why does batching 500 receipt lookups not reduce the node's workload?",
-        options: [
-          "Each item is still executed individually; only network round trips are saved",
-          "The node re-executes the block once per item",
-          "Batches disable the node's transaction index",
-          "The node must serialize the whole response before starting work",
-        ],
-        answer: 0,
-      },
     ],
     related: ["request-response", "json-rpc", "rate-limits", "multicall", "http-transport", "rpc-errors", "indexer", "block-tag"],
     sources: [
@@ -445,38 +285,6 @@ export const topics = [
       "Assuming `-32000` always means the same thing; it is a catch-all range whose meaning comes from the message and the method.",
       "Ignoring HTTP-level failures because the client only parses JSON; a 429 or a 413 arrives with no JSON-RPC error object at all.",
     ],
-    quiz: [
-      {
-        question: "eth_call returns an error with code 3 and a data field. What happened?",
-        options: [
-          "The EVM executed the call and it reverted, and data holds the encoded revert reason",
-          "The parameters were malformed and the node never executed anything",
-          "The node is missing historical state for that block",
-          "The provider throttled the request",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which error is worth retrying against a different upstream endpoint?",
-        options: [
-          "missing trie node while reading an old block's state",
-          "invalid params on a badly formatted address",
-          "execution reverted from a token transfer simulation",
-          "method not found for trace_block",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why should application code branch on code rather than on message?",
-        options: [
-          "Message wording differs between clients and versions, while codes are stable",
-          "The message field is optional and usually absent",
-          "Messages are returned only over WebSocket",
-          "The code is signed by the node and the message is not",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["request-response", "revert", "eth-call", "retries", "rate-limits", "failover", "json-rpc", "archive-node"],
     sources: [
       { title: "JSON-RPC 2.0 Specification: Error object", url: "https://www.jsonrpc.org/specification" },
@@ -517,38 +325,6 @@ export const topics = [
       "Treating the rendered API documentation as exhaustive; `debug_` and `trace_` are absent from it because they are not part of the specification.",
       "Assuming a method present in the schema is enabled on your endpoint; namespaces and per-method allow-lists are an operator decision.",
       "Reading a single Engine API document for all forks; the method versions are specified per fork and an old page describes an old payload shape.",
-    ],
-    quiz: [
-      {
-        question: "Where is the trace_ namespace specified?",
-        options: [
-          "Nowhere central; each client that implements it documents its own version",
-          "In execution-apis, alongside eth_ and net_",
-          "In EIP-1474 as an optional namespace",
-          "In the consensus specs repository",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why is the Engine API specified in separate documents per fork while the eth_ methods are not?",
-        options: [
-          "The consensus-to-execution interface gains a new method version at nearly every upgrade",
-          "The Engine API is not machine-readable so it cannot be merged into one file",
-          "Each fork replaces the entire Engine API with a new protocol",
-          "The eth_ methods are frozen and can never change",
-        ],
-        answer: 0,
-      },
-      {
-        question: "An endpoint is fully conformant with execution-apis but rejects your eth_getLogs query over a 100,000-block range. Is that a spec violation?",
-        options: [
-          "No; range caps and other limits are deployment choices the specification does not cover",
-          "Yes; the schema defines a minimum supported range",
-          "Yes; conformance requires answering any valid filter",
-          "No, because eth_getLogs is not part of the specification",
-        ],
-        answer: 0,
-      },
     ],
     related: ["json-rpc", "engine-api", "namespaces", "eip", "client-diversity", "endpoint-capabilities", "hardfork", "rpc-errors"],
     sources: [
@@ -598,38 +374,6 @@ export const topics = [
       "Adding `engine` to the HTTP namespace list to debug it; the Engine API belongs on its authenticated listener only.",
       "Reading a `-32601` as a missing feature in the client software when it usually means the operator did not enable that module.",
     ],
-    quiz: [
-      {
-        question: "Which namespaces are covered by the execution APIs specification?",
-        options: [
-          "eth_, net_, and web3_",
-          "eth_, debug_, and trace_",
-          "eth_, txpool_, and admin_",
-          "All namespaces a client implements",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A call to trace_block returns error -32601. What is the most likely cause?",
-        options: [
-          "The operator did not enable the trace module on this listener",
-          "The block is too old to trace",
-          "The request exceeded the endpoint's rate limit",
-          "The client does not implement tracing in any form",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why is txpool_ risky to expose publicly?",
-        options: [
-          "It reveals transactions that have not yet been included, which is exploitable order flow",
-          "It lets callers delete transactions from the pool",
-          "It bypasses the node's rate limiting",
-          "It returns private keys for locally signed transactions",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["json-rpc", "debug-api", "trace-api", "security", "engine-api", "execution-apis", "endpoint-capabilities", "net-web3-api", "admin-api"],
     sources: [
       { title: "ethereum.org: JSON-RPC API", url: "https://ethereum.org/developers/docs/apis/json-rpc/" },
@@ -671,38 +415,6 @@ export const topics = [
       "Opening a new connection per request; without keep-alive the TLS handshake can dominate the cost of a small read.",
       "Polling `eth_blockNumber` every 200 ms against a metered endpoint and exhausting the quota before any real work happens.",
       "Putting a filter-based workflow behind a load balancer; the follow-up `eth_getFilterChanges` reaches a node that has never heard of the filter.",
-    ],
-    quiz: [
-      {
-        question: "An endpoint returns HTTP 429 with an HTML body. Where is the JSON-RPC error object?",
-        options: [
-          "There is none; the request was rejected before the JSON-RPC layer saw it",
-          "In a response header",
-          "It will arrive in a later response on the same connection",
-          "It is the HTML body, which clients must parse",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why can HTTP not deliver eth_subscribe notifications?",
-        options: [
-          "Each request yields exactly one response and the server cannot initiate a message",
-          "JSON-RPC forbids notifications over HTTP",
-          "Subscription payloads exceed the maximum body size",
-          "HTTP cannot carry binary WebSocket frames",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which property of HTTP makes load balancing RPC easy, and which feature breaks it?",
-        options: [
-          "Statelessness makes it easy; server-side filters break it because their state lives on one node",
-          "Keep-alive makes it easy; gzip breaks it because compression is per connection",
-          "CORS makes it easy; TLS breaks it because certificates are per host",
-          "Batching makes it easy; eth_call breaks it because it needs archive state",
-        ],
-        answer: 0,
-      },
     ],
     related: ["websocket-transport", "ipc-transport", "json-rpc", "rpc-errors", "batch-request", "load-balancer", "rate-limits", "caching"],
     sources: [
@@ -752,38 +464,6 @@ export const topics = [
       "Putting a WebSocket endpoint behind a round-robin load balancer, so each reconnect silently switches chain views.",
       "Subscribing to `newPendingTransactions` on a metered endpoint and being disconnected for volume rather than for an error.",
     ],
-    quiz: [
-      {
-        question: "Your WebSocket drops for 40 seconds and reconnects. What happens to the logs subscription that was running?",
-        options: [
-          "It is gone, and events from the gap are never replayed, so you must backfill",
-          "The node buffers events and replays them on reconnect",
-          "The subscription id stays valid and streaming resumes automatically",
-          "The node resends the last 128 blocks of logs by default",
-        ],
-        answer: 0,
-      },
-      {
-        question: "How does a client tell a subscription notification apart from a response to one of its calls?",
-        options: [
-          "The notification has no id and its method field is eth_subscription",
-          "The notification arrives on a separate socket",
-          "The notification has a negative id",
-          "Notifications are sent as binary frames, responses as text",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why is a reverse proxy in front of a WebSocket endpoint a common source of mysterious disconnects?",
-        options: [
-          "Default idle timeouts close connections that are quiet between blocks",
-          "Proxies cannot forward JSON bodies larger than 1 MB",
-          "TLS termination invalidates subscription ids",
-          "Proxies reorder frames, which breaks id matching",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["eth-subscribe", "http-transport", "request-response", "reorg", "load-balancer", "reverse-proxy", "eth-filters", "ipc-transport"],
     sources: [
       { title: "ethereum.org: eth_subscribe", url: "https://ethereum.org/developers/docs/apis/json-rpc/" },
@@ -826,38 +506,6 @@ export const topics = [
       "Expecting a containerized tool to find `geth.ipc` when the node's data directory was never bind-mounted into it.",
       "Assuming IPC is read-only because it is local; `admin_` and `personal_` are usually enabled on it by default.",
     ],
-    quiz: [
-      {
-        question: "What authenticates a caller on the IPC transport?",
-        options: [
-          "Filesystem permissions on the socket file",
-          "A JWT shared secret, as on the Engine API",
-          "An API key passed in the first JSON-RPC call",
-          "The caller's process id, checked against an allow-list",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why do clients enable every namespace on IPC but not on the HTTP listener?",
-        options: [
-          "The socket is unreachable from the network, so access already implies operator privilege",
-          "IPC cannot express namespace filters",
-          "HTTP is faster and so needs stricter limits",
-          "The Engine API requires all namespaces on IPC",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which workload is a good fit for IPC?",
-        options: [
-          "A log-scanning indexer running on the same host as the node",
-          "A browser dapp reading token balances",
-          "A public endpoint behind a load balancer",
-          "A mobile wallet submitting transactions",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["http-transport", "websocket-transport", "security", "namespaces", "cli-tools", "admin-api", "json-rpc", "geth"],
     sources: [
       { title: "Geth: JSON-RPC server", url: "https://geth.ethereum.org/docs/interacting-with-geth/rpc" },
@@ -897,7 +545,7 @@ export const topics = [
     example: {
       title: "The same number in both encodings",
       language: "json",
-      code: "{\n  \"blockNumber\": \"0x12d4f1c\",          // QUANTITY: 19746076, no leading zeros\n  \"gasUsed\": \"0x5208\",                 // QUANTITY: 21000\n  \"status\": \"0x1\",                     // QUANTITY: success\n  \"value\": \"0xde0b6b3a7640000\",        // QUANTITY: 1e18 wei = 1 ether\n  \"from\": \"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045\",   // DATA: exactly 20 bytes\n  \"input\": \"0x\",                       // DATA: empty byte string\n  \"storageValue\": \"0x0000000000000000000000000000000000000000000000000000000000000001\"  // DATA: 32 bytes\n}",
+      code: "{\n  \"blockNumber\": \"0x12d4f1c\",          // QUANTITY: 19746588, no leading zeros\n  \"gasUsed\": \"0x5208\",                 // QUANTITY: 21000\n  \"status\": \"0x1\",                     // QUANTITY: success\n  \"value\": \"0xde0b6b3a7640000\",        // QUANTITY: 1e18 wei = 1 ether\n  \"from\": \"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045\",   // DATA: exactly 20 bytes\n  \"input\": \"0x\",                       // DATA: empty byte string\n  \"storageValue\": \"0x0000000000000000000000000000000000000000000000000000000000000001\"  // DATA: 32 bytes\n}",
       note: "`status` and `storageValue` both encode one, but `status` is a QUANTITY and `storageValue` is a fixed-width DATA word.",
     },
     pitfalls: [
@@ -905,38 +553,6 @@ export const topics = [
       "Sending a zero-padded block number such as `0x01`; QUANTITY forbids leading zeros and clients reject it with invalid params.",
       "Comparing addresses byte-for-byte as strings when one side is EIP-55 checksummed and the other is lowercase.",
       "Expecting `eth_getStorageAt` to return a trimmed value; it returns the full 32-byte word, so `0x0` and `0x00…00` are not interchangeable here.",
-    ],
-    quiz: [
-      {
-        question: "Which of these is a valid QUANTITY for the number 0?",
-        options: [
-          "0x0",
-          "0x00",
-          "0x",
-          "0",
-        ],
-        answer: 0,
-      },
-      {
-        question: "eth_getBalance returns 0x21e19e0c9bab2400000. What is the safe way to handle it in JavaScript?",
-        options: [
-          "Parse it with BigInt and only format to a decimal string for display",
-          "Use parseInt with radix 16 and store it as a number",
-          "Use Number() and round to 18 decimal places",
-          "Keep it as a string and compare it directly against other balance strings",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A storage read returns a 66-character string and a balance read returns a 5-character string, and both represent the value one. Why do they differ?",
-        options: [
-          "Storage values are DATA with a fixed 32-byte width, balances are QUANTITY with no padding",
-          "Storage is encoded big-endian and balances little-endian",
-          "The storage value includes a type prefix byte",
-          "The balance was truncated because it fits in a small integer",
-        ],
-        answer: 0,
-      },
     ],
     related: ["json-rpc", "block-tag", "wei", "eth-get-storage-at", "address", "request-response", "rlp", "eth-get-balance"],
     sources: [
@@ -963,7 +579,7 @@ export const topics = [
         heading: "The five tags",
         paragraphs: [
           "`latest` is the head of the chain as this node currently sees it: the block most recently chosen by [[fork-choice|fork choice]]. It can move backwards during a [[reorg|reorganization]] and differs between nodes that are milliseconds apart. `pending` is a hypothetical next block assembled from the node's [[mempool|transaction pool]]; it is a local guess rather than chain data, and some clients and providers quietly treat it as `latest`.",
-          "`safe` and `finalized` arrived with [[the-merge|the Merge]]. `finalized` is the most recent block that [[finality|Casper FFG finality]] has locked in; under normal conditions it trails the head by two epochs, roughly 13 minutes, and reverting it would require at least a third of all staked ETH to be slashed. `safe` is the block at the latest justified checkpoint, which the [[consensus-client|consensus client]] considers extremely unlikely to be reorged; it usually trails the head by less than one epoch. `earliest` is the [[genesis|genesis block]] and is mostly useful as the start of a range.",
+          "`safe` and `finalized` arrived with [[the-merge|the Merge]]. `finalized` is the most recent block that [[finality|Casper FFG finality]] has locked in; under normal conditions it trails the head by two to three epochs, about 13 to 19 minutes, and reverting it would require at least a third of all staked ETH to be slashed. `safe` is the block at the latest justified checkpoint, which the [[consensus-client|consensus client]] considers extremely unlikely to be reorged; in the current spec it is simply the block at the latest justified checkpoint, so it usually trails the head by one to two epochs, about 6 to 13 minutes. `earliest` is the [[genesis|genesis block]] and is mostly useful as the start of a range.",
           "The [[consensus-layer|consensus layer]] decides what `safe` and `finalized` mean. It pushes those two hashes together with the head hash to the [[execution-client|execution client]] on every `engine_forkchoiceUpdated` call over the [[engine-api|Engine API]]. An execution client that has lost its consensus client keeps answering `latest` from its last known head, but its `finalized` view silently stops advancing.",
         ],
       },
@@ -985,38 +601,6 @@ export const topics = [
       "Reading two values with separate `latest` calls and treating them as one snapshot; pass the same explicit block number to both.",
       "Assuming `pending` reflects the network's pending transactions; it reflects one node's pool and may be disabled or aliased to `latest` by a provider.",
       "Assuming a stale `finalized` value is an error; a node whose consensus client is down keeps reporting its last finalized block without complaint.",
-    ],
-    quiz: [
-      {
-        question: "Which block tag can move backwards, and why?",
-        options: [
-          "latest, because fork choice can replace the head during a reorganization",
-          "finalized, because the consensus client recomputes it every epoch",
-          "earliest, because history expiry removes old blocks",
-          "safe, but only while a node is still syncing",
-        ],
-        answer: 0,
-      },
-      {
-        question: "An execution client keeps serving RPC after its consensus client stops. What happens to reads at finalized?",
-        options: [
-          "They keep answering from the last finalized hash the node was told, which no longer advances",
-          "They start returning an error that names the missing consensus client",
-          "They silently fall back to latest",
-          "They return null until the consensus client reconnects",
-        ],
-        answer: 0,
-      },
-      {
-        question: "You need a token balance and that token's total supply to be consistent with each other. What should both calls pass?",
-        options: [
-          "The same explicit block number or block hash",
-          "latest for both, sent inside one batch request",
-          "pending for both, so the newest transactions are included",
-          "finalized for the balance and latest for the supply",
-        ],
-        answer: 0,
-      },
     ],
     related: ["finality", "reorg", "eth-get-balance", "eth-call", "pruned-node", "archive-node", "head-lag", "hex-encoding"],
     sources: [
@@ -1066,38 +650,6 @@ export const topics = [
       "Failing over to an upstream without re-checking the chain id, which can route mainnet traffic to a testnet node.",
       "Ignoring the `chainChanged` event in a dapp and continuing to use addresses and cached data from the previous network.",
     ],
-    quiz: [
-      {
-        question: "What stops a transaction signed for Sepolia from being replayed on mainnet?",
-        options: [
-          "The chain id is part of the signed payload, so the signature does not recover to a valid sender on another chain",
-          "Nodes compare the transaction hash against a cross-chain blocklist",
-          "The nonce ranges of the two networks never overlap",
-          "Mainnet rejects any transaction whose gas price was set on a testnet",
-        ],
-        answer: 0,
-      },
-      {
-        question: "eth_chainId returns 0x1 and net_version returns 1. Which should a signer use?",
-        options: [
-          "eth_chainId, because EIP-155 signatures are defined over the chain id",
-          "net_version, because it is a decimal value and easier to compare",
-          "Either, since the two are guaranteed identical by the specification",
-          "Neither; the chain id belongs in the transaction's nonce field",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why should a failover routine re-check the chain id on the upstream it promotes?",
-        options: [
-          "A misconfigured upstream can serve a different network, and reads and writes would silently go to the wrong chain",
-          "The chain id changes after every network upgrade",
-          "Chain ids are reassigned when a node resyncs",
-          "The chain id encodes the node's rate limit tier",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["testnets", "eip", "net-web3-api", "eth-send-raw-transaction", "health-check", "failover", "wallet-rpc", "genesis"],
     sources: [
       { title: "EIP-155: Simple replay attack protection", url: "https://eips.ethereum.org/EIPS/eip-155" },
@@ -1140,38 +692,6 @@ export const topics = [
       "Asking the execution layer for validator, epoch, or attestation data; that lives on the consensus layer's API.",
       "Assuming `mixHash` is still a mining artefact; it now carries `prevRandao`, the consensus layer's randomness for that block.",
     ],
-    quiz: [
-      {
-        question: "Which of these does the execution layer decide on its own?",
-        options: [
-          "Whether a transaction has enough gas and a valid signature",
-          "Which of two competing blocks is the head of the chain",
-          "When a checkpoint becomes finalized",
-          "Which validator proposes the next block",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A fully synced execution client has 50 peers but its latest block is an hour old. What is the most likely cause?",
-        options: [
-          "Its consensus client is not driving it over the Engine API",
-          "Its transaction pool is full",
-          "Its JSON-RPC listener is rate limiting itself",
-          "It is missing historical state and refuses to import blocks",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What does the mixHash field of a post-Merge block header carry?",
-        options: [
-          "prevRandao, the consensus layer's randomness value for that block",
-          "The mining nonce that satisfied the difficulty target",
-          "The hash of the beacon block that contained this payload",
-          "A hash of the withdrawals list",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["consensus-layer", "engine-api", "execution-client", "evm", "state", "the-merge", "json-rpc", "mempool", "block-header"],
     sources: [
       { title: "ethereum.org: Nodes and clients", url: "https://ethereum.org/developers/docs/nodes-and-clients/" },
@@ -1196,7 +716,7 @@ export const topics = [
       {
         heading: "A different interface",
         paragraphs: [
-          "[[consensus-client|Consensus clients]] do not speak JSON-RPC to applications. They expose the [[beacon-api|Beacon API]], a REST interface with paths such as `/eth/v1/node/syncing` and `/eth/v1/beacon/headers`, typically on port 5052, and networking over libp2p gossip on port 9000 rather than [[devp2p|devp2p]]; see [[libp2p-gossip|consensus networking]]. A [[validator-client|validator client]] holding keys is a separate process that talks to a [[beacon-node|beacon node]] over that same API.",
+          "[[consensus-client|Consensus clients]] do not speak JSON-RPC to applications. They expose the [[beacon-api|Beacon API]], a REST interface with paths such as `/eth/v1/node/syncing` and `/eth/v1/beacon/headers`, on a client-specific port such as Lighthouse's 5052, and networking over libp2p gossip on port 9000 rather than [[devp2p|devp2p]]; see [[libp2p-gossip|consensus networking]]. A [[validator-client|validator client]] holding keys is a separate process that talks to a [[beacon-node|beacon node]] over that same API.",
           "The implementations are entirely separate codebases from the [[execution-client|execution clients]]: [[lighthouse|Lighthouse]] in Rust, [[prysm|Prysm]] in Go, [[teku|Teku]] in Java, [[nimbus|Nimbus]] in Nim, [[lodestar|Lodestar]] in TypeScript, and [[grandine|Grandine]] in Rust. Running one of each is what makes a node, and picking an unpopular pair is the concrete contribution an operator makes to [[client-diversity|client diversity]].",
         ],
       },
@@ -1213,38 +733,6 @@ export const topics = [
       "Assuming block numbers and slots line up; a missed slot produces no execution block, so the two counters drift apart permanently.",
       "Running a consensus client without a matching execution client and expecting either half to be useful on its own.",
       "Forgetting that the consensus layer, not the execution layer, is what makes `safe` and `finalized` advance for RPC callers.",
-    ],
-    quiz: [
-      {
-        question: "Which interface does a consensus client expose to applications and operators?",
-        options: [
-          "A REST Beacon API, typically on port 5052",
-          "The same eth_ JSON-RPC as the execution client",
-          "Only the Engine API on port 8551",
-          "A GraphQL endpoint on port 8545",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why do execution block numbers and consensus slot numbers drift apart?",
-        options: [
-          "A missed or empty slot advances the slot counter but produces no execution block",
-          "Slots are counted per epoch and reset every 32 slots",
-          "Execution blocks are numbered from the Merge rather than from genesis",
-          "Each execution block spans exactly two slots",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which pair of Engine API calls does a consensus client make when importing a new block?",
-        options: [
-          "engine_newPayload to validate it, then engine_forkchoiceUpdated to name the head",
-          "engine_getPayload to fetch it, then engine_newPayload to store it",
-          "engine_forkchoiceUpdated to reserve the slot, then engine_getPayload to build it",
-          "engine_exchangeCapabilities followed by engine_getPayloadBodiesByHash",
-        ],
-        answer: 0,
-      },
     ],
     related: ["execution-layer", "engine-api", "beacon-api", "proof-of-stake", "consensus-client", "finality", "beacon-block", "slot-epoch", "block-tag"],
     sources: [
@@ -1300,38 +788,6 @@ export const topics = [
       "Upgrading only one client before a fork; the pair then disagrees about which `engine_newPayload` version to use and the node stalls.",
       "Reading a `SYNCING` status as an error; it means the execution client is fetching ancestors and cannot judge the payload yet.",
     ],
-    quiz: [
-      {
-        question: "Which Engine API call tells an execution client to start building a block?",
-        options: [
-          "engine_forkchoiceUpdated with a payloadAttributes object",
-          "engine_getPayload with the target slot number",
-          "engine_newPayload with an empty transaction list",
-          "engine_exchangeCapabilities with the proposer index",
-        ],
-        answer: 0,
-      },
-      {
-        question: "engine_newPayload returns status SYNCING. What does the execution client mean?",
-        options: [
-          "It does not have the payload's ancestors yet, so it cannot judge it",
-          "The payload is invalid but the client will retry",
-          "The payload was accepted and will be executed later",
-          "The JWT token expired and the request was refused",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Both clients are running and healthy, but every Engine API call is rejected. Which cause fits best?",
-        options: [
-          "The two hosts' clocks differ by more than the JWT iat tolerance",
-          "The execution client has too few peers",
-          "The consensus client has not finished checkpoint sync",
-          "Port 8551 is bound to localhost instead of a public address",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["consensus-layer", "execution-layer", "engine-payload", "authentication", "execution-payload", "block-tag", "hardfork", "the-merge", "security"],
     sources: [
       { title: "Engine API specification", url: "https://github.com/ethereum/execution-apis/tree/main/src/engine" },
@@ -1344,7 +800,7 @@ export const topics = [
     title: "Beacon API",
     category: "foundations",
     aliases: ["beacon node api", "5052", "3500", "REST", "SSE", "eth/v1/beacon", "consensus api"],
-    summary: "The Beacon API is the consensus client's REST interface, typically on port 5052, serving beacon blocks and states, validator data, node status, chain configuration, and a server-sent event stream, in JSON or SSZ.",
+    summary: "The Beacon API is the consensus client's REST interface, on a port that differs by client (5052 on Lighthouse and Nimbus), serving beacon blocks and states, validator data, node status, chain configuration, and a server-sent event stream, in JSON or SSZ.",
     sections: [
       {
         heading: "REST, not JSON-RPC",
@@ -1370,7 +826,7 @@ export const topics = [
       {
         heading: "Running and exposing it",
         paragraphs: [
-          "The port is a client choice: 5052 for [[lighthouse|Lighthouse]], [[teku|Teku]], [[nimbus|Nimbus]], and [[lodestar|Lodestar]], while [[prysm|Prysm]] serves its REST interface on 3500 alongside its own gRPC interface. It is off by default in several clients and is enabled with an `--http` style flag. Exposing it publicly is a real decision, not a formality: the validator and debug routes are sensitive, event streams and state dumps are expensive, and there is no built-in [[authentication|authentication]], so put a [[reverse-proxy|reverse proxy]] in front if it must be reachable.",
+          "The port is a client choice: 5052 for [[lighthouse|Lighthouse]] and [[nimbus|Nimbus]], 5051 for [[teku|Teku]], 9596 for [[lodestar|Lodestar]], while [[prysm|Prysm]] serves its REST interface on 3500 alongside its own gRPC interface. It is off by default in several clients and is enabled with an `--http` style flag. Exposing it publicly is a real decision, not a formality: the validator and debug routes are sensitive, event streams and state dumps are expensive, and there is no built-in [[authentication|authentication]], so put a [[reverse-proxy|reverse proxy]] in front if it must be reachable.",
         ],
       },
     ],
@@ -1385,38 +841,6 @@ export const topics = [
       "Requesting a state by slot on a pruned [[beacon-node|beacon node]]; historical states are expensive and most nodes keep only recent ones.",
       "Exposing the API publicly without a proxy, which hands out validator endpoints and lets anyone request costly state dumps.",
       "Assuming blob sidecars are available for old blocks; the consensus layer drops them after roughly 18 days.",
-    ],
-    quiz: [
-      {
-        question: "How does a caller address a beacon state or block on this API?",
-        options: [
-          "By a state or block id such as head, finalized, a slot number, or a root",
-          "By passing a JSON-RPC block tag in the request body",
-          "Only by 32-byte root, since slots may be empty",
-          "By execution block number, which the consensus client maps internally",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which data can only be obtained from the Beacon API and never from the execution JSON-RPC?",
-        options: [
-          "A validator's activation status and the current justified checkpoint",
-          "A transaction receipt's gasUsed value",
-          "A contract's storage slot at the finalized block",
-          "The base fee of the latest block",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What is the consensus-side equivalent of eth_subscribe for reorg notifications?",
-        options: [
-          "The server-sent event stream at /eth/v1/events, with topics such as head and chain_reorg",
-          "A WebSocket on port 5052 using the same envelope as eth_subscribe",
-          "Polling /eth/v1/node/syncing on a timer",
-          "The Engine API's forkchoiceUpdated callback",
-        ],
-        answer: 0,
-      },
     ],
     related: ["consensus-layer", "beacon-endpoints", "beacon-node", "validator-client", "engine-api", "checkpoint-sync", "finality", "blob", "consensus-client"],
     sources: [
@@ -1460,38 +884,6 @@ export const topics = [
       "Assuming `withdrawals` exists in every post-Merge block; the field was introduced at Shapella, months later.",
       "Expecting the Merge to have changed fees or throughput; it changed who produces blocks, not how much they can hold.",
     ],
-    quiz: [
-      {
-        question: "Which field carries the consensus layer's randomness in a post-Merge execution block header?",
-        options: [
-          "mixHash, which now holds prevRandao",
-          "difficulty, which holds the RANDAO reveal",
-          "nonce, which holds the proposer index",
-          "extraData, which holds the beacon block root",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which capability did the Merge add to the execution JSON-RPC?",
-        options: [
-          "The safe and finalized block tags",
-          "The pending block tag",
-          "EIP-1559 base fee fields",
-          "The withdrawals field in block objects",
-        ],
-        answer: 0,
-      },
-      {
-        question: "An execution endpoint answers eth_getBalance correctly but its latest block is two hours old. Which post-Merge failure mode is this?",
-        options: [
-          "Its consensus client is down, so nothing is driving the head forward",
-          "It ran out of proof-of-work peers to mine with",
-          "Its transaction pool rejected every incoming transaction",
-          "Its difficulty target became unreachable",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["proof-of-stake", "execution-layer", "consensus-layer", "engine-api", "block-tag", "hardfork", "block-header", "reorg"],
     sources: [
       { title: "ethereum.org: The Merge", url: "https://ethereum.org/roadmap/merge/" },
@@ -1510,7 +902,7 @@ export const topics = [
         heading: "Types and statuses",
         paragraphs: [
           "Standards Track EIPs split into Core, which changes consensus rules and therefore needs a [[hardfork|network upgrade]]; Networking, which changes [[devp2p|peer protocols]]; Interface, which changes client APIs including JSON-RPC; and ERC, which standardises application-level behaviour such as token contracts. Meta and Informational EIPs describe processes and guidance instead. ERCs now live in their own repository, but the numbering is shared and the canonical `eips.ethereum.org` links still resolve.",
-          "A proposal moves through Draft, Review, and Last Call to Final, or stalls into Stagnant or Withdrawn; a few, such as the ERC-20 style registries, are Living. Status describes the document, not the network. Final means the text is frozen, and a Core EIP only takes effect when an upgrade that includes it activates, while an ERC in Draft can already be deployed on thousands of contracts.",
+          "A proposal moves through Draft, Review, and Last Call to Final, or stalls into Stagnant or Withdrawn; a few process documents, such as EIP-1 itself, are Living. Status describes the document, not the network. Final means the text is frozen, and a Core EIP only takes effect when an upgrade that includes it activates, while an ERC in Draft can already be deployed on thousands of contracts.",
         ],
       },
       {
@@ -1533,38 +925,6 @@ export const topics = [
       "Citing an EIP's Rationale or Motivation as normative; only the Specification section defines required behaviour.",
       "Assuming ERC numbers are a separate series; EIPs and ERCs share one number space even though they live in different repositories.",
       "Implementing from an EIP alone for RPC work; client behaviour and the execution APIs schemas are what an endpoint actually follows.",
-    ],
-    quiz: [
-      {
-        question: "An EIP has status Final. What does that guarantee about mainnet?",
-        options: [
-          "Nothing by itself; a Core EIP is live only once an upgrade containing it activates",
-          "That it is active on mainnet as of the date in the header",
-          "That every client has implemented it",
-          "That it can no longer be superseded by another EIP",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which EIP defines passing a block hash instead of a number to a read method?",
-        options: [
-          "EIP-1898",
-          "EIP-1474",
-          "EIP-1186",
-          "EIP-155",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which section of an EIP is normative?",
-        options: [
-          "Specification",
-          "Motivation",
-          "Rationale",
-          "Security Considerations",
-        ],
-        answer: 0,
-      },
     ],
     related: ["hardfork", "execution-apis", "rpc-errors", "block-tag", "chain-id", "transaction-types", "eip-1193", "json-rpc"],
     sources: [
@@ -1608,38 +968,6 @@ export const topics = [
       "Hard-coding gas estimates across an upgrade; repricings such as the calldata cost change in Pectra silently invalidate them.",
       "Assuming a provider forks at the same instant you do; confirm their upgrade window rather than discovering it from failing calls.",
     ],
-    quiz: [
-      {
-        question: "How does a post-Merge execution-layer fork activate?",
-        options: [
-          "At a fixed Unix timestamp written into the client's chain configuration",
-          "When a supermajority of miners signals readiness",
-          "At a block number voted on by validators",
-          "When the consensus client sends an engine_forkchoiceUpdated with a fork flag",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which upgrade introduced blob transactions?",
-        options: [
-          "Dencun, in March 2024",
-          "Shapella, in April 2023",
-          "Pectra, in May 2025",
-          "The Merge, in September 2022",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why is a strict JSON decoder a liability across network upgrades?",
-        options: [
-          "Upgrades add header and object fields, and rejecting unknown keys fails on the first new block",
-          "Upgrades change the hex encoding rules for existing fields",
-          "Upgrades rename existing fields rather than adding new ones",
-          "Upgrades switch the response format from JSON to SSZ",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["eip", "the-merge", "engine-api", "testnets", "blob", "transaction-types", "block-header", "execution-apis"],
     sources: [
       { title: "ethereum.org: History and forks", url: "https://ethereum.org/history/" },
@@ -1681,38 +1009,6 @@ export const topics = [
       "Hard-coding a contract address that happens to be identical on a testnet and on mainnet; only deterministic deployments guarantee that.",
       "Trusting gas and fee behaviour measured on a testnet, where an almost empty transaction pool hides real fee pressure entirely.",
       "Relying on a public testnet endpoint for load testing; faucets and shared endpoints are rate limited far more aggressively than paid mainnet ones.",
-    ],
-    quiz: [
-      {
-        question: "Which testnet is intended for validator and staking software testing?",
-        options: [
-          "Hoodi, chain id 560048",
-          "Sepolia, chain id 11155111",
-          "Goerli, chain id 5",
-          "Ephemery, which resets periodically",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why can a feature work on Sepolia and fail on mainnet with the same code?",
-        options: [
-          "Testnets activate network upgrades weeks earlier, so a field or transaction type may not exist on mainnet yet",
-          "Testnets use a different hex encoding for quantities",
-          "Testnet clients implement extra JSON-RPC namespaces by default",
-          "Testnet block objects omit fields that mainnet includes",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which check catches a deployment accidentally pointed at the wrong network?",
-        options: [
-          "Comparing eth_chainId against the expected value on every connection",
-          "Comparing web3_clientVersion against the expected client",
-          "Checking that eth_syncing returns false",
-          "Checking that the latest block timestamp is recent",
-        ],
-        answer: 0,
-      },
     ],
     related: ["chain-id", "hardfork", "local-devnet", "genesis", "archive-node", "execution-client", "health-check", "the-merge"],
     sources: [

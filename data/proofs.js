@@ -41,7 +41,7 @@ export const topics = [
     example: {
       title: "eth_getProof for one account and one slot",
       language: "json",
-      code: "// request\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getProof\",\"params\":[\n  \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n  [\"0x1c2e8b6c0d9a4e5f7381cba0d2f3e4a5b6c7d8e9f0a1b2c3d4e5f60718293a3f4\"],\n  \"0x12d4f1c\"\n]}\n\n// result (node arrays abridged)\n{\n  \"address\": \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n  \"balance\": \"0x0\",\n  \"nonce\": \"0x1\",\n  \"codeHash\": \"0xb0c9e6…41d2\",\n  \"storageHash\": \"0x4f2b7c…91c0\",\n  \"accountProof\": [\"0xf90211a0…\", \"0xf90211a0…\", \"0xf8b18080…\", \"0xf8669d3a…\"],\n  \"storageProof\": [{\n    \"key\": \"0x1c2e8b…a3f4\",\n    \"value\": \"0x3b9aca00\",\n    \"proof\": [\"0xf90211a0…\", \"0xf87180808…\", \"0xe5a0203f…8403b9aca00\"]\n  }]\n}",
+      code: "// request\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getProof\",\"params\":[\n  \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n  [\"0x1c2e8b6c0d9a4e5f7381cba0d2f3e4a5b6c7d8e9f0a1b2c3d4e5f60718293a3f\"],\n  \"0x12d4f1c\"\n]}\n\n// result (node arrays abridged)\n{\n  \"address\": \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n  \"balance\": \"0x0\",\n  \"nonce\": \"0x1\",\n  \"codeHash\": \"0xb0c9e6…41d2\",\n  \"storageHash\": \"0x4f2b7c…91c0\",\n  \"accountProof\": [\"0xf90211a0…\", \"0xf90211a0…\", \"0xf8b18080…\", \"0xf8669d3a…\"],\n  \"storageProof\": [{\n    \"key\": \"0x1c2e8b…a3f4\",\n    \"value\": \"0x3b9aca00\",\n    \"proof\": [\"0xf90211a0…\", \"0xf87180808…\", \"0xe5a0203f…8403b9aca00\"]\n  }]\n}",
       note: "`accountProof` must hash back to the `stateRoot` of a header you trust; `storageProof[0].proof` must hash back to the `storageHash` that the account leaf itself contained.",
     },
     pitfalls: [
@@ -49,38 +49,6 @@ export const topics = [
       "Proving against `latest` and caching the result; the proof stays mathematically valid while the value it describes has moved on.",
       "Using the address or slot number as the trie key instead of its keccak-256 hash, which walks a path that does not exist.",
       "Assuming any endpoint can prove old blocks; historical `eth_getProof` needs retained trie nodes, which many [[archive-node|archive nodes]] do not keep.",
-    ],
-    quiz: [
-      {
-        question: "You verify an eth_getProof response successfully. What have you established?",
-        options: [
-          "That the account had those fields at the block committed to by the header you used",
-          "That the block is part of the canonical chain",
-          "That the value is current as of now",
-          "That the node executed the block correctly",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which field links the account half of the verification to the storage half?",
-        options: [
-          "storageHash, which is the account leaf's storage root and the root of the storage proof",
-          "codeHash, which commits to the contract that owns the slots",
-          "stateRoot, which is reused as the root of every storage trie",
-          "The key field of each storageProof entry",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why is a state proof useless for verifying that a log was emitted?",
-        options: [
-          "Logs live in receipts under receiptsRoot, which is a different trie from the state trie",
-          "Logs are not committed to by any root, so nothing can prove them",
-          "eth_getProof omits logs only for contracts, not for externally owned accounts",
-          "Logs can only be proven once the block is finalized",
-        ],
-        answer: 0,
-      },
     ],
     related: ["eth-get-proof", "merkle-patricia-trie", "trusted-header", "account-proof", "storage-proof", "state-root", "inclusion-proof", "consensus-proof", "verified-rpc", "light-client"],
     sources: [
@@ -136,38 +104,6 @@ export const topics = [
       "Applying this structure to consensus data, which is Merkleized with SSZ and SHA-256, not RLP and keccak-256.",
       "Expecting the transactions and receipts tries to be queryable later; they are rebuilt per block and no standard RPC method serves their nodes.",
     ],
-    quiz: [
-      {
-        question: "What is stored in a branch node?",
-        options: [
-          "Sixteen child references, one per hex nibble, plus a value slot",
-          "Two children and a hash, as in a binary Merkle tree",
-          "The full key and its value, with no children",
-          "A compressed path segment and a single child reference",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why are trie keys hashed before use?",
-        options: [
-          "It spreads keys uniformly, so nobody can craft addresses that make one branch pathologically deep",
-          "It shortens the key, since a hash is smaller than an address",
-          "It hides the address from anyone who sees the proof",
-          "It is required for RLP to encode the key",
-        ],
-        answer: 0,
-      },
-      {
-        question: "A proof walk reaches a branch node whose child slot for the next nibble is empty. What does that prove?",
-        options: [
-          "That the key is absent from the trie under that root",
-          "That the proof is malformed and must be re-requested",
-          "That the node pruned that subtree and cannot answer",
-          "That the value is zero but the key exists",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["state-proof", "state-root", "rlp", "keccak-256", "account-proof", "storage-proof", "receipt-proof", "inclusion-proof", "client-storage", "stateless-ethereum"],
     sources: [
       { title: "ethereum.org: data structures and encoding", url: "https://ethereum.org/developers/docs/data-structures-and-encoding/" },
@@ -216,38 +152,6 @@ export const topics = [
       "Treating an exclusion proof as a failed request; an untouched account legitimately has no leaf and the walk still verifies.",
       "Skipping the comparison of the leaf's remaining path against the key, which lets a proof for a different account pass.",
     ],
-    quiz: [
-      {
-        question: "What exactly is the key whose path the accountProof nodes follow?",
-        options: [
-          "keccak256 of the 20 raw address bytes",
-          "The 20-byte address, left-padded to 32 bytes",
-          "keccak256 of the checksummed address string",
-          "The account's nonce concatenated with its address",
-        ],
-        answer: 0,
-      },
-      {
-        question: "eth_getProof returns codeHash 0xc5d24601…a470 and storageHash 0x56e81f17…b421 for an address. What does that indicate?",
-        options: [
-          "The account does not exist; those are the empty-code and empty-trie constants",
-          "The account is a contract whose code was self-destructed",
-          "The node could not find the trie nodes and returned placeholders",
-          "The account exists but its storage was pruned",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why must a verifier compare the leaf's remaining path against the unconsumed key nibbles?",
-        options: [
-          "Otherwise a valid proof for a neighbouring account would be accepted for the one you asked about",
-          "Otherwise the RLP decoding of the leaf is ambiguous",
-          "Because the leaf stores its path in reverse order",
-          "Because branch nodes do not consume nibbles",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["state-proof", "eth-get-proof", "merkle-patricia-trie", "storage-proof", "trusted-header", "account", "state-root", "inclusion-proof", "address"],
     sources: [
       { title: "EIP-1186: RPC-Method to get Merkle Proofs", url: "https://eips.ethereum.org/EIPS/eip-1186" },
@@ -287,7 +191,7 @@ export const topics = [
     example: {
       title: "Proving one ERC-20 balance slot",
       language: "json",
-      code: "// the balances mapping is declared at slot 9, so the entry's slot number is\n// keccak256( pad32(holder) || pad32(9) )   -- Foundry: cast index address 0xd8dA…6045 9\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getProof\",\"params\":[\n  \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n  [\"0x1c2e8b6c0d9a4e5f7381cba0d2f3e4a5b6c7d8e9f0a1b2c3d4e5f60718293a3f4\"],\n  \"0x12d4f1c\"\n]}\n\n// result (abridged)\n{\n  \"storageHash\": \"0x4f2b7c…91c0\",\n  \"storageProof\": [{\n    \"key\":   \"0x1c2e8b…a3f4\",\n    \"value\": \"0x3b9aca00\",\n    \"proof\": [\"0xf90211a0…\", \"0xf871808080…\", \"0xe5a0203f…8403b9aca00\"]\n  }]\n}",
+      code: "// the balances mapping is declared at slot 9, so the entry's slot number is\n// keccak256( pad32(holder) || pad32(9) )   -- Foundry: cast index address 0xd8dA…6045 9\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getProof\",\"params\":[\n  \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n  [\"0x1c2e8b6c0d9a4e5f7381cba0d2f3e4a5b6c7d8e9f0a1b2c3d4e5f60718293a3f\"],\n  \"0x12d4f1c\"\n]}\n\n// result (abridged)\n{\n  \"storageHash\": \"0x4f2b7c…91c0\",\n  \"storageProof\": [{\n    \"key\":   \"0x1c2e8b…a3f4\",\n    \"value\": \"0x3b9aca00\",\n    \"proof\": [\"0xf90211a0…\", \"0xf871808080…\", \"0xe5a0203f…8403b9aca00\"]\n  }]\n}",
       note: "`key` is the slot number you asked for; the path actually walked through the nodes is `keccak256(key)`, and the walk must start from a `storageHash` you proved rather than one you were told.",
     },
     pitfalls: [
@@ -295,38 +199,6 @@ export const topics = [
       "Expecting the trie path to be the slot number itself; the path is the keccak-256 hash of that 32-byte number.",
       "Comparing a padded 32-byte word against the leaf, whose value is RLP with leading zero bytes stripped.",
       "Reading `value` out of the response without walking `proof`, which is trusting the node exactly as much as [[eth-get-storage-at|eth_getStorageAt]] would.",
-    ],
-    quiz: [
-      {
-        question: "For a mapping entry, how many keccak-256 hashes stand between the mapping key and the trie path?",
-        options: [
-          "Two: one to compute the slot number, one to turn that slot number into the trie path",
-          "One: the slot number is the trie path directly",
-          "Three: key, slot, and value are each hashed",
-          "None: mapping entries are stored under the raw key",
-        ],
-        answer: 0,
-      },
-      {
-        question: "eth_getProof returns value 0x0 with a proof for a slot. What does a successful verification prove?",
-        options: [
-          "That the slot is empty under that storage root, whether it was never written or written back to zero",
-          "That the slot was never written, since a cleared slot keeps its leaf",
-          "That the contract does not exist at that address",
-          "Nothing; an empty slot cannot be proven",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which storageHash should the storage proof walk start from?",
-        options: [
-          "The one decoded from the account leaf you already verified against the state root",
-          "The storageHash field of the same eth_getProof response",
-          "The stateRoot of the trusted header",
-          "keccak256 of the contract address",
-        ],
-        answer: 0,
-      },
     ],
     related: ["state-proof", "account-proof", "eth-get-proof", "contract-storage", "merkle-patricia-trie", "eth-get-storage-at", "trusted-header", "bridge"],
     sources: [
@@ -376,38 +248,6 @@ export const topics = [
       "Treating a Merkle-Patricia proof as a list of sibling hashes; it is a list of complete RLP-encoded nodes that must each be decoded.",
       "Concluding that a proven transaction or receipt is final; inclusion under a root says nothing about that block being canonical.",
     ],
-    quiz: [
-      {
-        question: "What does a generalized index contribute to an SSZ proof?",
-        options: [
-          "It names the leaf's position, telling the verifier the order to hash each sibling in",
-          "It is the hash of the leaf, used to start the walk",
-          "It selects which hash function to use at each level",
-          "It is the depth of the tree, so the verifier can allocate the branch array",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why is a Merkle-Patricia proof larger than a binary Merkle proof over the same number of items?",
-        options: [
-          "Each branch node carries sixteen references, all of which ship with the node",
-          "Its keys are longer, since they are hashed",
-          "It repeats the root at every level for checking",
-          "RLP encoding doubles the size of every hash",
-        ],
-        answer: 0,
-      },
-      {
-        question: "You verify that a transaction is included under a block's transactionsRoot. What is still unproven?",
-        options: [
-          "That the block is on the canonical chain",
-          "That the transaction was signed by its sender",
-          "That the transaction appears only once in the tree",
-          "That the root belongs to a transactions trie rather than a receipts trie",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["merkle-patricia-trie", "state-proof", "ssz", "receipt-proof", "consensus-proof", "trusted-header", "keccak-256", "account-proof", "eth-get-proof"],
     sources: [
       { title: "ethereum.org: data structures and encoding", url: "https://ethereum.org/developers/docs/data-structures-and-encoding/" },
@@ -455,38 +295,6 @@ export const topics = [
       "Expecting `eth_getProof` to cover receipts or transactions; it proves state only, and no standard method returns these node paths.",
       "Treating `logsBloom` as evidence that a log exists; a bloom filter has false positives and proves nothing on its own.",
       "Proving a receipt against a header whose canonicality was never established, which leaves the proof true and the conclusion wrong.",
-    ],
-    quiz: [
-      {
-        question: "What is the key used in the transactions and receipts tries?",
-        options: [
-          "The RLP encoding of the entry's index in the block",
-          "keccak256 of the transaction hash",
-          "The transaction hash itself, unhashed",
-          "keccak256 of the block number concatenated with the index",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why is it safe to rebuild the receipts trie from data served by an untrusted endpoint?",
-        options: [
-          "Any alteration changes the rebuilt root, which then fails to match the receiptsRoot in the trusted header",
-          "Endpoints cannot alter receipts because they are signed by the proposer",
-          "The client library re-executes the block to check each receipt",
-          "It is not safe; the receipts must come from a trusted node",
-        ],
-        answer: 0,
-      },
-      {
-        question: "You need to prove to a contract on another chain that a specific log was emitted. Which proof do you build?",
-        options: [
-          "A receipt proof under receiptsRoot, since logs exist only inside receipts",
-          "A storage proof under the emitting contract's storageHash",
-          "An account proof for the emitting contract under stateRoot",
-          "A logsBloom proof under the header's bloom filter",
-        ],
-        answer: 0,
-      },
     ],
     related: ["inclusion-proof", "trusted-header", "transaction-receipt", "merkle-patricia-trie", "event-log", "eth-get-block-receipts", "bridge", "block-header", "state-proof"],
     sources: [
@@ -536,38 +344,6 @@ export const topics = [
       "Cross-checking two endpoints that are secretly the same upstream or the same provider, which produces agreement with no independence behind it.",
       "Treating `requireCanonical` as cryptographic; it is an assertion by the node answering, not evidence a verifier can check.",
     ],
-    quiz: [
-      {
-        question: "Why does taking the state root from the proof response defeat the purpose of verifying?",
-        options: [
-          "A responder can fabricate a header and a matching trie, so the check only proves internal consistency",
-          "The state root in a proof response is always truncated",
-          "It would require an extra round trip to be meaningful",
-          "The proof would fail to verify, so the mistake is self-correcting",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which of these is a cryptographic argument for a header's canonicality rather than a heuristic?",
-        options: [
-          "Sync committee signatures checked by a light client",
-          "Three independent providers returning the same block hash",
-          "The node answering with requireCanonical set to true",
-          "The header chaining back to a checkpoint by parentHash",
-        ],
-        answer: 0,
-      },
-      {
-        question: "You verify a proof against a canonical header from two years ago. What is wrong with acting on it today?",
-        options: [
-          "It proves what was true then, and the value may have changed many times since",
-          "Proofs expire cryptographically after a finality period",
-          "Old headers do not contain a stateRoot field",
-          "Nothing; a canonical header is canonical forever",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["state-proof", "consensus-proof", "light-client", "block-header", "block-hash", "verified-rpc", "finality", "weak-subjectivity", "block-tag", "checkpoint-sync"],
     sources: [
       { title: "EIP-1898: Add blockHash to defaultBlock methods", url: "https://eips.ethereum.org/EIPS/eip-1898" },
@@ -615,38 +391,6 @@ export const topics = [
       "Bootstrapping from a block root supplied by the same server that serves the updates, which collapses the whole chain of trust to that server.",
       "Stopping at a canonical beacon header; without the SSZ branch to the execution payload header there is no `stateRoot` to verify anything against.",
       "Reusing [[keccak-256|keccak-256]] to check these proofs; consensus Merkleization uses SSZ with SHA-256 throughout.",
-    ],
-    quiz: [
-      {
-        question: "How does a light client learn the next sync committee without trusting a server?",
-        options: [
-          "Each update carries the next committee plus an SSZ branch proving it is committed to by the attested header's state",
-          "It queries the Beacon API for the validator set and takes the first 512 entries",
-          "The committee is derived deterministically from the block number",
-          "It cannot; the committee must be configured manually each period",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why is a consensus proof not a substitute for a state proof?",
-        options: [
-          "It establishes which header is canonical, not what any account or slot contains",
-          "It covers only finalized blocks, while state proofs cover the head",
-          "It uses SHA-256, which is incompatible with account balances",
-          "It proves state but not receipts",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What does EIP-4788 make possible on the execution layer?",
-        options: [
-          "Contracts can verify SSZ proofs about consensus state, because the parent beacon block root is in the execution header",
-          "Contracts can call the Beacon API directly through a precompile",
-          "Execution clients can finalize blocks without a consensus client",
-          "Light clients can skip the sync committee entirely",
-        ],
-        answer: 0,
-      },
     ],
     related: ["sync-committee", "light-client", "trusted-header", "ssz", "state-proof", "beacon-block", "finality", "beacon-api", "weak-subjectivity", "verified-rpc"],
     sources: [
@@ -696,38 +440,6 @@ export const topics = [
       "Assuming `debug_` and `trace_` output can be parsed by the same code; the two families differ in structure and field names.",
       "Planning around traces without checking the endpoint; many providers meter them heavily or do not expose the namespaces at all.",
     ],
-    quiz: [
-      {
-        question: "Why is an execution trace not a proof?",
-        options: [
-          "Nothing in the header commits to it, so there is no root to verify it against",
-          "Traces omit the gas used, which is required for verification",
-          "Traces are only available for pending transactions",
-          "The node signs the trace with a key the caller cannot check",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which tracer output doubles as the witness a stateless verifier would need?",
-        options: [
-          "prestateTracer, which lists every account and slot the transaction read",
-          "callTracer, which lists the call tree",
-          "4byteTracer, which counts function selectors",
-          "The struct logger, because it records every opcode",
-        ],
-        answer: 0,
-      },
-      {
-        question: "An indexer needs internal ETH transfers for an address. Why can it not get them from logs?",
-        options: [
-          "A plain value-carrying call emits no log, so only a trace records it",
-          "Logs from internal calls are stored under a separate root",
-          "eth_getLogs filters cannot match the zero address",
-          "Internal transfers are logged only when the transaction reverts",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["debug-api", "trace-api", "evm", "state-proof", "indexer", "archive-node", "revert", "transaction-receipt", "block-explorer", "client-diversity"],
     sources: [
       { title: "Geth: EVM tracing", url: "https://geth.ethereum.org/docs/developers/evm-tracing" },
@@ -776,38 +488,6 @@ export const topics = [
       "Confusing a stateless validator with a [[light-client|light client]]; one executes blocks from a witness, the other follows headers and executes nothing.",
       "Expecting statelessness to remove the need for archive data; witnesses cover the state a block touches, not the chain's history.",
     ],
-    quiz: [
-      {
-        question: "Why are witnesses impractically large under the current state trie?",
-        options: [
-          "Each branch node on every path ships sixteen 32-byte references, most of which the proof does not need",
-          "Account values are stored uncompressed as 32-byte words",
-          "The trie stores every historical value alongside the current one",
-          "Keys are hashed, which doubles the depth of each path",
-        ],
-        answer: 0,
-      },
-      {
-        question: "What is the current status of Verkle trees?",
-        options: [
-          "Proposed and prototyped, then deprioritized during 2025 in favour of binary state trees",
-          "Activated on mainnet in the Pectra upgrade",
-          "Scheduled for the next upgrade with a published date",
-          "Abandoned before any specification was written",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Which RPC method would be most disrupted by replacing the state tree?",
-        options: [
-          "eth_getProof, whose result is defined as arrays of RLP-encoded Merkle-Patricia nodes",
-          "eth_getBalance, which returns a value that depends on the tree shape",
-          "eth_call, which walks the trie during execution",
-          "eth_blockNumber, which is derived from the state root",
-        ],
-        answer: 0,
-      },
-    ],
     related: ["merkle-patricia-trie", "state-proof", "eth-get-proof", "state", "client-storage", "account-proof", "storage-proof", "light-client", "hardfork", "verified-rpc"],
     sources: [
       { title: "EIP-6800: Ethereum state using a unified verkle tree", url: "https://eips.ethereum.org/EIPS/eip-6800" },
@@ -855,38 +535,6 @@ export const topics = [
       "Bootstrapping the light client from a checkpoint given by the same party that serves the data, which returns the whole setup to trusting one server.",
       "Cross-checking two endpoints that resolve to the same upstream or the same provider, which buys agreement without independence.",
       "Presenting provider agreement to users as verification; it detects an isolated liar, and proves nothing about the chain.",
-    ],
-    quiz: [
-      {
-        question: "What is the single trusted input a verifying light client proxy needs?",
-        options: [
-          "A recent finalized block root used to bootstrap, after which signatures carry the trust",
-          "An API key for the execution provider it queries",
-          "The chain id of the network it is following",
-          "A list of the current validator set's public keys, supplied manually",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Why can eth_getLogs over a block range not be verified the way eth_getBalance can?",
-        options: [
-          "It would require rebuilding the receipts trie for every block in the range",
-          "Logs are not committed to by any root at all",
-          "Range queries are not part of the JSON-RPC specification",
-          "The light client cannot obtain headers for more than one block at a time",
-        ],
-        answer: 0,
-      },
-      {
-        question: "Two independent providers return the same block hash for a height. What has that established?",
-        options: [
-          "A heuristic that no single one of them is lying or badly lagging, and nothing cryptographic",
-          "That the block is canonical, since agreement implies consensus",
-          "That the block is finalized",
-          "That either provider can be trusted for state proofs from then on",
-        ],
-        answer: 0,
-      },
     ],
     related: ["light-client", "trusted-header", "state-proof", "consensus-proof", "eth-get-proof", "rpc-provider", "sync-committee", "head-lag", "nimbus", "block-tag"],
     sources: [
