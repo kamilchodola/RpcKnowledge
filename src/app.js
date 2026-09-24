@@ -52,7 +52,6 @@ const els = {
   savedPopover: $('#saved-popover'),
   savedTopics: $('#bookmarked-topics'),
   savedCount: $('#saved-count'),
-  viewButtons: $$('.view-button'),
   quizOverlay: $('#quiz-overlay'),
   quizCard: $('#quiz-card'),
   quizHeading: $('#quiz-heading'),
@@ -73,13 +72,13 @@ const state = {
   selectedCategory: null,
   origin: null,
   history: [],
-  view: 'focus',
   query: '',
   activeResult: 0,
   layout: { positions: new Map(), edges: [], nodes: new Map() },
   nodeEls: new Map(),
   edgeEls: [],
-  lastCenter: null,
+  lastFocus: null,
+  framing: 'fit',
   drawn: new Map(),
   layoutFrame: 0,
   pan: { x: 0, y: 0 },
@@ -98,7 +97,6 @@ const STORAGE_KEYS = {
   learned: 'ethereum-rpc-map:learned',
   theme: 'ethereum-rpc-map:theme',
   split: 'ethereum-rpc-map:lesson-width',
-  view: 'ethereum-rpc-map:view',
   motion: 'ethereum-rpc-map:motion',
   quiz: 'ethereum-rpc-map:quiz'
 };
@@ -149,21 +147,17 @@ const systemLight = window.matchMedia?.('(prefers-color-scheme: light)').matches
 document.documentElement.dataset.theme = storedTheme === 'light' || storedTheme === 'dark'
   ? storedTheme
   : systemLight ? 'light' : 'dark';
-if (readItem(STORAGE_KEYS.view) === 'overview') state.view = 'overview';
-const viewParam = new URLSearchParams(location.search).get('view');
-if (viewParam === 'overview' || viewParam === 'focus') state.view = viewParam;
 const savedSplit = Number.parseFloat(readItem(STORAGE_KEYS.split) ?? '');
 if (Number.isFinite(savedSplit) && savedSplit >= 0.18 && savedSplit <= 0.62) {
   document.documentElement.style.setProperty('--lesson-width', `${(savedSplit * 100).toFixed(2)}%`);
 }
 
 const WORLD = { size: 4800, c: 2400 };
-const BRANCH_LIMIT = 18;
 const INLINE_PATTERN = /(\[\[[^\]]+\]\]|`[^`\n]+`)/g;
-// Motion follows the operating system until the reader says otherwise, and their choice
-// then wins. Honouring the system default silently is why an OS-level "no animations"
-// setting could switch the whole map's motion off with nothing in the app to say so.
-const systemReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+// Motion is on unless the reader switches it off with the toolbar button. It deliberately
+// does not follow the operating system's reduced-motion setting: the map's transitions are
+// how it shows where you went, and a system-wide switch turned them off with nothing in the
+// app to say why.
 function applyMotion(on) {
   state.motion = on;
   document.documentElement.dataset.motion = on ? 'on' : 'off';
@@ -250,103 +244,6 @@ function paneShape() {
 }
 const tangentialScale = (rx, ry, angle) => Math.hypot(rx * Math.sin(angle), ry * Math.cos(angle));
 
-/**
- * The ring around the centre, most relevant first: the topic you came from, then the
- * lesson's own "read next" list, then the terms in order of first mention.
- */
-function branchOrder(center) {
-  const seen = new Set([center.id]);
-  const ordered = [];
-  const push = id => {
-    if (!id || seen.has(id) || !state.byId.has(id)) return;
-    seen.add(id);
-    ordered.push(id);
-  };
-  if (state.origin !== center.id) push(state.origin);
-  center.related.forEach(push);
-  inlineTermIds(center).forEach(push);
-  return ordered;
-}
-
-function layoutFocus(center) {
-  const positions = new Map();
-  const edges = [];
-  const nodes = new Map();
-  positions.set(center.id, { x: WORLD.c, y: WORLD.c });
-  // Keep the topic you arrived from on the map even when this lesson never links back,
-  // so the path you took stays visible instead of vanishing behind you.
-  const originId = state.origin && state.origin !== center.id && state.byId.has(state.origin) ? state.origin : null;
-  const ordered = branchOrder(center);
-  // A well-connected lesson can name thirty terms. Showing them all shrinks every label
-  // past reading size, so the ring keeps the most relevant and the centre counts the rest;
-  // all of them stay one click away in the lesson's own term list.
-  const branchIds = ordered.slice(0, BRANCH_LIMIT);
-  nodes.set(center.id, { kind: 'center', topic: center, more: ordered.length - branchIds.length });
-  const branches = sortTopics(branchIds.map(id => state.byId.get(id)).filter(Boolean));
-  const count = branches.length;
-  if (!count) return { positions, edges, nodes };
-  const { k } = paneShape();
-  const step = 2 * Math.PI / count;
-  const originIndex = originId ? branches.findIndex(branch => branch.id === originId) : -1;
-  // Rotate the ring so the topic you came from sits on the left, where the trail reads from.
-  const start = originIndex >= 0 ? Math.PI - originIndex * step : -Math.PI / 2;
-  const perimeterFactor = Math.PI * (k + 1 / k);
-  const r1 = Math.max(290, count * 190 / perimeterFactor);
-  const rx1 = r1 * k;
-  const ry1 = r1 / k;
-  const leafFactor = 1 + 175 / r1;
-  const placed = new Set([center.id, ...branches.map(branch => branch.id)]);
-  branches.forEach((branch, index) => {
-    const angle = start + index * step;
-    positions.set(branch.id, { x: WORLD.c + Math.cos(angle) * rx1, y: WORLD.c + Math.sin(angle) * ry1 });
-    const isOrigin = branch.id === originId;
-    edges.push({ from: center.id, to: branch.id, kind: isOrigin ? 'origin' : 'branch', color: categoryFor(branch).color });
-    nodes.set(branch.id, { kind: 'branch', topic: branch, more: 0, origin: isOrigin });
-  });
-  const rx2 = rx1 * leafFactor;
-  const ry2 = ry1 * leafFactor;
-  branches.forEach((branch, index) => {
-    const angle = start + index * step;
-    const candidates = sortTopics(linkedIds(branch).map(id => state.byId.get(id)).filter(topic => topic && !placed.has(topic.id)));
-    const arc = step * 0.88 * tangentialScale(rx2, ry2, angle);
-    const capacity = Math.max(0, Math.min(3, Math.floor(arc / 128)));
-    const leaves = candidates.slice(0, capacity);
-    nodes.get(branch.id).more = candidates.length - leaves.length;
-    if (!leaves.length) return;
-    const spread = Math.min(step * 0.88, leaves.length * 128 / Math.max(1, tangentialScale(rx2, ry2, angle))) / leaves.length;
-    leaves.forEach((leaf, leafIndex) => {
-      const leafAngle = angle + (leafIndex - (leaves.length - 1) / 2) * spread;
-      positions.set(leaf.id, { x: WORLD.c + Math.cos(leafAngle) * rx2, y: WORLD.c + Math.sin(leafAngle) * ry2 });
-      placed.add(leaf.id);
-      edges.push({ from: branch.id, to: leaf.id, kind: 'leaf', color: categoryFor(leaf).color });
-      nodes.set(leaf.id, { kind: 'leaf', topic: leaf });
-    });
-  });
-  return { positions, edges, nodes };
-}
-
-function layoutCategoryFocus(category) {
-  const positions = new Map();
-  const edges = [];
-  const nodes = new Map();
-  const hubId = `hub:${category.id}`;
-  positions.set(hubId, { x: WORLD.c, y: WORLD.c });
-  nodes.set(hubId, { kind: 'hub', category, center: true });
-  const items = sortTopics(state.topics.filter(topic => topic.category === category.id));
-  const count = items.length;
-  if (!count) return { positions, edges, nodes };
-  const { k } = paneShape();
-  const r = Math.max(290, count * 185 / (Math.PI * (k + 1 / k)));
-  const step = 2 * Math.PI / count;
-  items.forEach((topic, index) => {
-    const angle = -Math.PI / 2 + index * step;
-    positions.set(topic.id, { x: WORLD.c + Math.cos(angle) * r * k, y: WORLD.c + Math.sin(angle) * r / k });
-    edges.push({ from: hubId, to: topic.id, kind: topic.id === state.origin ? 'origin' : 'branch', color: category.color });
-    nodes.set(topic.id, { kind: 'branch', topic, more: 0, origin: topic.id === state.origin });
-  });
-  return { positions, edges, nodes };
-}
-
 function layoutOverview() {
   const positions = new Map();
   const edges = [];
@@ -389,7 +286,7 @@ function layoutOverview() {
     }
     angle += sector;
   });
-  if (state.selected && positions.has(state.selected.id)) {
+  if (!state.selectedCategory && state.selected && positions.has(state.selected.id)) {
     linkedIds(state.selected).forEach(id => {
       if (positions.has(id)) edges.push({ from: state.selected.id, to: id, kind: 'related', color: categoryFor(state.byId.get(id)).color });
     });
@@ -401,9 +298,7 @@ function layoutOverview() {
 }
 
 function computeLayout() {
-  if (state.view === 'overview') return layoutOverview();
-  if (state.selectedCategory) return layoutCategoryFocus(state.selectedCategory);
-  return layoutFocus(state.selected || state.root);
+  return layoutOverview();
 }
 
 /* ---------- graph rendering ---------- */
@@ -491,9 +386,9 @@ function renderGraph({ refit = false, animate = true } = {}) {
   els.graphNodes.style.height = `${WORLD.size}px`;
   const keep = new Set();
   const motion = animate && !prefersReducedMotion();
-  const centerKey = [...layout.nodes].find(([, meta]) => meta.kind === 'center' || meta.center)?.[0] ?? null;
-  const centerChanged = centerKey !== state.lastCenter;
-  state.lastCenter = centerKey;
+  const focusKey = selectionKey();
+  const focusChanged = focusKey !== state.lastFocus;
+  state.lastFocus = focusKey;
   let entering = 0;
   layout.nodes.forEach((meta, key) => {
     keep.add(key);
@@ -511,9 +406,8 @@ function renderGraph({ refit = false, animate = true } = {}) {
       node.addEventListener('animationend', () => node.classList.remove('is-entering'), { once: true });
       return;
     }
-    // The topic you just opened lands with a pop, so the switch is unmistakable even when
-    // most of the ring around it stayed put.
-    if (key === centerKey && centerChanged) {
+    // The topic you just opened lands with a pop as the camera arrives on it.
+    if (key === focusKey && focusChanged) {
       node.classList.add('is-arriving');
       node.addEventListener('animationend', () => node.classList.remove('is-arriving'), { once: true });
     }
@@ -633,71 +527,143 @@ function stopViewportAnimation() {
   state.viewportFrame = 0;
 }
 
+const RHO = Math.SQRT2;
+
+/**
+ * The smooth zoom-and-pan path of van Wijk and Nuij: it pulls back while travelling and
+ * closes in on arrival, so a long hop never streaks across the map at reading distance.
+ * `w` is the width of the view in world units, `u` the distance travelled along the line
+ * between the two centres. Returns the path length in the same units as its parameter s.
+ */
+function flightPath(w0, w1, d) {
+  if (d < 1e-6) {
+    const direction = w1 < w0 ? -1 : 1;
+    return { length: Math.abs(Math.log(w1 / w0)) / RHO, at: s => ({ u: 0, w: w0 * Math.exp(direction * RHO * s) }) };
+  }
+  const rho2 = RHO * RHO;
+  const rho4 = rho2 * rho2;
+  const b0 = (w1 * w1 - w0 * w0 + rho4 * d * d) / (2 * w0 * rho2 * d);
+  const b1 = (w1 * w1 - w0 * w0 - rho4 * d * d) / (2 * w1 * rho2 * d);
+  const r = value => Math.log(-value + Math.sqrt(value * value + 1));
+  const r0 = r(b0);
+  const r1 = r(b1);
+  return {
+    length: (r1 - r0) / RHO,
+    at: s => ({
+      u: (w0 / rho2) * (Math.cosh(r0) * Math.tanh(RHO * s + r0) - Math.sinh(r0)),
+      w: (w0 * Math.cosh(r0)) / Math.cosh(RHO * s + r0)
+    })
+  };
+}
+
+/** Moves the camera to a pan and zoom. Returns how long the move takes, in milliseconds. */
 function setViewport(pan, zoom, { animate = true } = {}) {
   stopViewportAnimation();
-  if (!animate || prefersReducedMotion()) {
-    state.pan = pan;
-    state.zoom = zoom;
-    applyViewport();
-    return;
-  }
-  const from = { x: state.pan.x, y: state.pan.y, zoom: state.zoom };
-  const distance = Math.hypot(pan.x - from.x, pan.y - from.y);
-  if (distance < 1 && Math.abs(zoom - from.zoom) < 0.002) { state.pan = pan; state.zoom = zoom; applyViewport(); return; }
-  const duration = Math.min(620, Math.max(280, 260 + distance * 0.12));
+  window.clearTimeout(setViewport.settle);
+  const land = () => { state.pan = pan; state.zoom = zoom; applyViewport(); };
+  if (!animate || prefersReducedMotion()) { land(); return 0; }
+  const width = Math.max(1, els.graphWrap.clientWidth);
+  const height = Math.max(1, els.graphWrap.clientHeight);
+  const centre = (p, z) => ({ x: (width / 2 - p.x) / z, y: (height / 2 - p.y) / z });
+  const c0 = centre(state.pan, state.zoom);
+  const c1 = centre(pan, zoom);
+  const dx = c1.x - c0.x;
+  const dy = c1.y - c0.y;
+  const distance = Math.hypot(dx, dy);
+  const w0 = width / state.zoom;
+  const w1 = width / zoom;
+  if (distance * zoom < 1 && Math.abs(Math.log(w1 / w0)) < 0.004) { land(); return 0; }
+  const path = flightPath(w0, w1, distance);
+  const duration = Math.round(Math.min(1250, Math.max(380, 360 + path.length * 300)));
   const ease = time => (time < 0.5 ? 4 * time ** 3 : 1 - (-2 * time + 2) ** 3 / 2);
   // Anchored to the first frame and clamped at both ends; see the note in tweenLayout.
   let started = null;
   const step = now => {
     if (started === null) started = now;
     const progress = Math.min(1, Math.max(0, (now - started) / duration));
-    const eased = ease(progress);
-    state.pan = { x: from.x + (pan.x - from.x) * eased, y: from.y + (pan.y - from.y) * eased };
-    state.zoom = from.zoom + (zoom - from.zoom) * eased;
+    const { u, w } = path.at(ease(progress) * path.length);
+    const z = width / w;
+    const along = distance > 0 ? u / distance : 0;
+    state.zoom = z;
+    state.pan = { x: width / 2 - (c0.x + dx * along) * z, y: height / 2 - (c0.y + dy * along) * z };
     applyViewport();
-    state.viewportFrame = progress < 1 ? requestAnimationFrame(step) : 0;
+    if (progress < 1) { state.viewportFrame = requestAnimationFrame(step); return; }
+    state.viewportFrame = 0;
+    land();
   };
   state.viewportFrame = requestAnimationFrame(step);
+  // Frame callbacks are throttled in background tabs; land the camera regardless.
+  setViewport.settle = window.setTimeout(() => {
+    if (!state.viewportFrame) return;
+    stopViewportAnimation();
+    land();
+  }, duration + 160);
+  return duration;
 }
 
-function computeFit() {
-  // Leaves sit outside the branch ring on purpose: they preview where you can go next.
-  // Fitting to them would shrink the labels past readability in a short pane, so the fit
-  // targets the primary ring and lets the outer leaves bleed past the edges.
-  const primary = [];
-  state.layout.nodes.forEach((meta, key) => {
-    if (meta.kind !== 'leaf') { const point = state.layout.positions.get(key); if (point) primary.push(point); }
-  });
-  const points = primary.length ? primary : [...state.layout.positions.values()];
+/** Pan and zoom that frame a set of world points inside the map pane. */
+function framePoints(points, { pad = 120, maxZoom = 1.05 } = {}) {
   const width = Math.max(320, els.graphWrap.clientWidth);
   const height = Math.max(190, els.graphWrap.clientHeight);
   if (!points.length) return { pan: { x: 0, y: 0 }, zoom: 1 };
-  const padX = state.view === 'overview' ? 120 : 190;
-  const padY = state.view === 'overview' ? 70 : 110;
-  const minX = Math.min(...points.map(point => point.x)) - padX;
-  const maxX = Math.max(...points.map(point => point.x)) + padX;
-  const minY = Math.min(...points.map(point => point.y)) - padY;
-  const maxY = Math.max(...points.map(point => point.y)) + padY;
-  const maxZoom = state.view === 'overview' ? 1.05 : 1.2;
+  const minX = Math.min(...points.map(point => point.x)) - pad;
+  const maxX = Math.max(...points.map(point => point.x)) + pad;
+  const minY = Math.min(...points.map(point => point.y)) - pad * .6;
+  const maxY = Math.max(...points.map(point => point.y)) + pad * .6;
   const zoom = Math.min(maxZoom, Math.max(.06, Math.min(width / Math.max(1, maxX - minX), height / Math.max(1, maxY - minY))));
   return { pan: { x: width / 2 - ((minX + maxX) / 2) * zoom, y: height / 2 - ((minY + maxY) / 2) * zoom }, zoom };
 }
 
+const computeFit = () => framePoints([...state.layout.positions.values()]);
+
 function fitView({ animate = true } = {}) {
   const target = computeFit();
-  setViewport(target.pan, target.zoom, { animate });
+  state.framing = 'fit';
+  return setViewport(target.pan, target.zoom, { animate });
 }
 
-function centerOnKey(key, minZoom = .7, { animate = true } = {}) {
+function centerOnKey(key, zoom, { animate = true } = {}) {
   const position = state.layout.positions.get(key);
-  if (!position) return;
-  const rect = els.graphWrap.getBoundingClientRect();
-  const zoom = Math.max(state.zoom, minZoom);
-  setViewport({ x: rect.width / 2 - position.x * zoom, y: rect.height / 2 - position.y * zoom }, zoom, { animate });
+  if (!position) return 0;
+  const width = Math.max(1, els.graphWrap.clientWidth);
+  const height = Math.max(1, els.graphWrap.clientHeight);
+  state.framing = 'focus';
+  return setViewport({ x: width / 2 - position.x * zoom, y: height / 2 - position.y * zoom }, zoom, { animate });
+}
+
+/* Below FAR_ZOOM the labels are too small to read. Opening a topic from there flies in to
+   TOPIC_ZOOM; from closer in it only pans, so a reader who picked their own zoom keeps it. */
+const FAR_ZOOM = 0.6;
+const TOPIC_ZOOM = 1.1;
+
+const selectionKey = () => (state.selectedCategory ? `hub:${state.selectedCategory.id}` : state.selected?.id ?? null);
+
+/** Brings the current selection into view. Returns the camera move's duration. */
+function focusSelection({ animate = true } = {}) {
+  const key = selectionKey();
+  if (!key) return 0;
+  if (!state.selectedCategory && isRoot(state.selected)) return fitView({ animate });
+  if (state.selectedCategory) {
+    // A category is its whole cluster: frame the hub and every topic hanging off it.
+    const points = [key, ...state.topics.filter(topic => topic.category === state.selectedCategory.id).map(topic => topic.id)]
+      .map(id => state.layout.positions.get(id)).filter(Boolean);
+    const target = framePoints(points, { pad: 150, maxZoom: 1 });
+    state.framing = 'focus';
+    return setViewport(target.pan, target.zoom, { animate });
+  }
+  return centerOnKey(key, state.zoom < FAR_ZOOM ? TOPIC_ZOOM : state.zoom, { animate });
+}
+
+/** After the pane changes size: keep the whole map framed, or keep the selection centred. */
+function relayout() {
+  renderGraph({ animate: false });
+  if (state.framing === 'fit') fitView({ animate: false });
+  else if (state.framing === 'focus') focusSelection({ animate: false });
 }
 
 function zoomAt(factor, originX, originY) {
   stopViewportAnimation();
+  state.framing = 'free';
   const previous = state.zoom;
   const next = Math.min(1.8, Math.max(.06, previous * factor));
   if (next === previous) return;
@@ -1220,12 +1186,13 @@ function flashLesson() {
   panel.classList.add('is-switching');
 }
 
-function afterNavigate({ refit }) {
-  renderGraph({ refit });
+function afterNavigate() {
+  renderGraph();
   flashLesson();
-  // In overview the whole atlas stays put; navigation only pans to the node, keeping
-  // whatever zoom the reader chose. In focus the tree is rebuilt, so it refits.
-  if (state.view === 'overview' && !refit) centerOnKey(state.selectedCategory ? `hub:${state.selectedCategory.id}` : state.selected.id, 0);
+  const duration = focusSelection();
+  // Hold the arrival pop until the camera is nearly there, so it reads as a landing.
+  const arriving = els.graphNodes.querySelector('.topic-node.is-arriving');
+  if (arriving) arriving.style.setProperty('--arrive-delay', `${Math.max(0, duration - 260)}ms`);
   renderLegend();
   renderTrail();
   updateHash();
@@ -1236,27 +1203,27 @@ function selectTopic(id, { push = true } = {}) {
   const topic = state.byId.get(id);
   if (!topic) return;
   const key = `t:${topic.id}`;
-  if (currentKey() === key) { if (state.view === 'overview') centerOnKey(topic.id, 0); return; }
+  if (currentKey() === key) { focusSelection(); return; }
   if (state.quiz) closeQuiz({ restoreFocus: false });
   state.origin = state.selected && !state.selectedCategory ? state.selected.id : state.origin;
   if (push) pushHistory();
   state.selected = topic;
   state.selectedCategory = null;
   renderLesson(topic);
-  afterNavigate({ refit: state.view === 'focus' });
+  afterNavigate();
 }
 
 function selectCategory(id, { push = true } = {}) {
   const category = state.categoryById.get(id);
   if (!category) return;
   const key = `c:${category.id}`;
-  if (currentKey() === key) { if (state.view === 'overview') centerOnKey(`hub:${category.id}`, 0); return; }
+  if (currentKey() === key) { focusSelection(); return; }
   if (state.quiz) closeQuiz({ restoreFocus: false });
   state.origin = state.selected && !state.selectedCategory ? state.selected.id : null;
   if (push) pushHistory();
   state.selectedCategory = category;
   renderCategoryLesson(category);
-  afterNavigate({ refit: state.view === 'focus' });
+  afterNavigate();
 }
 
 function openKey(key, options) {
@@ -1268,22 +1235,8 @@ function goHome() {
   state.history = [];
   state.origin = null;
   if (!state.root) return;
-  if (currentKey() === `t:${state.root.id}`) { renderGraph({ refit: true }); renderTrail(); return; }
+  if (currentKey() === `t:${state.root.id}`) { fitView(); renderTrail(); return; }
   selectTopic(state.root.id, { push: false });
-  if (state.view === 'overview') fitView();
-}
-
-function setView(view) {
-  if (view !== 'focus' && view !== 'overview') return;
-  state.view = view;
-  writeItem(STORAGE_KEYS.view, view);
-  els.viewButtons.forEach(button => button.classList.toggle('is-active', button.dataset.view === view));
-  renderGraph({ refit: true });
-  if (view === 'overview' && currentKey()) {
-    const key = currentKey();
-    if (key.startsWith('c:')) centerOnKey(`hub:${state.selectedCategory.id}`, .55);
-    else if (!isRoot(state.selected)) centerOnKey(state.selected.id, .55);
-  }
 }
 
 function selectFromHash() {
@@ -1402,7 +1355,6 @@ function bindEvents() {
     if (!event.target.closest('.search-wrap')) { els.searchResults.hidden = true; els.search.setAttribute('aria-expanded', 'false'); }
   });
 
-  els.viewButtons.forEach(button => button.addEventListener('click', () => setView(button.dataset.view)));
   els.back.addEventListener('click', () => {
     const previous = state.history.pop();
     if (previous) openKey(previous, { push: false });
@@ -1473,7 +1425,6 @@ function bindEvents() {
     if (event.key === 'Escape') { setSavedPopover(false); if (state.query && !typing) clearSearch(); return; }
     if (typing || event.altKey || event.ctrlKey || event.metaKey) return;
     if (event.key === 'Backspace' && state.history.length) { event.preventDefault(); openKey(state.history.pop(), { push: false }); }
-    if (event.key.toLowerCase() === 'f') setView(state.view === 'focus' ? 'overview' : 'focus');
     if (event.key.toLowerCase() === 'q' && state.selected && !els.learned.disabled) openQuiz(state.selected);
   });
 
@@ -1481,6 +1432,7 @@ function bindEvents() {
   els.graphWrap.addEventListener('pointerdown', event => {
     if (event.target.closest('.topic-node, .legend, .map-header')) return;
     stopViewportAnimation();
+    state.framing = 'free';
     state.pointer = { id: event.pointerId, x: event.clientX, y: event.clientY, panX: state.pan.x, panY: state.pan.y };
     els.graphWrap.classList.add('is-dragging');
     els.graphWrap.setPointerCapture(event.pointerId);
@@ -1515,7 +1467,7 @@ function bindEvents() {
     if (!splitDrag || event.pointerId !== splitDrag.id) return;
     splitDrag = null;
     els.splitter.classList.remove('is-dragging');
-    renderGraph({ refit: true });
+    relayout();
   };
   els.splitter.addEventListener('pointerup', releaseSplit);
   els.splitter.addEventListener('pointercancel', releaseSplit);
@@ -1524,9 +1476,9 @@ function bindEvents() {
     if (!delta) return;
     event.preventDefault();
     setLessonWidth(els.lessonPane.getBoundingClientRect().width + delta);
-    renderGraph({ refit: true });
+    relayout();
   });
-  els.splitter.addEventListener('dblclick', () => { setLessonWidth((els.workspace.clientWidth || window.innerWidth) * .3); renderGraph({ refit: true }); });
+  els.splitter.addEventListener('dblclick', () => { setLessonWidth((els.workspace.clientWidth || window.innerWidth) * .3); relayout(); });
 
   window.addEventListener('hashchange', () => {
     const match = /^#(t|c)\/([a-z0-9-]+)$/i.exec(location.hash);
@@ -1537,16 +1489,15 @@ function bindEvents() {
   let resizeTimer = 0;
   window.addEventListener('resize', () => {
     window.clearTimeout(resizeTimer);
-    resizeTimer = window.setTimeout(() => renderGraph({ refit: true, animate: false }), 140);
+    resizeTimer = window.setTimeout(relayout, 140);
   });
 }
 
 /* ---------- boot ---------- */
 async function load() {
   const storedMotion = readItem(STORAGE_KEYS.motion);
-  applyMotion(storedMotion === 'on' ? true : storedMotion === 'off' ? false : !systemReducedMotion());
+  applyMotion(storedMotion !== 'off');
   bindEvents();
-  els.viewButtons.forEach(button => button.classList.toggle('is-active', button.dataset.view === state.view));
   try {
     const module = await import('../knowledge.js');
     const dataset = normalizeDataset(module.default ?? module);
@@ -1568,11 +1519,10 @@ async function load() {
     renderGraph();
     renderTrail();
     fitView({ animate: false });
-    // Say so rather than just being still: an OS-level setting turning the map's motion
-    // off is otherwise indistinguishable from the animation being broken.
-    if (!state.motion && systemReducedMotion() && readItem(STORAGE_KEYS.motion) === null) {
-      window.setTimeout(() => toast('Animations are off to match your system setting. Use ⏸ in the toolbar to turn them on.'), 900);
-    }
+    // A link straight to a topic opens on the whole map, then flies in to it once the nodes
+    // have faded in, so the reader sees where on the map it lives.
+    if (!state.selectedCategory && state.selected && !isRoot(state.selected)) window.setTimeout(() => focusSelection(), 420);
+    else if (state.selectedCategory) window.setTimeout(() => focusSelection(), 420);
     // ?checkpoint opens the quiz straight away, so a checkpoint can be linked to directly.
     if (new URLSearchParams(location.search).has('checkpoint') && state.selected && !state.learned.has(state.selected.id)) openQuiz(state.selected);
   } catch (error) {

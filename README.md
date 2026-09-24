@@ -22,11 +22,9 @@ It binds to all interfaces so other devices on the same network can open it. Set
 
 ## How the map works
 
-**Focus** is the default view. The topic you are reading sits in the middle, the terms it links to form a ring around it, and each of those shows a few of its own leaves in a dashed outer ring. Click any node to re-centre the map there. The tree is laid out to match the shape of the map pane, so a wide short pane gets a wide flat tree.
+The map shows every topic at once, clustered by category around the Ethereum RPC root. It never rearranges: each topic keeps its place, so you learn where things live.
 
-A well-connected lesson can name thirty terms, which would shrink every label past reading size, so the ring keeps the eighteen most relevant and the centre node counts the rest. The order is the topic you came from first, then the lesson's own read-next list, then terms in order of first mention. Nothing is lost: every term is one click away in the lesson's term list, and in search.
-
-**Overview** shows all topics at once, clustered by category around the root. Press `f` to switch views.
+Opening a topic moves the camera to it. From far out, where the labels are too small to read, it flies in to reading distance, pulling back slightly on long hops so you can see the route. From closer in it only pans, so a zoom you chose yourself is kept. Opening a category frames its whole cluster. `Home` and `Fit` return to the full map. The lines from the open topic run to every term its lesson links to.
 
 The map takes roughly seventy percent of the width and the lesson thirty. Drag the bar between them to change that, double-click it to reset, or focus it and use the left and right arrow keys. The width is remembered. Below 1000 pixels the two stack instead, map above lesson.
 
@@ -50,7 +48,9 @@ A topic becomes learned only by passing its checkpoint. Press `Take the checkpoi
 
 Questions come from the topic's own `quiz` array when it has one, topped up with questions generated from the lesson: fill the gap in a sentence, pick the definition, spot the real pitfall. Bookmarks, learned topics, the split position, and the theme live in browser storage.
 
-`/` focuses search, `Escape` clears it, `Backspace` goes back, `q` opens the checkpoint, `f` toggles the view.
+`/` focuses search, `Escape` clears it, `Backspace` goes back, `q` opens the checkpoint.
+
+Animations are on by default, including on systems set to reduce motion. The ⏵ button in the toolbar switches them off and remembers the choice.
 
 ## Content
 
