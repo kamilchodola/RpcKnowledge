@@ -5,15 +5,20 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { safeFilePath, server } from '../server.js';
-import { normalizeDataset, topicText, linkedIds, wordCount, LINK_PATTERN } from '../src/dataset.js';
+import { normalizeDataset, localizeDataset, topicText, linkedIds, wordCount, LINK_PATTERN } from '../src/dataset.js';
 import { buildAttempt, QUIZ_LENGTH } from '../src/quiz.js';
+import { narrate, speakable, MAX_CHUNK_CHARS } from '../src/narration.js';
+import { checkTopicTranslation, quizLengthStats } from '../scripts/check-translation.js';
+import { scriptKeys, pageKeys } from '../scripts/interface-strings.js';
+import * as polish from '../data/pl/index.js';
+import { strings as polishStrings } from '../data/pl/interface.js';
 import { PUBLISHED, HEADERS, build } from '../scripts/build.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 
 const raw = await import('../knowledge.js').then(module => module.default ?? module);
-const { categories, topics } = normalizeDataset(raw);
+const { categories, topics, stages } = normalizeDataset(raw);
 const byId = new Map(topics.map(topic => [topic.id, topic]));
 const categoryIds = new Set(categories.map(category => category.id));
 const topicIds = new Set(topics.map(topic => topic.id));
@@ -165,6 +170,183 @@ test('the whole map is reachable from the Ethereum RPC root, and nothing is a de
     'every topic must be reachable by following links from the root');
   assert.deepEqual([...incoming].filter(([id, count]) => count === 0 && id !== 'ethereum-rpc').map(([id]) => id), [],
     'these topics are never linked from another lesson');
+});
+
+// The learning path numbers every tile on the map and orders the audiobook, so it has to
+// place every topic exactly once, starting at the root.
+test('the learning path places every topic once, starting at the root', () => {
+  assert.ok(Array.isArray(raw.stages) && raw.stages.length >= 5, 'expected a learning path of several stages');
+  const ids = raw.stages.map(stage => stage.id);
+  assert.equal(new Set(ids).size, ids.length, 'stage ids must be unique');
+  const placed = raw.stages.flatMap(stage => stage.topics);
+  const seen = new Set();
+  placed.forEach(id => {
+    assert.ok(topicIds.has(id), `the learning path lists unknown topic ${id}`);
+    assert.ok(!seen.has(id), `the learning path lists ${id} twice`);
+    seen.add(id);
+  });
+  assert.deepEqual(topics.filter(topic => !seen.has(topic.id)).map(topic => topic.id), [], 'these topics are missing from the learning path');
+  assert.equal(placed[0], 'ethereum-rpc', 'the path starts at the root, the page a newcomer lands on');
+  raw.stages.forEach(stage => {
+    assert.match(stage.id, /^[a-z0-9-]+$/, `${stage.id} is not a slug`);
+    // Labels sit on the map as stage markers, so they have to stay short.
+    assert.ok(stage.label && stage.label.length <= 24, `${stage.id} needs a label of at most 24 characters`);
+    assert.ok(wordCount(stage.blurb) >= 8, `${stage.id} needs a blurb that says what the stage covers`);
+    assert.ok(stage.topics.length >= 3, `${stage.id} is too small to be a stage`);
+  });
+});
+
+test('every topic gets a step number in path order', () => {
+  assert.ok(!stages.some(stage => stage.id === 'more'), 'no topic should fall through to the catch-all stage');
+  const order = stages.flatMap(stage => stage.topicIds);
+  order.forEach((id, index) => {
+    assert.equal(byId.get(id).step, index + 1, `${id} is numbered out of order`);
+    assert.equal(byId.get(id).stage, stages.find(stage => stage.topicIds.includes(id)).id, `${id} has the wrong stage`);
+  });
+  assert.deepEqual(topics.map(topic => topic.step).sort((a, b) => a - b), topics.map((_, index) => index + 1));
+});
+
+// What the browser reads aloud: plain sentences, short enough for every speech engine, in
+// blocks the page can find, and never the code of an example.
+test('every lesson narrates as plain speech the page can follow', () => {
+  const stageById = new Map(stages.map(stage => [stage.id, stage]));
+  topics.forEach(topic => {
+    const { parts, chunks } = narrate(topic, { stage: stageById.get(topic.stage) });
+    assert.ok(chunks.length >= 5, `${topic.id} narrates to almost nothing`);
+    assert.equal(parts.length, 1 + topic.sections.length + (topic.example ? 1 : 0) + (topic.pitfalls.length ? 1 : 0), `${topic.id} has a part missing`);
+    parts.forEach((part, index) => assert.equal(chunks[part.first]?.part, index, `${topic.id} part "${part.label}" starts in the wrong place`));
+    const blocks = new Set(['stage', 'title', 'summary', 'example', 'example-note', 'pitfalls',
+      ...topic.sections.flatMap((section, index) => [`s${index}`, ...section.paragraphs.map((_, position) => `s${index}-${position}`)]),
+      ...topic.pitfalls.map((_, index) => `pitfall-${index}`)]);
+    chunks.forEach(chunk => {
+      assert.ok(blocks.has(chunk.block), `${topic.id} narrates a block the page does not mark: ${chunk.block}`);
+      assert.ok(chunk.text.length <= MAX_CHUNK_CHARS, `${topic.id} has a ${chunk.text.length}-character chunk`);
+      assert.ok(!/\[\[|\]\]|`/.test(chunk.text), `${topic.id} would read markup aloud: ${chunk.text.slice(0, 60)}`);
+    });
+    const said = block => chunks.filter(chunk => chunk.block === block).map(chunk => chunk.text).join(' ');
+    assert.ok(said('title').includes(speakable(topic.title)), `${topic.id} never says its own title`);
+    if (topic.example) {
+      // The example is its title and its note, and nothing from the code block.
+      assert.match(said('example'), /^Example: /, `${topic.id} does not announce its example`);
+      assert.ok(said('example').toLowerCase().includes(speakable(topic.example.title).toLowerCase()), `${topic.id} example is announced without its title`);
+      assert.equal(said('example-note'), speakable(topic.example.note), `${topic.id} example note is not read as written`);
+    }
+  });
+  const opener = narrate(byId.get(stages[1].topicIds[0]), { stage: stages[1] }).chunks[0];
+  assert.equal(opener.block, 'stage', 'the first topic of a stage announces the stage');
+  assert.equal(speakable('Call `eth_getBalance` on [[block-tag|the latest block]] with 0x00000000000000000000000000000000000000ff'),
+    'Call eth get Balance on the latest block with a hex value');
+});
+
+// Inline code is said the way a person would say it: a command or a JSON object is named
+// rather than spelled out character by character, and names an engine would spell letter by
+// letter are said as words.
+test('narration names code a listener could not follow and says names as words', () => {
+  assert.equal(speakable("Run `curl -s -X POST -H 'content-type: application/json' https://rpc.example`."), 'Run a curl command.');
+  assert.equal(speakable('Pass `{"blockHash": "0x…", "requireCanonical": true}`.'), 'Pass a Jason object with block Hash and require Canonical.');
+  assert.equal(speakable('Set `--http.vhosts` and `--rpc-http-api=ETH,NET`.'), 'Set http vhosts and rpc http api ETH, NET.');
+  assert.equal(speakable('Bind `http://127.0.0.1:8545`, or use `https://rpc.example/v2/<key>`.'), 'Bind localhost port 8545, or use rpc.example.');
+  assert.equal(speakable('It reverts with `0x08c379a0`; code `-32602` means bad params.'), 'It reverts with a hex value; code -32602 means bad params.');
+  assert.equal(speakable('The Ethereum JSON-RPC API.'), 'The Ethereum Jason-RPC API.');
+  assert.equal(speakable('Wyślij `curl -s https://rpc.example` i sprawdź receipt w JSON-ie.', 'pl'), 'Wyślij polecenie kerl i sprawdź risit w dżejsonie.');
+  assert.equal(speakable("Cache'owanie trzyma head i eventy; synchronizacja przez snap sync.", 'pl'), 'Keszowanie trzyma hed i iwenty; synchronizacja przez snap sink.');
+  assert.equal(speakable('API JSON-RPC na endpoincie.', 'pl'), 'API dżejson er pe ce na endpojncie.');
+  topics.forEach(topic => {
+    topicText(topic).forEach(text => {
+      const spoken = speakable(text);
+      assert.ok(!/`|--[a-z]|\{"|https?:\/\//.test(spoken), `${topic.id} would read code markup aloud: ${spoken.slice(0, 80)}`);
+    });
+  });
+});
+
+// Polish. The interface must be translated completely; lessons may arrive in batches, but
+// each translated lesson must match its English original (see scripts/check-translation.js)
+// and its checkpoint must stay as fair as the English one.
+test('every interface string has a Polish translation with the same placeholders', async () => {
+  const { keys, plurals } = scriptKeys(await fs.readFile(path.resolve(root, 'src/app.js'), 'utf8'));
+  const page = pageKeys(await fs.readFile(path.resolve(root, 'index.html'), 'utf8'));
+  assert.ok(keys.size > 80 && page.size > 30, 'expected to find the interface strings in app.js and index.html');
+  [...keys, ...page].forEach(key => assert.equal(typeof polishStrings[key], 'string', `no Polish for "${key}"`));
+  plurals.forEach(key => {
+    const entry = polishStrings[key];
+    assert.ok(entry && ['one', 'few', 'many'].every(form => typeof entry[form] === 'string'), `"${key}" needs Polish one, few, and many forms`);
+  });
+  const placeholders = text => [...new Set(text.match(/\{\w+\}/g) ?? [])].sort().join(' ');
+  Object.entries(polishStrings).forEach(([key, value]) => {
+    (typeof value === 'string' ? [value] : Object.values(value)).forEach(form => {
+      assert.equal(placeholders(form), placeholders(key), `"${key}" changes its placeholders in Polish`);
+    });
+  });
+  const used = new Set([...keys, ...plurals, ...page]);
+  assert.deepEqual(Object.keys(polishStrings).filter(key => !used.has(key)), [], 'these Polish strings are no longer used');
+});
+
+test('every category and stage has a Polish name and blurb', () => {
+  categories.forEach(category => {
+    const entry = polish.categories[category.id];
+    assert.ok(entry?.label && wordCount(entry.blurb) >= 6, `${category.id} needs a Polish label and blurb`);
+  });
+  raw.stages.forEach(stage => {
+    const entry = polish.stages[stage.id];
+    assert.ok(entry?.label && entry.label.length <= 24, `${stage.id} needs a Polish label of at most 24 characters`);
+    assert.ok(wordCount(entry.blurb) >= 8, `${stage.id} needs a Polish blurb`);
+  });
+});
+
+test('the Polish lessons and checkpoints match their English originals', () => {
+  const english = new Map(raw.topics.map(topic => [topic.id, topic]));
+  const ids = Object.keys(polish.topics);
+  // The translation is complete, and stays that way: a new lesson needs its Polish text too.
+  assert.deepEqual(raw.topics.filter(topic => !polish.topics[topic.id] || !polish.quizzes[topic.id]).map(topic => topic.id), [],
+    'these lessons have no Polish translation in data/pl');
+  ids.forEach(id => {
+    assert.ok(english.has(id), `data/pl translates unknown topic ${id}`);
+    const { errors } = checkTopicTranslation(english.get(id), polish.topics[id], polish.quizzes[id]);
+    assert.deepEqual(errors, [], `${id} does not match its English original`);
+  });
+  assert.deepEqual(Object.keys(polish.quizzes).filter(id => !polish.topics[id]), [], 'these checkpoints have no translated lesson');
+  const stats = quizLengthStats(Object.values(polish.quizzes).flat());
+  assert.ok(stats.longestShare <= 0.35, `the correct Polish option is the longest in ${Math.round(stats.longestShare * 100)}% of questions`);
+  assert.ok(stats.ratio <= 1.12, `correct Polish options average ${stats.ratio.toFixed(2)}x the length of wrong ones`);
+});
+
+test('the Polish overlay translates words and keeps everything else', () => {
+  const localized = normalizeDataset(localizeDataset(raw, polish));
+  const pl = new Map(localized.topics.map(topic => [topic.id, topic]));
+  const translated = Object.keys(polish.topics)[0];
+  const untranslated = topics.find(topic => !polish.topics[topic.id]);
+  assert.equal(pl.get(translated).lang, 'pl');
+  assert.equal(pl.get(translated).title, polish.topics[translated].title);
+  assert.ok(pl.get(translated).aliases.includes(byId.get(translated).title), 'the English title stays searchable');
+  assert.deepEqual(pl.get(translated).quiz.map(question => question.question), polish.quizzes[translated].map(question => question.question));
+  assert.deepEqual(pl.get(translated).related, byId.get(translated).related, 'related topics come from the English record');
+  assert.deepEqual(pl.get(translated).sources, byId.get(translated).sources, 'sources come from the English record');
+  assert.equal(pl.get(translated).example?.code, byId.get(translated).example?.code, 'example code comes from the English record');
+  if (untranslated) {
+    assert.equal(pl.get(untranslated.id).lang, 'en', 'an untranslated lesson stays English and says so');
+    assert.equal(pl.get(untranslated.id).summary, untranslated.summary);
+  }
+  assert.equal(localized.categories[0].label, polish.categories[localized.categories[0].id].label);
+  assert.equal(localized.stages[0].label, polish.stages[localized.stages[0].id].label);
+  topics.forEach(topic => assert.equal(pl.get(topic.id).step, topic.step, `${topic.id} moved on the path in Polish`));
+});
+
+test('Polish lessons narrate in Polish', () => {
+  const localized = normalizeDataset(localizeDataset(raw, polish));
+  const stageById = new Map(localized.stages.map(stage => [stage.id, stage]));
+  localized.topics.filter(topic => topic.lang === 'pl').forEach(topic => {
+    const { lang, chunks } = narrate(topic, { stage: stageById.get(topic.stage) });
+    assert.equal(lang, 'pl');
+    assert.ok(chunks.some(chunk => chunk.block === 'title' && chunk.text.startsWith(`Temat ${topic.step}. `)), `${topic.id} is not announced in Polish`);
+    chunks.forEach(chunk => {
+      assert.ok(chunk.text.length <= MAX_CHUNK_CHARS, `${topic.id} has a ${chunk.text.length}-character chunk`);
+      assert.ok(!/\[\[|\]\]|`/.test(chunk.text), `${topic.id} would read markup aloud`);
+    });
+  });
+  const root = localized.topics.find(topic => topic.id === 'ethereum-rpc');
+  if (root.lang === 'pl') assert.match(narrate(root, { stage: stageById.get(root.stage) }).chunks[0].text, /^Etap 1: /);
+  assert.equal(speakable('Np. `eth_call` zwraca m.in. dane, itd.', 'pl'), 'Na przykład eth call zwraca między innymi dane, i tak dalej');
+  assert.equal(speakable('Zwraca np. `eth_call`', 'pl'), 'Zwraca na przykład eth call');
 });
 
 // Checkpoints gate "learned", so their questions are held to the rules the reviewers wrote
@@ -325,7 +507,7 @@ test('serving dist exposes only the site, with its security headers', async () =
 });
 
 test('required browser entry files are present', async () => {
-  for (const filename of ['index.html', 'styles.css', 'src/app.js', 'src/quiz.js', 'src/dataset.js', 'knowledge.js', 'data/categories.js', 'package.json']) {
+  for (const filename of ['index.html', 'styles.css', 'src/app.js', 'src/quiz.js', 'src/dataset.js', 'src/narration.js', 'src/i18n.js', 'knowledge.js', 'data/categories.js', 'data/roadmap.js', 'data/pl/index.js', 'data/pl/interface.js', 'package.json']) {
     const content = await fs.readFile(path.resolve(root, filename), 'utf8');
     assert.ok(content.length > 100, `${filename} should not be empty`);
   }

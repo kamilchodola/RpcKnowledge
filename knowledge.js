@@ -1,8 +1,9 @@
 // The dataset the browser loads: every category's lessons, in reading order, each joined
 // with its checkpoint questions. Lessons live in data/<category>.js and questions in
 // data/quizzes/<category>.js, so a question can be reviewed or replaced without touching
-// the lesson it tests.
+// the lesson it tests. data/roadmap.js is the suggested order to read them in.
 export { categories } from './data/categories.js';
+export { stages } from './data/roadmap.js';
 import { topics as foundations } from './data/foundations.js';
 import { topics as protocol } from './data/protocol.js';
 import { topics as requests } from './data/requests.js';

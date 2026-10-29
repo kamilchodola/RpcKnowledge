@@ -200,6 +200,11 @@ code { padding: 1.5px 5px; border-radius: 4px; background: var(--accent-soft); c
 .map-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 5px; padding: 3px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--glass); backdrop-filter: blur(12px); }
 .map-actions .quiet-button { border-color: transparent; background: transparent; }
 .map-actions .quiet-button:hover:not(:disabled) { background: var(--surface-2); }
+.map-actions .next-up { color: var(--amber); }
+.view-switch { display: inline-flex; gap: 2px; margin-right: 2px; padding: 2px; border-radius: 7px; background: var(--surface-2); }
+.view-switch button { padding: 5px 10px; border: 0; border-radius: 6px; color: var(--muted); background: transparent; font-size: 11px; font-weight: 500; transition: color .15s ease, background .15s ease; }
+.view-switch button:hover:not([aria-pressed="true"]) { color: var(--ink); }
+.view-switch button[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); cursor: default; }
 
 .graph-wrap { position: relative; flex: 1; min-height: 0; overflow: hidden; cursor: grab; }
 .graph-wrap.is-dragging { cursor: grabbing; }
@@ -301,12 +306,35 @@ code { padding: 1.5px 5px; border-radius: 4px; background: var(--accent-soft); c
 .topic-node.is-hub .node-category { color: rgba(255, 255, 255, .8); }
 .topic-node.is-hub.is-selected { box-shadow: 0 0 0 3px var(--canvas), 0 0 0 5px var(--node-color), 0 8px 28px color-mix(in oklab, var(--node-color) 38%, transparent); }
 
-.topic-node.is-selected:not(.is-center):not(.is-hub) { z-index: 14; color: #fff; border-color: transparent; background: linear-gradient(150deg, color-mix(in oklab, var(--node-color) 86%, white 14%), color-mix(in oklab, var(--node-color) 72%, black 28%)); box-shadow: 0 10px 30px color-mix(in oklab, var(--node-color) 36%, transparent); }
+.topic-node.is-selected:not(.is-center):not(.is-hub):not(.is-stage) { z-index: 14; color: #fff; border-color: transparent; background: linear-gradient(150deg, color-mix(in oklab, var(--node-color) 86%, white 14%), color-mix(in oklab, var(--node-color) 72%, black 28%)); box-shadow: 0 10px 30px color-mix(in oklab, var(--node-color) 36%, transparent); }
 .topic-node.is-selected .node-category { color: rgba(255, 255, 255, .8); }
 .topic-node.is-origin { border-color: var(--amber); border-style: solid; box-shadow: 0 0 0 4px color-mix(in oklab, var(--amber) 18%, transparent), var(--shadow-sm); }
 .topic-node.is-origin .node-category { color: var(--amber); }
 
 .node-category { display: block; margin-top: 5px; color: var(--muted); font-family: var(--mono); font-size: 7.5px; font-weight: 400; letter-spacing: .09em; text-transform: uppercase; }
+
+/* Every topic carries its number on the learning path, top left, opposite the tick. */
+.node-step { position: absolute; top: -7px; left: -7px; display: grid; min-width: 17px; height: 15px; padding: 0 4px; place-items: center; border: 1px solid color-mix(in oklab, var(--node-color) 50%, transparent); border-radius: 8px; color: var(--ink-soft); background: var(--bg); font-family: var(--mono); font-size: 8px; font-weight: 500; letter-spacing: 0; line-height: 1; }
+.topic-node.is-compact > .node-step { top: -6px; left: -6px; min-width: 15px; height: 13px; padding: 0 3px; font-size: 7.5px; }
+.topic-node.is-center > .node-step { top: -10px; left: -10px; min-width: 22px; height: 20px; font-size: 10px; }
+.topic-node.is-learned > .node-step { color: var(--known); }
+.topic-node.is-selected > .node-step { border-color: var(--node-color); color: var(--ink); }
+/* The first topic on the path not yet learned: where to carry on. */
+.topic-node.is-next:not(.is-selected):not(.is-center) { border-color: var(--amber); animation: next-pulse 2.6s ease-in-out infinite; }
+.topic-node.is-next > .node-step { border-color: var(--amber); color: var(--amber); }
+@keyframes next-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in oklab, var(--amber) 24%, transparent), var(--shadow-sm); }
+  50% { box-shadow: 0 0 0 7px color-mix(in oklab, var(--amber) 8%, transparent), var(--shadow-sm); }
+}
+
+/* Roadmap: a marker opens each stage's band, and a line runs along its topics. */
+.topic-node.is-stage { --node-color: var(--accent); min-width: 120px; max-width: 150px; padding: 8px 14px; border: 1px solid color-mix(in oklab, var(--accent) 55%, transparent); border-radius: 12px; color: var(--ink); background: linear-gradient(150deg, var(--surface-3), var(--surface-2)); box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 8%, transparent), var(--shadow-sm); font-size: 12px; }
+.topic-node.is-stage .node-category { margin-top: 4px; color: var(--muted); }
+.topic-node.is-stage .node-category:first-child { margin: 0 0 4px; color: var(--accent); }
+.topic-node.is-stage.is-complete { border-color: var(--known); }
+.topic-node.is-stage.is-selected { background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); box-shadow: 0 0 0 3px var(--canvas), 0 0 0 5px var(--accent); }
+.edge.is-path { stroke: var(--line-strong); stroke-width: 2; opacity: .9; }
+.edge.is-path.is-done { stroke: var(--known); opacity: .7; }
 
 .legend { position: absolute; left: 14px; right: 14px; bottom: 12px; z-index: 12; display: flex; flex-wrap: nowrap; gap: 4px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent); }
 .legend::-webkit-scrollbar { display: none; }
@@ -335,8 +363,14 @@ code { padding: 1.5px 5px; border-radius: 4px; background: var(--accent-soft); c
 .lesson.is-switching .lesson-grid, .lesson.is-switching .category-topics { animation: lesson-in .44s cubic-bezier(.18, .9, .25, 1) .07s both; }
 @keyframes lesson-in { from { opacity: 0; transform: translateY(12px); } }
 .lesson-head { padding-bottom: 18px; border-bottom: 1px solid var(--line); }
-.lesson-topline { display: flex; align-items: center; gap: 9px; }
+.lesson-topline { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 9px; }
 .lesson-spacer { flex: 1; }
+.step-pill { display: inline-flex; align-items: center; padding: 4px 9px; border: 1px solid var(--line); border-radius: 20px; color: var(--muted); background: transparent; font-family: var(--mono); font-size: 9px; letter-spacing: .07em; text-transform: uppercase; transition: color .15s ease, border-color .15s ease; }
+.step-pill:hover { border-color: var(--accent); color: var(--accent); }
+.icon { flex: 0 0 auto; width: 16px; height: 16px; fill: currentColor; }
+.listen-button { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px 0 8px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); background: transparent; font-size: 11.5px; font-weight: 500; transition: color .15s ease, border-color .15s ease; }
+.listen-button .icon { width: 14px; height: 14px; }
+.listen-button:hover, .listen-button.is-playing { border-color: var(--accent); color: var(--accent); }
 .category-pill { display: inline-flex; align-items: center; padding: 4px 9px; border: 1px solid color-mix(in oklab, var(--category-color) 40%, transparent); border-radius: 20px; color: var(--category-color, var(--accent)); background: var(--category-tint, var(--accent-soft)); font-family: var(--mono); font-size: 9px; letter-spacing: .09em; text-transform: uppercase; }
 button.category-pill:hover { border-color: var(--category-color); }
 .lesson-meta { color: var(--faint); font-family: var(--mono); font-size: 9.5px; letter-spacing: .03em; }
@@ -346,7 +380,7 @@ button.category-pill:hover { border-color: var(--category-color); }
 .lesson-summary { margin: 0; color: var(--ink-soft); font-size: 15px; line-height: 1.6; }
 .lesson-summary code { font-size: .84em; }
 
-.lesson-grid { display: block; padding: 20px 0 78px; }
+.lesson-grid { display: block; padding: 20px 0 30px; }
 .lesson-body { color: var(--ink-soft); font-size: 14.5px; line-height: 1.72; }
 .lesson-body p { margin: 0 0 13px; }
 .lesson-section { margin-bottom: 24px; }
@@ -354,15 +388,45 @@ button.category-pill:hover { border-color: var(--category-color); }
 .lesson-section h3 small { color: var(--accent); font-family: var(--mono); font-size: 10px; font-weight: 400; letter-spacing: .08em; opacity: .75; }
 
 .example { margin: 4px 0 24px; border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; background: var(--code-bg); }
-.example-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 13px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.example-head { display: flex; align-items: center; gap: 10px; padding: 9px 13px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
 .example-head span { color: var(--ink); font-size: 12px; font-weight: 600; }
-.example-head small { color: var(--faint); font-family: var(--mono); font-size: 8.5px; letter-spacing: .09em; text-transform: uppercase; }
+.example-head small { margin-left: auto; color: var(--faint); font-family: var(--mono); font-size: 8.5px; letter-spacing: .09em; text-transform: uppercase; }
 .example pre { margin: 0; padding: 14px 15px; overflow-x: auto; color: var(--code-ink); font-family: var(--mono); font-size: 11.5px; line-height: 1.6; tab-size: 2; }
 .example pre code { padding: 0; background: transparent; color: inherit; font-size: inherit; }
 .example-note { margin: 0; padding: 11px 13px; border-top: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 12.5px; line-height: 1.6; }
 
 .pitfalls { margin: 0 0 22px; padding: 16px 18px 8px; border: 1px solid color-mix(in oklab, var(--todo) 28%, transparent); border-left: 3px solid var(--todo); border-radius: var(--r-md); background: var(--todo-soft); }
-.pitfalls h3 { margin: 0 0 10px; color: var(--todo); font-family: var(--mono); font-size: 9.5px; font-weight: 500; letter-spacing: .13em; text-transform: uppercase; }
+.pitfalls h3 { display: flex; align-items: center; margin: 0 0 10px; color: var(--todo); font-family: var(--mono); font-size: 9.5px; font-weight: 500; letter-spacing: .13em; text-transform: uppercase; }
+
+/* Listening: each part of a lesson can be played from its heading, and the block being
+   read is marked. The mark is drawn with shadows so it never shifts the text. */
+.section-listen { display: inline-grid; flex: 0 0 auto; align-self: center; width: 22px; height: 22px; margin-left: auto; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); background: transparent; opacity: .45; transition: opacity .15s ease, color .15s ease, border-color .15s ease; }
+.section-listen .icon { width: 10px; height: 10px; }
+.example-head .section-listen { margin-left: 0; }
+.lesson-section:hover .section-listen, .pitfalls:hover .section-listen, .example:hover .section-listen, .section-listen:focus-visible, .section-listen.is-active { opacity: 1; }
+.section-listen:hover, .section-listen.is-active { border-color: var(--accent); color: var(--accent); }
+[data-read] { border-radius: 4px; transition: background-color .3s ease, box-shadow .3s ease; }
+.is-reading {
+  --reading: color-mix(in oklab, var(--accent) 10%, transparent);
+  background-color: var(--reading);
+  box-shadow: -9px 0 0 var(--reading), 9px 0 0 var(--reading), -12px 0 0 var(--accent);
+}
+.example-head.is-reading, .step-pill.is-reading { box-shadow: none; }
+.step-pill.is-reading { border-color: var(--accent); color: var(--accent); }
+
+/* Previous and next on the path, at the foot of a lesson or a stage page. */
+.path-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin: 0 0 26px; }
+.path-step { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 11px 13px; border: 1px solid var(--line); border-radius: var(--r-md); color: var(--ink); background: var(--surface); text-align: left; transition: border-color .15s ease, background .15s ease; }
+.path-step.is-next { align-items: flex-end; text-align: right; }
+.path-step small { color: var(--muted); font-family: var(--mono); font-size: 8.5px; letter-spacing: .08em; text-transform: uppercase; }
+.path-step strong { overflow: hidden; max-width: 100%; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.path-step.is-known strong::after { content: ' ✓'; color: var(--known); font-size: .8em; }
+button.path-step:hover { border-color: var(--node-color, var(--accent)); background: var(--surface-2); }
+.path-step.is-end { display: grid; place-items: center; border-style: dashed; color: var(--faint); background: transparent; font-family: var(--mono); font-size: 8.5px; letter-spacing: .08em; text-transform: uppercase; }
+.category-lesson .path-nav { margin-top: 18px; }
+.group-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.group-actions button { display: inline-flex; align-items: center; gap: 7px; }
+.group-actions .icon { width: 14px; height: 14px; }
 .pitfalls ul { margin: 0; padding-left: 17px; }
 .pitfalls li { margin-bottom: 9px; font-size: 13.5px; line-height: 1.62; }
 
@@ -408,6 +472,10 @@ button.category-pill:hover { border-color: var(--category-color); }
 .is-known > strong > .card-badge { color: var(--accent-ink); background: var(--known); }
 .is-todo > strong > .card-badge { color: var(--todo); border: 1px solid currentColor; opacity: .6; }
 .category-topic span { color: var(--muted); font-size: 12.5px; line-height: 1.55; }
+.category-topic strong .card-title { flex: 1 1 auto; min-width: 0; color: var(--ink); font-size: 14px; line-height: 1.3; }
+.card-step { flex: 0 0 auto; min-width: 22px; color: var(--faint); font-family: var(--mono); font-size: 10px; font-weight: 400; }
+.category-topic.is-next { border-color: color-mix(in oklab, var(--amber) 55%, transparent); border-left-color: var(--amber); }
+.category-topic.is-next .card-step { color: var(--amber); }
 .category-topic .inline-topic { pointer-events: none; border-bottom: 0; color: inherit; font-weight: 500; }
 .category-topic .inline-topic::after { content: none; }
 
@@ -454,6 +522,39 @@ body.quiz-open { overflow: hidden; }
 .quiz-secondary { border: 1px solid var(--line); color: var(--muted); background: transparent; }
 .quiz-secondary:hover { border-color: var(--line-strong); color: var(--ink); }
 
+/* ---------- player ---------- */
+.player { position: relative; z-index: 18; display: flex; flex: 0 0 auto; align-items: center; gap: 18px; min-height: 62px; padding: 8px 18px; border-top: 1px solid var(--line); background: var(--glass); backdrop-filter: blur(18px) saturate(140%); }
+.player-controls { display: flex; flex: 0 0 auto; align-items: center; gap: 3px; }
+.player-button { display: grid; width: 32px; height: 32px; place-items: center; padding: 0; border: 0; border-radius: 50%; color: var(--muted); background: transparent; transition: color .15s ease, background .15s ease; }
+.player-button:hover { color: var(--ink); background: var(--surface-2); }
+.player-button.is-main { width: 40px; height: 40px; margin: 0 3px; color: var(--accent-ink); background: var(--accent); box-shadow: 0 6px 20px rgba(53, 224, 161, var(--halo)); }
+.player-button.is-main:hover { color: var(--accent-ink); background: var(--accent); }
+.player-button.is-main .icon { width: 18px; height: 18px; }
+.player-now { display: flex; flex: 1 1 auto; flex-direction: column; gap: 5px; min-width: 0; }
+.player-title { overflow: hidden; max-width: 100%; padding: 0; border: 0; color: var(--ink); background: transparent; font-family: var(--serif); font-size: 15px; font-weight: 500; letter-spacing: -.01em; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.player-title[data-topic-id]:hover { color: var(--accent); }
+.player-track { height: 3px; overflow: hidden; border-radius: 2px; background: var(--surface-3); }
+.player-track span { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #1aa9dd, var(--accent)); transition: width .4s ease; }
+.player-detail { overflow: hidden; margin: 0; color: var(--muted); font-family: var(--mono); font-size: 9px; letter-spacing: .03em; text-overflow: ellipsis; white-space: nowrap; }
+.player-settings { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
+.player-modes { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border-radius: 8px; background: var(--surface-2); }
+.player-label { padding: 0 5px; color: var(--faint); font-family: var(--mono); font-size: 8.5px; letter-spacing: .08em; text-transform: uppercase; }
+.player-modes button { padding: 5px 9px; border: 0; border-radius: 6px; color: var(--muted); background: transparent; font-size: 11px; font-weight: 500; }
+.player-modes button:hover { color: var(--ink); }
+.player-modes button[aria-pressed="true"] { color: var(--ink); background: var(--surface); box-shadow: var(--shadow-sm); }
+.player-select { display: inline-flex; align-items: center; gap: 6px; color: var(--faint); font-family: var(--mono); font-size: 8.5px; letter-spacing: .08em; text-transform: uppercase; }
+.player-select select { max-width: 86px; height: 28px; padding: 0 6px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: var(--surface); font-family: var(--sans); font-size: 11.5px; letter-spacing: 0; text-transform: none; }
+.player-select.is-voice select { max-width: 200px; }
+.lang-switch { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); }
+.lang-switch button { min-width: 30px; height: 26px; padding: 0 7px; border: 0; border-radius: 7px; color: var(--muted); background: transparent; font-family: var(--mono); font-size: 10px; letter-spacing: .06em; }
+.lang-switch button:hover:not([aria-pressed="true"]) { color: var(--ink); }
+.lang-switch button[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); cursor: default; }
+.lesson-lang-note { margin: -2px 0 12px; padding: 7px 10px; border: 1px dashed var(--line-strong); border-radius: var(--r-sm); color: var(--muted); font-size: 12px; line-height: 1.45; }
+.listen-toggle .icon { width: 15px; height: 15px; }
+.listen-toggle[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.listen-toggle.is-playing .icon { animation: listen-pulse 1.6s ease-in-out infinite; }
+@keyframes listen-pulse { 50% { opacity: .5; } }
+
 .toast { position: fixed; z-index: 70; right: 24px; bottom: 22px; max-width: 280px; padding: 11px 14px; border: 1px solid var(--line-strong); border-radius: var(--r-md); color: var(--ink); background: var(--surface); box-shadow: var(--shadow); font-size: 12px; opacity: 0; pointer-events: none; transform: translateY(8px); transition: opacity .22s ease, transform .22s ease; }
 .toast.is-visible { opacity: 1; transform: translateY(0); }
 
@@ -466,19 +567,120 @@ body.quiz-open { overflow: hidden; }
 @media (max-width: 1280px) {
   .progress-wrap { display: none; }
   .lesson { padding: 20px 18px 0; }
+  .player-label, .player-select > span { display: none; }
+  .player-select.is-voice select { max-width: 140px; }
 }
+
+/* The map pans and zooms itself, by mouse, finger, or pinch, so the browser must not scroll
+   or zoom the page underneath a gesture that starts on it. */
+.graph-wrap { touch-action: none; }
+.mobile-tabs, .player-more { display: none; }
+
+/* ---------- phones and narrow tablets ----------
+   The map and the lesson each take the whole screen, and the tab bar at the bottom switches
+   between them. The shell is exactly the visible viewport, so nothing scrolls but the lesson. */
 @media (max-width: 1000px) {
-  .app-shell { height: auto; min-height: 100vh; overflow: visible; }
-  .topbar { flex-wrap: wrap; height: auto; padding: 10px 14px; gap: 10px; }
+  .app-shell { height: 100vh; height: 100dvh; min-height: 0; }
+  .topbar { flex: 0 0 auto; flex-wrap: wrap; gap: 8px; padding: 8px 12px; padding-top: max(8px, env(safe-area-inset-top)); }
+  .brand-lockup { padding: 2px; }
+  .brand-text .eyebrow { display: none; }
+  .brand-mark { width: 30px; height: 30px; font-size: 15px; }
+  .brand-title { font-size: 15px; }
+  .topbar-actions { gap: 6px; }
   .search-wrap { order: 3; flex: 1 1 100%; max-width: none; }
-  .workspace { flex-direction: column; flex: none; }
-  .map-pane { flex: none; height: 56vh; min-height: 340px; }
+  .search-box { height: 40px; }
+  /* Under 16 pixels, iOS zooms the page in when the field is focused. */
+  .search-box input { align-self: stretch; font-size: 16px; }
+  .search-box kbd { display: none; }
+  .search-results { max-height: 60vh; }
+  .search-result { flex-wrap: wrap; row-gap: 2px; padding: 11px 12px; }
+  .search-result span { flex-basis: 100%; order: 3; }
+  .icon-button { width: 40px; height: 40px; font-size: 16px; }
+  .saved-toggle { height: 40px; padding: 0 12px; }
+  .lang-switch button { min-width: 36px; height: 34px; }
+
+  .workspace { position: relative; flex: 1 1 auto; min-height: 0; }
+  .map-pane, .lesson-pane { position: absolute; inset: 0; flex: none; height: auto; min-width: 0; max-width: none; }
+  .lesson-pane { overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  :root[data-mobile-view="map"] .lesson-pane, :root[data-mobile-view="lesson"] .map-pane { visibility: hidden; pointer-events: none; }
   .splitter { display: none; }
-  .lesson-pane { flex: none; max-width: none; min-width: 0; overflow: visible; border-top: 1px solid var(--line); }
-  .lesson { min-height: 0; padding: 20px 16px 0; }
-  .learn-block { position: static; }
-}
-@media (max-width: 520px) {
+  .lesson { padding: 16px 16px 0; }
+  .lesson h2 { font-size: 26px; }
+  .lesson-body { font-size: 15.5px; line-height: 1.7; }
+  .lesson-summary { font-size: 16px; }
+  .learn-block { padding: 10px 0 12px; }
+  .learned-button { min-height: 46px; font-size: 14px; }
+  .listen-button, .bookmark-button { height: 36px; }
+  .bookmark-button { width: 36px; }
+  .step-pill, .category-pill { padding: 6px 10px; }
+  .section-listen { width: 32px; height: 32px; opacity: .8; }
+  .section-listen .icon { width: 12px; height: 12px; }
+  .term-chip, .related-topic { padding: 8px 12px 8px 10px; font-size: 13px; }
+  .path-step { padding: 12px 13px; }
+  .path-step strong { white-space: normal; }
+  .category-topic { padding: 14px; }
+
+  .map-header { gap: 8px; padding: 8px 10px 0; }
+  /* The tab bar names the open topic, so the breadcrumb would only cost map space here. */
+  .trail { display: none; }
+  .map-actions { flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; max-width: 100%; margin-left: auto; }
+  .map-actions .quiet-button { min-width: 38px; min-height: 36px; padding: 6px 9px; font-size: 13px; }
+  .action-label { display: none; }
+  /* Back is the phone's own back gesture, home is the brand mark, and zoom is a pinch. */
+  #back-button, #home-button, .zoom-button { display: none; }
+  /* Category and listen controls on the first row, step and reading time on the second. */
+  .lesson-topline > .category-pill { order: 1; }
+  .lesson-topline > .lesson-spacer { order: 2; }
+  .lesson-topline > .listen-button { order: 3; }
+  .lesson-topline > .bookmark-button { order: 4; }
+  .lesson-topline > .step-pill { order: 5; }
+  .lesson-topline > .lesson-meta { order: 6; }
+  .view-switch button { min-height: 32px; padding: 6px 12px; font-size: 12.5px; }
   .graph-hint { display: none; }
-  .map-header { flex-wrap: wrap; }
+  .legend { left: 10px; right: 10px; bottom: 10px; }
+  .legend-chip { padding: 6px 11px 6px 9px; font-size: 9.5px; }
+
+  .mobile-tabs { display: flex; flex: 0 0 auto; gap: 6px; padding: 6px 10px; padding-bottom: max(6px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--glass); backdrop-filter: blur(18px) saturate(140%); }
+  .mobile-tabs button { display: grid; flex: 1 1 0; min-width: 0; min-height: 50px; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; align-content: center; column-gap: 8px; padding: 6px 14px; border: 0; border-radius: 12px; color: var(--muted); background: transparent; text-align: left; }
+  .mobile-tabs button[aria-pressed="true"] { color: var(--ink); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+  .tab-icon { grid-row: 1 / span 2; align-self: center; color: var(--accent); font-size: 18px; }
+  .tab-label { font-size: 13px; font-weight: 600; }
+  .tab-sub { overflow: hidden; color: var(--faint); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* The player: title and its controls on two short rows; speed, voice and mode fold away. */
+  .player { flex-wrap: wrap; gap: 4px 8px; min-height: 0; padding: 8px 12px; }
+  .player-now { order: 1; flex: 1 1 0; }
+  .player-more { display: grid; order: 2; }
+  #player-close { order: 3; }
+  .player-controls { order: 4; flex: 1 1 100%; justify-content: center; gap: 14px; }
+  .player-button { width: 42px; height: 42px; }
+  .player-button.is-main { width: 48px; height: 48px; }
+  .player-settings { display: none; order: 5; flex: 1 1 100%; flex-wrap: wrap; gap: 8px; padding-top: 6px; }
+  .player.is-expanded .player-settings { display: flex; }
+  .player.is-expanded .player-more { color: var(--accent); border-color: var(--accent); }
+  .player-label, .player-select > span { display: inline; }
+  .player-select { flex: 1 1 140px; }
+  .player-select select { width: 100%; max-width: none; height: 36px; font-size: 14px; }
+  .player-modes { flex: 1 1 100%; }
+  .player-modes button { flex: 1; min-height: 34px; }
+
+  /* The checkpoint takes the whole screen. */
+  .quiz-overlay { padding: 0; place-items: stretch; }
+  .quiz-card { width: 100%; max-height: none; height: 100%; border: 0; border-radius: 0; padding: 18px 16px; padding-top: max(18px, env(safe-area-inset-top)); padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+  .quiz-option { min-height: 48px; padding: 13px 14px; font-size: 15px; }
+  .quiz-primary, .quiz-secondary { min-height: 46px; flex: 1 1 auto; }
+
+  .popover { width: min(320px, calc(100vw - 24px)); }
+  .toast { right: 12px; left: 12px; bottom: calc(78px + env(safe-area-inset-bottom)); max-width: none; text-align: center; }
+}
+
+/* On a phone the brand mark alone is the home button, so the actions fit beside it. */
+@media (max-width: 520px) {
+  .brand-text { display: none; }
+  .topbar-actions { flex: 1 1 auto; justify-content: flex-end; }
+}
+
+/* Touch screens have no hover, so controls that hover would reveal stay visible. */
+@media (hover: none) {
+  .section-listen { opacity: .8; }
 }

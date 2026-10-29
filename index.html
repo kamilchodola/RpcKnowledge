@@ -2,22 +2,24 @@
 <html lang="en" data-motion="on">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#0a0f12" media="(prefers-color-scheme: dark)">
     <meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)">
-    <meta name="description" content="A clickable knowledge map of Ethereum RPC: every topic explained precisely, every new term its own leaf.">
+    <meta name="description" content="A clickable knowledge map of Ethereum RPC: every topic explained precisely, every new term its own leaf." data-i18n-attr="content">
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
     <title>Ethereum RPC — knowledge map</title>
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
-    <a class="skip-link" href="#lesson">Skip to lesson</a>
+    <!-- Interface text is English here. An element marked data-i18n holds only its text, and
+         data-i18n-attr lists attributes to translate; src/i18n.js swaps both on load. -->
+    <a class="skip-link" href="#lesson" data-i18n>Skip to lesson</a>
     <div class="app-shell">
       <header class="topbar">
-        <button id="brand-button" class="brand-lockup" type="button" title="Back to the start">
+        <button id="brand-button" class="brand-lockup" type="button" title="Back to the start" data-i18n-attr="title">
           <span class="brand-mark" aria-hidden="true">◈</span>
           <span class="brand-text">
-            <span class="eyebrow">Knowledge map</span>
+            <span class="eyebrow" data-i18n>Knowledge map</span>
             <span class="brand-title">Ethereum <em>RPC</em></span>
           </span>
         </button>
@@ -25,106 +27,155 @@
         <div class="search-wrap">
           <label class="search-box" for="topic-search">
             <span aria-hidden="true">⌕</span>
-            <input id="topic-search" type="search" placeholder="Search topics, methods, EIPs…" autocomplete="off" aria-label="Search topics" aria-controls="search-results" aria-expanded="false">
+            <input id="topic-search" type="search" placeholder="Search topics, methods, EIPs…" autocomplete="off" aria-label="Search topics" aria-controls="search-results" aria-expanded="false" data-i18n-attr="placeholder aria-label">
             <kbd>/</kbd>
           </label>
-          <div id="search-results" class="search-results" role="listbox" aria-label="Search results" hidden></div>
+          <div id="search-results" class="search-results" role="listbox" aria-label="Search results" data-i18n-attr="aria-label" hidden></div>
         </div>
 
         <div class="topbar-actions">
-          <div class="progress-wrap" aria-label="Learning progress" title="Topics marked as learned">
-            <div class="progress-label"><span>Learned</span><strong id="progress-count">0 / 0</strong></div>
+          <div class="progress-wrap" aria-label="Learning progress" title="Topics marked as learned" data-i18n-attr="aria-label title">
+            <div class="progress-label"><span data-i18n>Learned</span><strong id="progress-count">0 / 0</strong></div>
             <div class="progress-track"><span id="progress-bar"></span></div>
           </div>
           <div class="saved-wrap">
-            <button id="saved-button" class="quiet-button saved-toggle" type="button" aria-haspopup="true" aria-expanded="false" title="Saved topics"><span aria-hidden="true">☆</span> <span id="saved-count">0</span></button>
+            <button id="saved-button" class="quiet-button saved-toggle" type="button" aria-haspopup="true" aria-expanded="false" title="Saved topics" data-i18n-attr="title"><span aria-hidden="true">☆</span> <span id="saved-count">0</span></button>
             <div id="saved-popover" class="popover" hidden>
-              <p class="eyebrow">Saved topics</p>
-              <div id="bookmarked-topics" class="bookmarked-topics"><span class="saved-empty">Nothing saved yet. Use ☆ on a lesson.</span></div>
+              <p class="eyebrow" data-i18n>Saved topics</p>
+              <div id="bookmarked-topics" class="bookmarked-topics"></div>
             </div>
           </div>
+          <div id="lang-switch" class="lang-switch" role="group" aria-label="Language" data-i18n-attr="aria-label">
+            <button type="button" data-lang="en" lang="en" aria-pressed="true" title="English">EN</button>
+            <button type="button" data-lang="pl" lang="pl" aria-pressed="false" title="Polski">PL</button>
+          </div>
+          <button id="listen-toggle" class="icon-button listen-toggle" type="button" aria-label="Show the listening player" aria-pressed="false" title="Listen to the map" data-i18n-attr="aria-label title"></button>
           <button id="motion-toggle" class="icon-button" type="button" aria-label="Turn animations on or off" title="Animations">&#9205;</button>
-          <button id="theme-toggle" class="icon-button" type="button" aria-label="Switch between dark and light" title="Switch between dark and light">◐</button>
+          <button id="theme-toggle" class="icon-button" type="button" aria-label="Switch between dark and light" title="Switch between dark and light" data-i18n-attr="aria-label title">◐</button>
         </div>
       </header>
 
       <main class="workspace" id="workspace">
-        <section id="map" class="map-pane" aria-label="Topic map">
+        <section id="map" class="map-pane" aria-label="Topic map" data-i18n-attr="aria-label">
           <div class="map-header">
-            <nav id="trail" class="trail" aria-label="Path you followed"></nav>
+            <nav id="trail" class="trail" aria-label="Path you followed" data-i18n-attr="aria-label"></nav>
             <div class="map-actions">
-              <button id="back-button" class="quiet-button" type="button" disabled title="Previous topic"><span aria-hidden="true">←</span> Back</button>
-              <button id="home-button" class="quiet-button" type="button" title="Back to Ethereum RPC"><span aria-hidden="true">⌂</span> Home</button>
-              <button id="zoom-out" class="quiet-button zoom-button" type="button" aria-label="Zoom out" title="Zoom out">−</button>
-              <button id="zoom-in" class="quiet-button zoom-button" type="button" aria-label="Zoom in" title="Zoom in">+</button>
-              <button id="fit-button" class="quiet-button" type="button" title="Fit the map to the pane"><span aria-hidden="true">⌗</span> Fit</button>
+              <div class="view-switch" role="group" aria-label="View" data-i18n-attr="aria-label">
+                <button id="view-map" type="button" aria-pressed="true" title="Topics clustered by category (R)" data-i18n data-i18n-attr="title">Map</button>
+                <button id="view-roadmap" type="button" aria-pressed="false" title="Topics in the suggested reading order (R)" data-i18n data-i18n-attr="title">Roadmap</button>
+              </div>
+              <button id="next-up" class="quiet-button next-up" type="button" hidden></button>
+              <button id="back-button" class="quiet-button" type="button" disabled title="Previous topic" aria-label="Previous topic" data-i18n-attr="title aria-label"><span aria-hidden="true">←</span> <span class="action-label" data-i18n>Back</span></button>
+              <button id="home-button" class="quiet-button" type="button" title="Back to Ethereum RPC" aria-label="Back to Ethereum RPC" data-i18n-attr="title aria-label"><span aria-hidden="true">⌂</span> <span class="action-label" data-i18n>Home</span></button>
+              <button id="zoom-out" class="quiet-button zoom-button" type="button" aria-label="Zoom out" title="Zoom out" data-i18n-attr="aria-label title">−</button>
+              <button id="zoom-in" class="quiet-button zoom-button" type="button" aria-label="Zoom in" title="Zoom in" data-i18n-attr="aria-label title">+</button>
+              <button id="fit-button" class="quiet-button" type="button" title="Fit the map to the pane" aria-label="Fit the map to the pane" data-i18n-attr="title aria-label"><span aria-hidden="true">⌗</span> <span class="action-label" data-i18n>Fit</span></button>
             </div>
           </div>
-          <div id="graph-wrap" class="graph-wrap" aria-label="Interactive Ethereum RPC knowledge graph">
+          <div id="graph-wrap" class="graph-wrap" aria-label="Interactive Ethereum RPC knowledge graph" data-i18n-attr="aria-label">
             <svg id="graph-lines" class="graph-lines" aria-hidden="true"></svg>
             <div id="graph-nodes" class="graph-nodes"></div>
-            <div id="legend" class="legend" aria-label="Categories"></div>
-            <div class="graph-hint" id="graph-hint"><span class="hint-dot"></span> Click a term to open it · drag to pan · scroll to zoom</div>
-            <div id="load-state" class="load-state">Loading the map…</div>
+            <div id="legend" class="legend" aria-label="Categories" data-i18n-attr="aria-label"></div>
+            <div class="graph-hint" id="graph-hint"><span class="hint-dot"></span></div>
+            <div id="load-state" class="load-state" data-i18n>Loading the map…</div>
           </div>
         </section>
 
-        <div id="splitter" class="splitter" role="separator" aria-orientation="vertical" aria-label="Resize the lesson column. Use the left and right arrow keys to adjust." tabindex="0" title="Drag to resize"></div>
+        <div id="splitter" class="splitter" role="separator" aria-orientation="vertical" aria-label="Resize the lesson column. Use the left and right arrow keys to adjust." tabindex="0" title="Drag to resize" data-i18n-attr="aria-label title"></div>
 
         <section id="lesson" class="lesson-pane" tabindex="-1" aria-live="polite">
           <article id="lesson-content" class="lesson" hidden>
             <header class="lesson-head">
               <div class="lesson-topline">
-                <button id="lesson-category" class="category-pill" type="button" title="Open this category"></button>
+                <button id="lesson-category" class="category-pill" type="button" title="Open this category" data-i18n-attr="title"></button>
+                <button id="lesson-step" class="step-pill" type="button" data-read="stage"></button>
                 <span id="lesson-meta" class="lesson-meta"></span>
                 <span class="lesson-spacer"></span>
-                <button id="bookmark-button" class="bookmark-button" type="button" aria-label="Save this topic" title="Save this topic">☆</button>
+                <button id="listen-button" class="listen-button" type="button"></button>
+                <button id="bookmark-button" class="bookmark-button" type="button" aria-label="Save this topic" title="Save this topic" data-i18n-attr="aria-label title">☆</button>
               </div>
-              <h2 id="lesson-title"></h2>
-              <p id="lesson-summary" class="lesson-summary"></p>
+              <h2 id="lesson-title" data-read="title"></h2>
+              <p id="lesson-lang-note" class="lesson-lang-note" hidden data-i18n>This lesson is not translated yet, so it is shown in English.</p>
+              <p id="lesson-summary" class="lesson-summary" data-read="summary"></p>
             </header>
             <div class="lesson-grid">
               <div id="lesson-body" class="lesson-body"></div>
               <aside class="lesson-side">
                 <section class="side-block">
-                  <p class="eyebrow">Terms in this lesson</p>
+                  <p class="eyebrow" data-i18n>Terms in this lesson</p>
                   <div id="lesson-terms" class="term-list"></div>
                 </section>
                 <section class="side-block">
-                  <p class="eyebrow">Read next</p>
+                  <p class="eyebrow" data-i18n>Read next</p>
                   <div id="related-topics" class="related-topics"></div>
                 </section>
                 <section class="side-block" id="sources-block" hidden>
-                  <p class="eyebrow">Primary references</p>
+                  <p class="eyebrow" data-i18n>Primary references</p>
                   <div id="topic-sources" class="topic-sources"></div>
                 </section>
               </aside>
             </div>
+            <nav id="path-nav" class="path-nav" aria-label="Learning path" data-i18n-attr="aria-label"></nav>
             <div class="learn-block">
-              <button id="learned-button" class="learned-button" type="button"><span aria-hidden="true">◆</span> Take the checkpoint</button>
-              <button id="learned-reset" class="text-button" type="button" hidden>Mark as not learned</button>
+              <button id="learned-button" class="learned-button" type="button"></button>
+              <button id="learned-reset" class="text-button" type="button" hidden data-i18n>Mark as not learned</button>
             </div>
           </article>
 
           <article id="category-content" class="lesson category-lesson" hidden>
             <header class="lesson-head">
-              <div class="lesson-topline"><span class="category-pill" id="category-pill">Category</span><span id="category-meta" class="lesson-meta"></span></div>
+              <div class="lesson-topline"><span class="category-pill" id="category-pill"></span><span id="category-meta" class="lesson-meta"></span></div>
               <h2 id="category-title"></h2>
               <p id="category-blurb" class="lesson-summary"></p>
+              <div id="group-actions" class="group-actions" hidden></div>
             </header>
             <div id="category-topics" class="category-topics"></div>
+            <nav id="stage-nav" class="path-nav" aria-label="Stages" data-i18n-attr="aria-label" hidden></nav>
           </article>
         </section>
       </main>
+
+      <section id="player" class="player" aria-label="Listening" data-i18n-attr="aria-label" hidden>
+        <div class="player-controls">
+          <button id="player-prev" class="player-button" type="button" aria-label="Previous topic" title="Previous topic" data-i18n-attr="aria-label title"></button>
+          <button id="player-back" class="player-button" type="button" aria-label="Back a sentence or two" title="Back" data-i18n-attr="aria-label title"></button>
+          <button id="player-play" class="player-button is-main" type="button" aria-label="Play" title="Play (L)" data-i18n-attr="aria-label title"></button>
+          <button id="player-forward" class="player-button" type="button" aria-label="Forward a sentence or two" title="Forward" data-i18n-attr="aria-label title"></button>
+          <button id="player-next" class="player-button" type="button" aria-label="Next topic" title="Next topic" data-i18n-attr="aria-label title"></button>
+        </div>
+        <div class="player-now">
+          <button id="player-title" class="player-title" type="button"></button>
+          <div class="player-track" aria-hidden="true"><span id="player-fill"></span></div>
+          <p id="player-detail" class="player-detail"></p>
+        </div>
+        <div class="player-settings">
+          <div id="player-modes" class="player-modes" role="group" aria-label="When to stop" data-i18n-attr="aria-label">
+            <span class="player-label" aria-hidden="true" data-i18n>Stop after</span>
+            <button type="button" data-listen-mode="section" aria-pressed="false" data-i18n>Section</button>
+            <button type="button" data-listen-mode="topic" aria-pressed="false" data-i18n>Topic</button>
+            <button type="button" data-listen-mode="path" aria-pressed="true" data-i18n>Whole path</button>
+          </div>
+          <label class="player-select"><span data-i18n>Speed</span><select id="player-rate"></select></label>
+          <label class="player-select is-voice"><span data-i18n>Voice</span><select id="player-voice"></select></label>
+        </div>
+        <button id="player-more" class="icon-button player-more" type="button" aria-expanded="false" aria-controls="player" aria-label="Player settings" title="Player settings" data-i18n-attr="aria-label title">⋯</button>
+        <button id="player-close" class="icon-button" type="button" aria-label="Stop and close the player" title="Stop and close" data-i18n-attr="aria-label title">×</button>
+      </section>
+
+      <!-- On a phone the map and the lesson each take the whole screen; these switch between them. -->
+      <nav id="mobile-tabs" class="mobile-tabs" aria-label="Views" data-i18n-attr="aria-label">
+        <button type="button" data-mobile-view="map" aria-pressed="false"><span class="tab-icon" aria-hidden="true">◈</span><span class="tab-label" data-i18n>Map</span></button>
+        <button type="button" data-mobile-view="lesson" aria-pressed="true"><span class="tab-icon" aria-hidden="true">¶</span><span class="tab-label" data-i18n>Lesson</span><small id="tab-lesson-title" class="tab-sub"></small></button>
+      </nav>
     </div>
     <div id="quiz-overlay" class="quiz-overlay" hidden>
       <div id="quiz-card" class="quiz-card" role="dialog" aria-modal="true" aria-labelledby="quiz-heading">
         <header class="quiz-head">
           <div>
-            <p class="eyebrow" id="quiz-step">Checkpoint</p>
+            <p class="eyebrow" id="quiz-step"></p>
             <h3 id="quiz-heading"></h3>
           </div>
-          <button id="quiz-close" class="icon-button" type="button" aria-label="Close the checkpoint" title="Close">×</button>
+          <button id="quiz-close" class="icon-button" type="button" aria-label="Close the checkpoint" title="Close" data-i18n-attr="aria-label title">×</button>
         </header>
         <div id="quiz-progress" class="quiz-progress" aria-hidden="true"></div>
         <div id="quiz-body" class="quiz-body" aria-live="polite"></div>
