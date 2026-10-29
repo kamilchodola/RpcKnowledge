@@ -12,7 +12,7 @@ export const topics = [
         heading: "What you actually buy",
         paragraphs: [
           "A provider gives you a URL. Behind it sits a fleet: [[full-node|full nodes]] for recent state, [[archive-node|archive nodes]] for old blocks, tracing-capable clients for the [[trace-api|trace_]] and [[debug-api|debug_]] namespaces, and separate pools per chain. The provider absorbs the work you would otherwise do yourself: hardware, sync, client upgrades before every [[hardfork|network upgrade]], [[load-balancer|load balancing]], [[caching|caching]], and [[failover|failover]]. Alchemy, Infura, QuickNode, Chainstack, dRPC, Ankr, and the free PublicNode endpoints all sell some version of this; dRPC and Ankr route across independently operated nodes rather than a single fleet, which changes the trust story but not the interface.",
-          "Most providers also sell things no [[execution-client|execution client]] implements: token balance and NFT endpoints, decoded transaction history for an [[address|address]], webhook streams, and mempool feeds. These are convenient and completely non-portable. Code written against them cannot be pointed at your own node or a different provider without a rewrite, so keep them behind an interface of your own if you may ever move.",
+          "Most providers also sell things no [[execution-client|execution client]] implements: [[portfolio-tracker|token balance]] and [[nft-marketplace|NFT endpoints]], decoded transaction history for an [[address|address]], webhook streams, and mempool feeds. These are convenient and completely non-portable. Code written against them cannot be pointed at your own node or a different provider without a rewrite, so keep them behind an interface of your own if you may ever move.",
         ],
       },
       {
@@ -26,7 +26,7 @@ export const topics = [
         heading: "What you give up",
         paragraphs: [
           "Correctness becomes a trust assumption. A provider's answer is a claim, not a proof: it can serve stale state, answer from a node on a minority fork, or simply be wrong, and the JSON response carries no evidence either way. Where the answer decides money, verify it, by reading at the `finalized` [[block-tag|block tag]], by cross-checking a second independent endpoint, or by checking an [[eth-get-proof|account proof]] against a [[trusted-header|trusted header]]; [[verified-rpc|verified RPC]] covers the patterns.",
-          "Privacy is the quieter cost. The provider sees your IP address, your API key, every address you query, every contract you read, and every transaction you submit before the network does. Wallets that use one default endpoint leak their users' whole address graph to one company. Submission is also a control point: a provider can drop or delay an [[eth-send-raw-transaction|eth_sendRawTransaction]], and a provider outage takes your application with it unless you have a second path.",
+          "[[rpc-privacy|Privacy]] is the quieter cost. The provider sees your IP address, your API key, every address you query, every contract you read, and every transaction you submit before the network does. Wallets that use one default endpoint leak their users' whole address graph to one company. Submission is also a control point: a provider can drop or delay an [[eth-send-raw-transaction|eth_sendRawTransaction]], and a provider outage takes your application with it unless you have a second path.",
         ],
       },
     ],
@@ -40,9 +40,9 @@ export const topics = [
       "Shipping the API key in a browser bundle. Anything in frontend JavaScript is public; use a domain allow-list, or proxy through your own backend.",
       "Assuming every endpoint of one provider is equivalent. Trace-capable and archive endpoints are often a different product tier on a different URL.",
       "Treating a 429 or a `-32005` as 'no such data'. It is an operational answer about your quota, not a statement about the chain.",
-      "Benchmarking a provider against your own node on latency alone; a provider's edge cache can answer faster and still be a block behind.",
+      "[[rpc-benchmarking|Benchmarking a provider]] against your own node on latency alone; a provider's edge cache can answer faster and still be a block behind.",
     ],
-    related: ["self-hosting", "endpoint-capabilities", "rate-limits", "load-balancer", "authentication", "caching", "verified-rpc", "private-rpc", "json-rpc"],
+    related: ["self-hosting", "endpoint-capabilities", "rate-limits", "load-balancer", "authentication", "caching", "verified-rpc", "private-rpc", "json-rpc", "rpc-workloads", "x402"],
     sources: [
       { title: "ethereum.org: Nodes and clients", url: "https://ethereum.org/developers/docs/nodes-and-clients/" },
       { title: "ethereum.org: Developer tools", url: "https://ethereum.org/developers/tools/" },
@@ -67,7 +67,7 @@ export const topics = [
         heading: "What it buys",
         paragraphs: [
           "Trust and privacy are the real reasons. Your node validates every block itself, so its answers are derived from consensus rules rather than from a company's claim, and nobody outside sees which addresses you query or which transactions you sign. Validators must self-host: signing duties depend on a beacon node you control, and the Engine API pair cannot be outsourced.",
-          "Capability is the practical reason. On your own node there are no compute units, no [[eth-get-logs|eth_getLogs]] range cap other than the one you set, no batch length limit, and no plan tier gating [[debug-api|debug_]] tracing, [[trace-api|trace_]] replays, [[txpool-api|txpool_]] inspection, or long-lived [[eth-subscribe|subscriptions]]. Heavy [[indexer|indexing]] and simulation workloads are usually cheaper on owned hardware than on metered compute units.",
+          "Capability is the practical reason. On your own node there are no compute units, no [[eth-get-logs|eth_getLogs]] range cap or batch length limit beyond your client's defaults, which you can change (Erigon caps ranges at 1,000 blocks and Geth batches at 1,000 requests), and no plan tier gating [[debug-api|debug_]] tracing, [[trace-api|trace_]] replays, [[txpool-api|txpool_]] inspection, or long-lived [[eth-subscribe|subscriptions]]. Heavy [[indexer|indexing]] and simulation workloads are usually cheaper on owned hardware than on metered compute units.",
         ],
       },
       {
@@ -90,7 +90,7 @@ export const topics = [
       "Assuming your own node answers historical state; a default [[pruned-node|pruned node]] keeps only recent state and will fail old [[eth-call|eth_call]] queries.",
       "Calling one node with no fallback 'self-hosted RPC'; a single machine reboot is an application outage.",
     ],
-    related: ["rpc-provider", "full-node", "node-hardware", "health-check", "rpc-gateway", "security", "archive-node", "engine-api"],
+    related: ["rpc-provider", "full-node", "node-hardware", "health-check", "rpc-gateway", "security", "archive-node", "engine-api", "rpc-privacy"],
     sources: [
       { title: "ethereum.org: Run a node", url: "https://ethereum.org/developers/docs/nodes-and-clients/run-a-node/" },
       { title: "Geth: command-line options", url: "https://geth.ethereum.org/docs/fundamentals/command-line-options" },
@@ -186,7 +186,7 @@ export const topics = [
       "Forgetting that the gateway terminates the caller's WebSocket, so [[eth-subscribe|subscriptions]] must be re-established upstream and gaps re-filled after an upstream switch.",
       "Running the gateway without an allow-list on the assumption that upstream providers already block dangerous [[namespaces|namespaces]]; self-hosted upstreams usually do not.",
     ],
-    related: ["load-balancer", "caching", "failover", "head-lag", "rate-limits", "observability", "reverse-proxy", "rpc-provider", "retries"],
+    related: ["load-balancer", "caching", "failover", "head-lag", "rate-limits", "observability", "reverse-proxy", "rpc-provider", "retries", "circuit-breaker"],
     sources: [
       { title: "ethereum.org: Nodes and clients", url: "https://ethereum.org/developers/docs/nodes-and-clients/" },
       { title: "OP Stack documentation", url: "https://docs.optimism.io/" },
@@ -217,7 +217,7 @@ export const topics = [
       {
         heading: "How to make it go away",
         paragraphs: [
-          "Pin the block. Resolve `latest` once, then pass that explicit number, or an EIP-1898 `{\"blockHash\": …, \"requireCanonical\": true}` object, to every call that must agree. A node that does not have that block fails loudly with 'header not found' instead of silently answering from an older one, which is the behavior you want.",
+          "Pin the block. Resolve `latest` once, then pass that explicit number, or an EIP-1898 `{\"blockHash\": …, \"requireCanonical\": true}` object, to every call that must agree. A node that does not have that block fails loudly, on [[geth|Geth]] with 'header not found' for a number and 'header for hash not found' for a hash, instead of silently answering from an older one, which is the behavior you want.",
           "Pin the node. Route a caller's related requests to one upstream with a sticky session, and keep a high-water mark: record the greatest block number you have seen and discard or retry any response computed below it, so your view of the head never moves backwards. An [[rpc-gateway|RPC gateway]] can do both centrally, evicting upstreams that fall more than one or two blocks behind the best-known head, and a [[health-check|health check]] should measure that distance against a reference rather than trusting [[eth-syncing|eth_syncing]], which reports `false` on a node that finished syncing and then stalled.",
         ],
       },
@@ -234,7 +234,7 @@ export const topics = [
       "Assuming a provider URL is one node; it is a pool, and consecutive requests can go backwards in height.",
       "Alerting only on absolute block age, which fires during missed slots; compare each node against the best head you know instead.",
     ],
-    related: ["load-balancer", "health-check", "rpc-gateway", "block-tag", "reorg", "failover", "eth-syncing", "indexer", "confirmations"],
+    related: ["load-balancer", "health-check", "rpc-gateway", "block-tag", "reorg", "failover", "eth-syncing", "indexer", "confirmations", "fastest-head"],
     sources: [
       { title: "EIP-1898: Add blockHash to defaultBlock methods", url: "https://eips.ethereum.org/EIPS/eip-1898" },
       { title: "ethereum.org: JSON-RPC default block parameter", url: "https://ethereum.org/developers/docs/apis/json-rpc/#default-block" },
@@ -245,7 +245,7 @@ export const topics = [
     id: "failover",
     title: "Failover",
     category: "operations",
-    aliases: ["fallback endpoint", "upstream switching", "circuit breaker", "split brain"],
+    aliases: ["fallback endpoint", "upstream switching", "split brain"],
     summary: "Failover is moving RPC traffic to a different upstream when the current one fails, which requires distinguishing operational failures worth retrying elsewhere from deterministic answers that every upstream will repeat.",
     sections: [
       {
@@ -259,7 +259,7 @@ export const topics = [
         heading: "Vetting the replacement",
         paragraphs: [
           "Promoting an upstream you have not checked converts an outage into silent corruption. Before a node takes traffic, confirm [[chain-id|eth_chainId]] matches the chain you meant, that [[eth-syncing|eth_syncing]] is `false`, and that its head is within a block or two of the best head you know of; otherwise you fail over from an endpoint that errors to one that answers stale data, which is strictly worse. Also check [[endpoint-capabilities|capabilities]]: an upstream without [[trace-api|trace_]] or without archive depth will start returning errors for exactly the requests that mattered.",
-          "Failing back needs the same care. Use a cooldown and a half-open probe rather than returning to the primary the instant one health check passes, and expect the head to appear to move backwards on the switch, so keep the high-water mark described in [[head-lag|head consistency]].",
+          "Failing back needs the same care. Use a cooldown and a [[circuit-breaker|half-open probe]] rather than returning to the primary the instant one health check passes, and expect the head to appear to move backwards on the switch, so keep the high-water mark described in [[head-lag|head consistency]].",
         ],
       },
       {
@@ -282,7 +282,7 @@ export const topics = [
       "Reading the nonce from whichever upstream answers, producing duplicate-nonce or gapped transactions under load.",
       "Counting a reconnected WebSocket as recovered without backfilling the blocks missed while it was down.",
     ],
-    related: ["retries", "health-check", "load-balancer", "rpc-gateway", "head-lag", "rpc-errors", "chain-id", "endpoint-capabilities", "observability"],
+    related: ["retries", "health-check", "load-balancer", "rpc-gateway", "head-lag", "rpc-errors", "chain-id", "endpoint-capabilities", "observability", "circuit-breaker"],
     sources: [
       { title: "EIP-1474: Remote procedure call specification", url: "https://eips.ethereum.org/EIPS/eip-1474" },
       { title: "JSON-RPC 2.0 specification", url: "https://www.jsonrpc.org/specification" },
@@ -409,7 +409,7 @@ export const topics = [
       {
         heading: "Staying under the ceiling",
         paragraphs: [
-          "Throttle yourself first. A client-side token bucket set a little under the published rate, plus a bounded concurrency pool, turns a hard external failure into a soft internal queue. On a range error, halve the [[eth-get-logs|eth_getLogs]] window, retry from the same [[cursor-pagination|cursor]], and grow the window back slowly. Prefer one [[eth-get-block-receipts|eth_getBlockReceipts]] over dozens of single-hash receipt lookups, and [[caching|cache]] everything settled. Combine that with jittered [[retries|backoff]] and with [[failover|failover]] to a second upstream, so a throttled key sheds load instead of hammering.",
+          "Throttle yourself first. A client-side [[circuit-breaker|token bucket]] set a little under the published rate, plus a bounded concurrency pool, turns a hard external failure into a soft internal queue. On a range error, halve the [[eth-get-logs|eth_getLogs]] window, retry from the same [[cursor-pagination|cursor]], and grow the window back slowly. Prefer one [[eth-get-block-receipts|eth_getBlockReceipts]] over dozens of single-hash receipt lookups, and [[caching|cache]] everything settled. Combine that with jittered [[retries|backoff]] and with [[failover|failover]] to a second upstream, so a throttled key sheds load instead of hammering.",
         ],
       },
     ],
@@ -474,7 +474,7 @@ export const topics = [
       "Ignoring clock synchronization, so a node drifts past the 60-second `iat` window and silently stops following the chain.",
       "Sharing one key across environments, so revoking a leaked key takes production down with it.",
     ],
-    related: ["engine-api", "security", "reverse-proxy", "rpc-provider", "rate-limits", "namespaces", "self-hosting", "engine-payload", "rpc-gateway"],
+    related: ["engine-api", "security", "reverse-proxy", "rpc-provider", "rate-limits", "namespaces", "self-hosting", "engine-payload", "rpc-gateway", "x402"],
     sources: [
       { title: "Ethereum execution APIs (Engine API and authentication)", url: "https://github.com/ethereum/execution-apis" },
       { title: "Geth: command-line options", url: "https://geth.ethereum.org/docs/fundamentals/command-line-options" },
@@ -499,7 +499,7 @@ export const topics = [
         heading: "The upgrade dance and the timeouts",
         paragraphs: [
           "[[websocket-transport|WebSocket]] traffic needs its own location block. Without `proxy_http_version 1.1` and the `Upgrade` and `Connection` headers forwarded, the handshake fails outright. With them but without a raised `proxy_read_timeout`, it succeeds and then dies: nginx defaults to 60 seconds of read idleness, and a [[eth-subscribe|eth_subscribe]] stream on a quiet topic is idle by definition, so callers see a connection that drops every minute and blame the node.",
-          "HTTP has the mirror-image problem. A deep [[debug-api|debug_]] trace or a wide [[eth-get-logs|eth_getLogs]] scan can outlast a default proxy timeout, and the caller gets a 504 while the node keeps working on a query nobody will read. Set the proxy timeout above the slowest query you intend to allow, and bound the queries themselves rather than letting the proxy be the limit.",
+          "HTTP has the mirror-image problem. A deep [[debug-api|debug_]] trace or a wide [[eth-get-logs|eth_getLogs]] scan can outlast a default proxy timeout, and the caller gets a 504 while the node [[request-cancellation|keeps working on a query nobody will read]]. Set the proxy timeout above the slowest query you intend to allow, and bound the queries themselves rather than letting the proxy be the limit.",
         ],
       },
       {
@@ -534,7 +534,7 @@ export const topics = [
     id: "security",
     title: "RPC security",
     category: "operations",
-    aliases: ["hardening", "open node", "DNS rebinding", "CORS", "http.vhosts", "corsdomain", "exposed RPC"],
+    aliases: ["hardening", "open node", "DNS rebinding", "http.vhosts", "corsdomain", "exposed RPC"],
     summary: "RPC security is keeping an endpoint from doing anything beyond answering reads: no [[admin-api|admin_]], [[debug-api|debug_]], `personal_`, or [[txpool-api|txpool_]] methods for the public, no unlocked accounts, no unbounded queries, and no listener on an address that did not need one.",
     sections: [
       {
@@ -547,7 +547,7 @@ export const topics = [
       {
         heading: "Binding, hosts, and CORS",
         paragraphs: [
-          "`--http.addr 127.0.0.1` is the default for a reason. A node bound to `0.0.0.0` on a public address is found by scanners within hours, and surveys of open [[json-rpc|JSON-RPC]] ports are a standing hobby. Binding to loopback is not the end of it, because of DNS rebinding: a page on an attacker's domain can make the browser resolve that domain to `127.0.0.1` and then send same-origin requests to your node. `--http.vhosts` is the defense, an allow-list on the `Host` header that defaults to `localhost`.",
+          "`--http.addr 127.0.0.1` is the default for a reason. A node bound to `0.0.0.0` on a public address is found by scanners within hours, and surveys of open [[json-rpc|JSON-RPC]] ports are a standing hobby. Binding to loopback is not the end of it, because of [[cors|DNS rebinding]]: a page on an attacker's domain can make the browser resolve that domain to `127.0.0.1` and then send same-origin requests to your node. `--http.vhosts` is the defense, an allow-list on the `Host` header that defaults to `localhost`.",
           "`--http.corsdomain` is routinely confused with it and does something else entirely. It sets `Access-Control-Allow-Origin`, which is a browser rule about which pages may read a response; scripts, servers, and `curl` never honored it and are unaffected. Setting it to `*` does not open a node that was already reachable, and setting it narrowly does not protect one that is. Vhosts is the security control; corsdomain is the convenience one.",
         ],
       },
@@ -572,7 +572,7 @@ export const topics = [
       "Exposing port 8551 publicly because the Engine API has a JWT; the token pairs two processes, it does not survive exposure.",
       "Leaving `txpool_` open on a node your own users submit through, which publishes their pending transactions.",
     ],
-    related: ["namespaces", "authentication", "reverse-proxy", "admin-api", "debug-api", "txpool-api", "self-hosting", "rate-limits", "eth-send-transaction", "geth", "nethermind"],
+    related: ["namespaces", "authentication", "reverse-proxy", "admin-api", "debug-api", "txpool-api", "self-hosting", "rate-limits", "eth-send-transaction", "geth", "nethermind", "cors"],
     sources: [
       { title: "Geth: command-line options", url: "https://geth.ethereum.org/docs/fundamentals/command-line-options" },
       { title: "Nethermind documentation", url: "https://docs.nethermind.io/" },
@@ -621,7 +621,7 @@ export const topics = [
       "Monitoring only the execution client when the consensus client is what feeds it blocks.",
       "Logging the method without the block argument, which makes slow archive queries indistinguishable from a slow node.",
     ],
-    related: ["health-check", "head-lag", "rpc-gateway", "eth-syncing", "engine-api", "failover", "geth", "nethermind", "lighthouse", "block-tag", "rate-limits"],
+    related: ["health-check", "head-lag", "rpc-gateway", "eth-syncing", "engine-api", "failover", "geth", "nethermind", "lighthouse", "block-tag", "rate-limits", "network-telemetry", "rpc-benchmarking"],
     sources: [
       { title: "Geth: metrics and monitoring", url: "https://geth.ethereum.org/docs/monitoring/metrics" },
       { title: "Nethermind documentation", url: "https://docs.nethermind.io/" },
@@ -682,12 +682,12 @@ export const topics = [
     title: "Endpoint capabilities",
     category: "operations",
     aliases: ["capability probe", "feature detection", "archive depth", "method support", "support matrix"],
-    summary: "An endpoint's capabilities are the things it can actually answer — archive depth, tracing namespaces, subscriptions, proofs, simulation, and the limits layered on top — none of which are advertised, so they have to be probed.",
+    summary: "An endpoint's capabilities are the things it can actually answer — archive depth, tracing namespaces, subscriptions, proofs, simulation, and the limits layered on top — and apart from the retention that [[eth-capabilities|eth_capabilities]] reports on nodes that serve it, none of them are advertised, so they have to be probed.",
     sections: [
       {
         heading: "Why you cannot assume",
         paragraphs: [
-          "The [[execution-apis|execution-apis specification]] defines what methods mean, not which ones an operator has enabled. Four independent things vary behind any URL: the [[execution-client|client]] and its version, which decides whether [[eth-simulate|eth_simulateV1]] or a given tracer exists at all; the enabled [[namespaces|namespaces]]; the retention, which decides how far back [[eth-call|eth_call]] and [[eth-get-proof|eth_getProof]] can go; and the [[rate-limits|limits]] the operator adds on ranges, batches, and connections. Two URLs from the same [[rpc-provider|provider]] often differ on all four.",
+          "The [[execution-apis|execution-apis specification]] defines what methods mean, not which ones an operator has enabled. Four independent things vary behind any URL: the [[execution-client|client]] and its version, which decides whether [[eth-simulate|eth_simulateV1]] or a given tracer exists at all; the enabled [[namespaces|namespaces]]; [[eth-capabilities|the retention]], which decides how far back [[eth-call|eth_call]] and [[eth-get-proof|eth_getProof]] can go; and the [[rate-limits|limits]] the operator adds on ranges, batches, and connections. Two URLs from the same [[rpc-provider|provider]] often differ on all four.",
           "The failure modes look similar and mean opposite things. `-32601 method not found` is permanent: this endpoint will never serve it. `-32000` with `missing trie node` or `historical state not available` means the block is out of retention, so an [[archive-node|archive]] upstream can answer. `-32005` or a 429 is a quota you may already be paying for. Only the first is a reason to stop asking, and an [[archive-node|archive]] endpoint answering old [[eth-get-balance|eth_getBalance]] calls is still no guarantee that historical [[eth-get-proof|eth_getProof]] works, because proofs need trie nodes that a flat-storage archive may not keep.",
         ],
       },
@@ -718,10 +718,10 @@ export const topics = [
       "Treating archive state as proof that historical `eth_getProof` works; the two need different data on disk.",
       "Concluding there is no range limit because one scan succeeded; some endpoints cap on response size, which depends on how busy the blocks were.",
     ],
-    related: ["rpc-provider", "rpc-errors", "archive-node", "eth-get-proof", "eth-simulate", "trace-api", "debug-api", "rate-limits", "rpc-gateway", "net-web3-api", "health-check"],
+    related: ["rpc-provider", "rpc-errors", "archive-node", "eth-get-proof", "eth-simulate", "trace-api", "debug-api", "rate-limits", "rpc-gateway", "net-web3-api", "health-check", "rpc-workloads", "eth-capabilities"],
     sources: [
       { title: "Ethereum execution APIs", url: "https://github.com/ethereum/execution-apis" },
-      { title: "Execution API documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution API documentation", url: "https://ethereum.github.io/execution-apis/" },
       { title: "EIP-1474: Remote procedure call specification", url: "https://eips.ethereum.org/EIPS/eip-1474" },
     ],
   },
@@ -729,7 +729,7 @@ export const topics = [
     id: "private-rpc",
     title: "Private transaction RPC",
     category: "operations",
-    aliases: ["Flashbots Protect", "MEV Blocker", "eth_sendPrivateTransaction", "eth_sendBundle", "private mempool", "order flow"],
+    aliases: ["Flashbots Protect", "MEV Blocker", "eth_sendPrivateTransaction", "private mempool", "order flow"],
     summary: "A private transaction RPC accepts a signed transaction and hands it to block builders instead of gossiping it to the public [[mempool|transaction pool]], so nobody can trade against it in the seconds before inclusion.",
     sections: [
       {
@@ -742,15 +742,15 @@ export const topics = [
       {
         heading: "The methods",
         paragraphs: [
-          "`eth_sendPrivateTransaction` takes an object rather than a bare hex string: `tx` with the signed bytes, an optional `maxBlockNumber` after which the attempt expires, and `preferences` for things like fast mode. It returns the same transaction hash [[eth-send-raw-transaction|eth_sendRawTransaction]] would. `eth_sendBundle` goes further and submits an ordered list of raw transactions with a target `blockNumber`, optional timestamp bounds, and `revertingTxHashes` naming the ones allowed to fail. The list is included together, in that order, in one [[block|block]], or not at all.",
-          "Atomicity is where revert protection comes from: a bundle that would fail is simply not included, so no [[gas|gas]] is spent on a losing attempt. Bundles target a single block, so a strategy spanning several slots resubmits once per block. Requests to the Flashbots relay carry an `X-Flashbots-Signature` header signed with any Ethereum key as a reputation identity, which should never be the key holding the funds.",
+          "`eth_sendPrivateTransaction` takes an object rather than a bare hex string: `tx` with the signed bytes, an optional `maxBlockNumber` after which the attempt expires, and `preferences` for things like fast mode. It returns the same transaction hash [[eth-send-raw-transaction|eth_sendRawTransaction]] would. `eth_sendBundle` goes further and submits [[mev-bundle|an ordered list of raw transactions]] with a target `blockNumber`, optional timestamp bounds, and `revertingTxHashes` naming the ones allowed to fail. The list is included together, in that order, in one [[block|block]], or not at all.",
+          "Atomicity is where revert protection comes from: a bundle that would fail is simply not included, so no [[gas|gas]] is spent on a losing attempt. Bundles target a single block, so a strategy spanning several slots resubmits once per block. Requests to the Flashbots bundle endpoint at `relay.flashbots.net`, which despite its name is not a MEV-Boost [[relay|relay]], carry an `X-Flashbots-Signature` header signed with any Ethereum key as a reputation identity, which should never be the key holding the funds.",
         ],
       },
       {
         heading: "What you trade away",
         paragraphs: [
           "Inclusion becomes slower and conditional. Only a block built by a participating builder can carry the transaction, so it waits for a slot whose proposer took a block from that builder, and a transaction that never gets one simply expires. Meanwhile [[eth-get-transaction-by-hash|eth_getTransactionByHash]] on any public node returns `null` for the whole wait, which breaks the usual 'is it in the pool yet' check; poll the private endpoint or wait for a [[transaction-receipt|receipt]].",
-          "The endpoint is also a trusted intermediary that can delay, drop, or observe your flow, and a builder is still free to place profitable transactions around yours. For ordinary transfers the public pool is fine; private submission earns its complexity on swaps, liquidations, large approvals, and anything where the ordering itself is worth money.",
+          "The endpoint is also a trusted intermediary that can delay, drop, or observe your flow, and a builder is still free to place profitable transactions around yours. For ordinary transfers the public pool is fine; private submission earns its complexity on swaps, [[liquidation-bot|liquidations]], large approvals, and anything where the ordering itself is worth money.",
         ],
       },
     ],
@@ -767,11 +767,552 @@ export const topics = [
       "Signing the `X-Flashbots-Signature` header with the key that holds the funds instead of a separate identity key.",
       "Assuming private submission removes MEV; a builder still chooses what to place around your transaction.",
     ],
-    related: ["mev", "mempool", "eth-send-raw-transaction", "mev-boost", "eth-get-transaction-by-hash", "block-proposal", "rpc-provider", "devp2p", "transaction-receipt", "nonce"],
+    related: ["mev", "mempool", "eth-send-raw-transaction", "mev-boost", "eth-get-transaction-by-hash", "block-proposal", "rpc-provider", "devp2p", "transaction-receipt", "nonce", "relay", "searcher", "mev-bundle", "rpc-privacy"],
     sources: [
       { title: "Flashbots documentation", url: "https://docs.flashbots.net/" },
       { title: "ethereum.org: Maximal extractable value (MEV)", url: "https://ethereum.org/developers/docs/mev/" },
       { title: "ethereum.org: JSON-RPC API", url: "https://ethereum.org/developers/docs/apis/json-rpc/" },
+    ],
+  },
+  {
+    id: "cors",
+    title: "CORS and DNS rebinding",
+    category: "operations",
+    aliases: ["CORS", "Access-Control-Allow-Origin", "preflight", "DNS rebinding", "--http.corsdomain", "--http.vhosts", "--ws.origins", "JsonRpc.CorsOrigins"],
+    summary: "CORS is the browser rule, configured on a node by options such as `--http.corsdomain`, that decides whether a page from one origin may read a response from another; it is not access control, and DNS rebinding, the attack it is confused with, is stopped by a `Host` allow-list such as `--http.vhosts` instead.",
+    sections: [
+      {
+        heading: "What the browser enforces",
+        paragraphs: [
+          "A browser tags every request with the origin of the page that made it, meaning scheme, host and port, and by default lets a script read a response only from its own origin. CORS, cross-origin resource sharing, is how a server opts other origins in: it answers with `Access-Control-Allow-Origin` naming the page's origin, or `*`. A [[json-rpc|JSON-RPC]] call is a POST with `content-type: application/json`, which is not one of the simple request shapes, so the browser first sends a preflight: an `OPTIONS` request carrying `Origin`, `Access-Control-Request-Method: POST` and `Access-Control-Request-Headers: content-type`. Only if that answer allows it does the real call go out.",
+          "All of this is enforced by the browser on the user's behalf. `curl`, backend services, bots and [[client-libraries|libraries]] running in Node never send a preflight and ignore the response headers entirely. CORS therefore stops a hostile page from using a visitor's browser as its proxy; it does nothing to stop anyone calling the node directly. A listener reachable from the internet is reachable whatever its CORS setting says, which is why the bind address and [[authentication|authentication]] carry the real weight; see [[security|RPC security]].",
+        ],
+      },
+      {
+        heading: "The node settings",
+        paragraphs: [
+          "[[geth|Geth]]'s `--http.corsdomain` takes a comma-separated list of origins and is empty by default, in which case Geth adds no CORS handling at all and pages on other origins cannot read its answers; `*` admits every origin. Geth also refuses any `content-type` other than JSON with HTTP 415, so a cross-origin `text/plain` POST, which a browser would send without a preflight, is rejected before it reaches a method. [[reth|Reth]] uses the same flag names, and [[besu|Besu]] takes `--rpc-http-cors-origins`, empty by default. [[nethermind|Nethermind]]'s `JsonRpc.CorsOrigins` defaults to `*`, so any page can read a local Nethermind's answers until the list is narrowed.",
+          "WebSocket sits outside CORS altogether. A browser sends `Origin` with the upgrade request and leaves the decision to the server, which is what Geth's `--ws.origins` is for: with the list empty it accepts `http://localhost` and the machine's own hostname, and it skips the check when no `Origin` header is present, since only browsers send one. A dapp whose [[http-transport|HTTP]] calls work while its [[websocket-transport|WebSocket]] handshake is refused usually needs its origin added there. A hosted endpoint built for browser [[dapp-architecture|dapps]] has to send permissive CORS headers, so its protection comes from keys and per-key origin allow-lists instead.",
+        ],
+      },
+      {
+        heading: "DNS rebinding and the Host check",
+        paragraphs: [
+          "DNS rebinding reaches a node that listens only on `127.0.0.1`. A user on the node's machine opens `attacker.example`; the attacker's DNS server answers first with its own address and a very short TTL, the page loads, and when the name is resolved again the answer is `127.0.0.1`. Scripts on the page now send requests to `http://attacker.example:8545`, which the browser considers same-origin, so CORS is never consulted, and they arrive at the local node. The loopback bind did not help, because the browser is on loopback too.",
+          "What gives the attack away is the `Host` header: the browser still sends `Host: attacker.example:8545`, a name the operator never configured. Geth's `--http.vhosts`, `localhost` by default, rejects it with 403 `invalid host specified`, while requests addressed to a bare IP always pass, since rebinding cannot produce one. Besu's `--host-allowlist`, `localhost,127.0.0.1` by default, does the same. Nethermind's JsonRpc options include no Host allow-list, so a desktop Nethermind relies on the browser. Chrome, from version 142, asks the user before a public site may reach loopback or private addresses, which blunts both attacks in that browser. Behind a [[reverse-proxy|reverse proxy]], the vhosts list has to name the public hostname the proxy forwards.",
+        ],
+      },
+    ],
+    example: {
+      title: "A preflight answered, and a rebinding request refused",
+      language: "http",
+      code: "# Geth started with --http.corsdomain https://app.example (headers abridged)\nOPTIONS / HTTP/1.1\nHost: rpc.example\nOrigin: https://app.example\nAccess-Control-Request-Method: POST\nAccess-Control-Request-Headers: content-type\n\nHTTP/1.1 204 No Content\nAccess-Control-Allow-Origin: https://app.example\nAccess-Control-Allow-Methods: POST\nAccess-Control-Allow-Headers: content-type\nAccess-Control-Max-Age: 600\nVary: Origin\n\n# a rebinding page reaching a Geth bound to 127.0.0.1 with the default --http.vhosts\nPOST / HTTP/1.1\nHost: attacker.example:8545\nOrigin: http://attacker.example:8545\nContent-Type: application/json\n\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_accounts\",\"params\":[]}\n\nHTTP/1.1 403 Forbidden\nContent-Type: text/plain; charset=utf-8\n\ninvalid host specified",
+      note: "The first exchange is a browser courtesy that `curl` never performs; the second is the check that protects a loopback node, and it keys on `Host`, not on `Origin`.",
+    },
+    pitfalls: [
+      "Setting `--http.corsdomain '*'` to cure a browser error and believing the node is now open, or narrowing it and believing a public listener is now protected.",
+      "Debugging a CORS failure with `curl`, which succeeds because it never sends a preflight and ignores the headers a browser enforces.",
+      "Running `--http.vhosts '*'` on a workstation with a browser, which reopens the loopback node to DNS rebinding.",
+      "Leaving Nethermind's default `JsonRpc.CorsOrigins` of `*` on a desktop node, so any page the user visits can read what the node answers.",
+      "Moving a dapp from HTTP to WebSocket without adding its origin to `--ws.origins`, so the handshake fails while HTTP calls keep working.",
+    ],
+    related: ["security", "reverse-proxy", "http-transport", "websocket-transport", "authentication", "geth", "nethermind", "besu", "dapp-architecture", "eip-1193"],
+    sources: [
+      { title: "MDN: Cross-Origin Resource Sharing (CORS)", url: "https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS" },
+      { title: "Geth: command-line options", url: "https://geth.ethereum.org/docs/fundamentals/command-line-options" },
+      { title: "Nethermind: configuration", url: "https://docs.nethermind.io/fundamentals/configuration" },
+      { title: "Chrome: new permission prompt for Local Network Access", url: "https://developer.chrome.com/blog/local-network-access" },
+    ],
+  },
+  {
+    id: "circuit-breaker",
+    title: "Circuit breakers and token buckets",
+    category: "operations",
+    aliases: ["circuit breaker", "half-open", "token bucket", "leaky bucket", "failsafe policy", "retry storm", "outlier ejection"],
+    summary: "A circuit breaker is a switch in a client or [[rpc-gateway|RPC gateway]] that stops sending requests to an upstream once its recent failures or latency cross a threshold, fails or reroutes those calls at once, and lets traffic back only after trial requests succeed.",
+    sections: [
+      {
+        heading: "Closed, open, half-open",
+        paragraphs: [
+          "Closed is normal: every request goes to the upstream and its outcome is recorded in a rolling window, counted over the last N calls or the last few seconds. When the window crosses a threshold, such as 20 failures in the last 80 calls, a run of consecutive failures, or a share of calls slower than a latency limit, the breaker opens. Open means requests are refused without touching the upstream, so the caller gets a fast error or, inside a gateway, an immediate [[failover|failover]] to another upstream. After a cooldown the breaker turns half-open and admits a few trial requests; enough successes close it, and a failure opens it again.",
+          "The point is to stop hammering a dependency that is struggling and to stop callers waiting on calls that will fail. A [[health-check|health check]] asks an upstream synthetic questions on a timer; a breaker judges it by the outcomes of real traffic, so it catches the node that passes every probe while failing the requests that matter.",
+        ],
+      },
+      {
+        heading: "What counts, and how narrow the breaker is",
+        paragraphs: [
+          "Only operational failures belong in the window: connection errors, timeouts, HTTP 502 to 504, and `-32603` internal errors. Deterministic answers must never count. A revert returned as code `3`, `-32602` invalid params, and `-32601` method not found are correct responses about the request, and counting them lets one caller's loop of reverting [[eth-call|eth_call]] requests open the breaker on a healthy node for everyone; [[retries|retry policy]] draws the same line. HTTP 429 and `-32005` describe a quota rather than health, and eRPC, for one, keeps rate-limit responses and client errors out of its window.",
+          "Granularity matters as much as thresholds. A node whose tracing workers are saturated times out every `debug_traceBlockByNumber` while still answering [[eth-block-number|eth_blockNumber]] and eth_call in milliseconds. One breaker per upstream sees trace failures fill the window and ejects the node for all traffic; a breaker per upstream and method class sheds only the [[trace-api|trace]] load. eRPC accepts breakers only at upstream scope, inside failsafe entries matched by method, and while one is open a call fails with `ErrFailsafeCircuitBreakerOpen` without dialling, which its network layer answers by trying the next upstream.",
+        ],
+      },
+      {
+        heading: "Stopping retry storms",
+        paragraphs: [
+          "Retries multiply. Three attempts in a [[client-libraries|client library]] behind three in a gateway behind a [[load-balancer|load balancer]] that also retries turn one slow request into as many as 27 against the node that is already slow, and every caller that timed out in the same second does the same. An open breaker cuts that loop where it is placed: attempts against the failing upstream stop at once, traffic moves to healthy upstreams, and when every upstream is open the caller receives a fast error instead of a queue.",
+          "The half-open trial is also what makes failing back safe, because restoring an upstream on its first good answer lets a marginal node flap in and out and drag requests with it each time. A breaker cannot see a node that answers promptly and wrongly, such as one serving a stale head, so [[head-lag|head consistency]] checks stay a separate job.",
+        ],
+      },
+      {
+        heading: "Token bucket and leaky bucket",
+        paragraphs: [
+          "A breaker reacts to an upstream's failures; a rate limiter keeps you inside someone else's quota before failures start. In a token bucket, the bucket holds up to C tokens and refills at r per second, each request spends one token or its compute-unit weight, and a request that finds the bucket empty waits or is refused. After an idle spell it allows a burst of up to C, while its long-run rate never exceeds r. A leaky bucket instead queues requests and drains them at a fixed rate, so its output is smooth but a burst becomes queueing delay.",
+          "For a caller of a metered [[rpc-provider|provider]], a token bucket set a little under the published rate plus a breaker per upstream turns [[rate-limits|rate limits]] into a local queue and upstream failures into fast rerouting, and keeps the two signals apart in [[observability|metrics]].",
+        ],
+      },
+    ],
+    example: {
+      title: "Per-upstream, per-method breakers in eRPC",
+      language: "yaml",
+      code: "projects:\n  - id: main\n    upstreams:\n      - id: archive-1\n        endpoint: http://10.0.0.11:8545\n        failsafe:                         # entries are matched top to bottom\n          - matchMethod: \"trace_*\"        # a saturated trace pool trips only this breaker\n            circuitBreaker:\n              failureThresholdCount: 10   # 10 failures ...\n              failureThresholdCapacity: 40  # ... in the last 40 trace calls\n              halfOpenAfter: 2m\n              successThresholdCount: 5\n              successThresholdCapacity: 20\n          - matchMethod: \"*\"              # everything else keeps flowing\n            circuitBreaker:\n              failureThresholdCount: 20\n              failureThresholdCapacity: 80\n              halfOpenAfter: 5m\n              successThresholdCount: 8\n              successThresholdCapacity: 200",
+      note: "With the trace breaker open, `trace_block` fails fast with `ErrFailsafeCircuitBreakerOpen` and is retried on another upstream, while `eth_call` keeps going to archive-1.",
+    },
+    pitfalls: [
+      "Counting reverts and invalid-params errors as failures, so one caller's bad requests open the breaker on a healthy upstream.",
+      "Running one breaker per upstream for every method, so a saturated trace pool ejects the node from cheap reads as well.",
+      "Closing the breaker on the first successful trial request, which makes a marginal upstream flap in and out of rotation.",
+      "Retrying at every layer with no breaker or retry budget, so a slow node receives many times its normal load at its weakest moment.",
+      "Expecting a breaker to catch a stale node, which answers quickly and successfully; only a head-distance check sees it.",
+    ],
+    related: ["failover", "retries", "rate-limits", "health-check", "rpc-gateway", "load-balancer", "head-lag", "observability", "rpc-errors", "request-cancellation"],
+    sources: [
+      { title: "Martin Fowler: CircuitBreaker", url: "https://martinfowler.com/bliki/CircuitBreaker.html" },
+      { title: "eRPC: circuit breaker", url: "https://docs.erpc.cloud/config/failsafe/circuit-breaker" },
+      { title: "eRPC: failsafe policies", url: "https://docs.erpc.cloud/config/failsafe" },
+    ],
+  },
+  {
+    id: "request-cancellation",
+    title: "Request limits and cancellation",
+    category: "operations",
+    aliases: ["request cancellation", "--rpc.evmtimeout", "--rpc.gascap", "JsonRpc.Timeout", "execution aborted", "request timed out", "hedged requests", "client disconnect"],
+    summary: "Request cancellation covers the limits a node places on an expensive call, such as gas caps, execution timeouts, and batch and response sizes, and what happens to work already running when the caller gives up, which [[json-rpc|JSON-RPC]] has no message to express.",
+    sections: [
+      {
+        heading: "Guards before and during a call",
+        paragraphs: [
+          "[[geth|Geth]] bounds simulation with `--rpc.gascap`, 50,000,000 gas for [[eth-call|eth_call]] and [[eth-estimate-gas|eth_estimateGas]], and `--rpc.evmtimeout`, 5 seconds for eth_call, after which the EVM is stopped and the caller reads `execution aborted (timeout = 5s)`. `--rpc.txfeecap`, 1 ether, is a different kind of guard: it refuses submitted transactions whose fee exceeds it. [[batch-request|Batches]] are capped at 1,000 items by `--rpc.batch-request-limit` and at 25,000,000 response bytes by `--rpc.batch-response-max-size`, and [[eth-get-logs|log queries]] by `--rpc.rangelimit`, unlimited by default, and `--rpc.logquerylimit`, 1,000 alternatives per topic position. Geth's HTTP server also answers `-32002` `request timed out` just before its 30-second write timeout.",
+          "[[nethermind|Nethermind]] uses `JsonRpc.Timeout` of 20,000 ms, `JsonRpc.GasCap` of 100,000,000, `JsonRpc.MaxBatchSize` of 1,024, `JsonRpc.MaxBatchResponseBodySize` of 32 MiB and `JsonRpc.MaxLogsPerResponse` of 20,000. [[reth|Reth]] has `--rpc.gascap`, `--rpc.max-logs-per-response`, `--rpc.max-blocks-per-filter` and `--rpc.max-tracing-requests`, which by default allows two fewer concurrent traces than the machine has cores. Tracing carries its own clock: the options object of every `debug_trace*` method takes a `timeout` string, `5s` by default in Geth and applied per transaction, which is why heavy [[debug-api|traces]] are sent with a larger value.",
+        ],
+      },
+      {
+        heading: "No cancel message, only a closed connection",
+        paragraphs: [
+          "The JSON-RPC 2.0 specification defines requests, responses and notifications, and nothing that withdraws a request in flight; the [[execution-apis|execution APIs]] add nothing either. Protocols built on JSON-RPC that needed it, such as the Language Server Protocol, defined their own `$/cancelRequest`. A node therefore learns that a caller has given up in one way only: the connection closes. Over [[http-transport|HTTP]] a connection carries one request at a time, so abandoning a call means dropping that connection. Over a [[websocket-transport|WebSocket]] many calls share one socket, and the only way to stop one of them is to close all of them, subscriptions included.",
+          "Whether a closed connection stops the work is client-specific and mostly undocumented. In Geth's source, eth_call runs under the request's context and a watcher cancels the EVM when that context ends, which Go's HTTP server does when the client disconnects, so an abandoned eth_call stops at the next check, and closing a WebSocket cancels every call in flight on it. Geth's tracers differ: the watcher that enforces a trace's `timeout` stops the EVM only when that deadline passes, and if the request is cancelled first it simply exits, so an abandoned trace runs to completion; a block trace stops dispatching further transactions but finishes the one in progress. Nethermind bounds eth_call with a cancellation token built from `JsonRpc.Timeout`. A [[reverse-proxy|reverse proxy]] passes the signal on only if it closes its upstream connection, which nginx does by default through `proxy_ignore_client_abort off`.",
+        ],
+      },
+      {
+        heading: "Callers that multiply the work",
+        paragraphs: [
+          "The workload that makes this matter is the [[dex-aggregator|quote engine]] or [[intent-solver|solver]]. It re-simulates routes with eth_call, [[eth-simulate|eth_simulateV1]] or `debug_traceCall` on every new head or price tick, and each head makes the previous round stale. A client-side timeout discards the answer but not the computation, so a solver that abandons half its simulations still pays the node for all of them, and so does everyone sharing that node.",
+          "Resilience features multiply the same work. A hedged request sends a duplicate to a second upstream when the first is slower than some percentile, which trims tail latency at the cost of running the call twice; eRPC's hedge policy does this. A gateway that [[retries|retries]] a timed-out simulation three times has run it four times. The coherent arrangement is ordered limits, the node's execution limit below the gateway's timeout and the gateway's below the caller's deadline, so that the node gives up first and says so instead of working for nobody. A [[circuit-breaker|circuit breaker]] and bounded concurrency in the [[rpc-gateway|gateway]] complete it.",
+        ],
+      },
+    ],
+    example: {
+      title: "Four clocks around one expensive call",
+      language: "text",
+      code: "# Geth: an eth_call that outruns --rpc.evmtimeout (5s by default)\n{\"jsonrpc\":\"2.0\",\"id\":7,\"error\":{\"code\":-32000,\"message\":\"execution aborted (timeout = 5s)\"}}\n\n# Geth: written just before the 30 s HTTP write timeout, as the handler's context is cancelled\n{\"jsonrpc\":\"2.0\",\"id\":8,\"error\":{\"code\":-32002,\"message\":\"request timed out\"}}\n\n# Nethermind: what its HTTP handler writes when request processing is cancelled\n{\"jsonrpc\":\"2.0\",\"id\":9,\"error\":{\"code\":-32016,\"message\":\"Request was canceled due to enabled timeout.\"}}\n\n# a trace given its own budget, which Geth applies per transaction\n{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"debug_traceCall\",\"params\":[\n  {\"from\":\"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045\",\"to\":\"0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D\",\"data\":\"0x38ed1739…\"},\n  \"latest\",\n  {\"tracer\":\"callTracer\",\"timeout\":\"20s\"}\n]}\n\n# the caller's own clock: curl gives up after 3 s and closes the connection\ncurl -s -m 3 -X POST -H 'content-type: application/json' --data @call.json http://127.0.0.1:8545\n# curl: (28) Operation timed out after 3001 milliseconds with 0 bytes received",
+      note: "Four clocks, and they interact: in Geth, once the request context ends, by the write timeout or by a disconnect, an `eth_call` stops while a running trace carries on without its own `timeout`.",
+    },
+    pitfalls: [
+      "Setting a client timeout below the node's execution limit and assuming the node stops when the client does.",
+      "Hedging or retrying expensive simulations at several layers, multiplying the work on the node that was already slow.",
+      "Raising `--rpc.evmtimeout` or `JsonRpc.Timeout` to rescue one slow query, which lets every caller hold a core that long.",
+      "Closing a WebSocket to abandon one slow call and losing every subscription on that connection.",
+      "Giving a trace a `timeout` longer than the proxy's read timeout, so the caller gets a 504 while the node keeps tracing.",
+    ],
+    related: ["eth-call", "debug-api", "eth-simulate", "retries", "rpc-gateway", "reverse-proxy", "rate-limits", "security", "circuit-breaker", "batch-request"],
+    sources: [
+      { title: "JSON-RPC 2.0 specification", url: "https://www.jsonrpc.org/specification" },
+      { title: "Geth: command-line options", url: "https://geth.ethereum.org/docs/fundamentals/command-line-options" },
+      { title: "Nethermind: configuration", url: "https://docs.nethermind.io/fundamentals/configuration" },
+      { title: "Reth: reth node command-line reference", url: "https://reth.rs/cli/reth/node" },
+    ],
+  },
+  {
+    id: "network-telemetry",
+    title: "Network telemetry",
+    category: "operations",
+    aliases: ["Xatu", "The Lab", "ethPandaOps", "propagation timing", "node crawler", "client census", "sentry", "clock drift"],
+    summary: "Network telemetry is measuring Ethereum from many vantage points outside any single client, recording when blocks and attestations reach nodes, how long nodes take to import them, and which software the network runs, as ethPandaOps' Xatu and The Lab do.",
+    sections: [
+      {
+        heading: "Questions one node cannot answer",
+        paragraphs: [
+          "[[observability|Observability]] tells an operator about their own node. Network questions differ in kind: how long after a slot starts does a block reach most nodes, how late do proposers publish, which [[execution-client|execution client]] imports heavy blocks slowest, what share of nodes run a release ready for the next [[hardfork|fork]]. Answering them needs many observers with different peers, locations, hardware and clients recording the same events, and a store where the records can be joined on slot and block root.",
+          "Two kinds of data come out. Timing data is many observations of one event, one per vantage point, and means something only as a distribution. Census data is one look at many nodes, collected by crawlers that walk [[discovery|node discovery]] and record what each reachable peer says about itself, which is what [[client-diversity|client diversity]] trackers publish. A census counts nodes that answered, not stake: validators behind one beacon node count once, nodes that accept no inbound connections are missed, and client names are self-reported strings.",
+        ],
+      },
+      {
+        heading: "Xatu and The Lab",
+        paragraphs: [
+          "Xatu is ethPandaOps' collection system, and it runs in modes. A sentry sits beside a [[consensus-client|consensus client]], subscribes to its [[beacon-api|Beacon API]] event stream and stamps each event as it arrives. Cannon reads canonical, finalized data from a beacon node once, without duplicates. Mimicry listens on the execution [[devp2p|devp2p]] network for transactions, discovery crawls discv4 and discv5, and the server collects from all of them, adds geolocation at the level each contributor chooses, and forwards the events to sinks that feed ClickHouse. Community members run Contributoor, a lightweight sentry, beside their own [[beacon-node|beacon nodes]].",
+          "The data is public. xatu-data publishes Parquet files, one per day for event tables, at `data.ethpandaops.io` under CC BY 4.0, with table prefixes by source such as `beacon_api_`, `libp2p_`, `mempool_`, `canonical_beacon_`, `canonical_execution_` and `mev_relay_`. The Lab at `lab.ethpandaops.io` is the visual side, with a public API over derived tables that keep block first-seen per node, head first-seen per node and [[engine-payload|engine_newPayload]] duration per client as separate measurements.",
+        ],
+      },
+      {
+        heading: "Where the timestamp is taken",
+        paragraphs: [
+          "A block passes several instants on one node, and each is someone's measurement. It arrives on a [[libp2p-gossip|gossipsub]] topic; it passes gossip validation, when the beacon node emits `block_gossip`; the execution side runs `engine_newPayload`, whose start and end bracket execution; [[fork-choice|fork choice]] imports it and makes it head, emitting `block` and `head`, whose order differs by client, with [[lighthouse|Lighthouse]] sending `head` first since v8.1.0; and after `engine_forkchoiceUpdated` the execution client serves it, where `eth_blockNumber` and `newHeads` finally see it. These points are hundreds of milliseconds apart on one machine, and further apart on a heavy block.",
+          "A figure means nothing without the point it was taken at, and Xatu's own are one hop later still: `event_date_time` is when the sentry received the event from its beacon node, and `propagation_slot_start_diff` subtracts a slot start computed from genesis time. For an RPC caller the instant that matters is the last one, later than every gossip figure quoted about the network.",
+        ],
+      },
+      {
+        heading: "Clocks, machines, peers, and the observer",
+        paragraphs: [
+          "Every slot-relative figure is the observer's clock minus a computed slot start, so clock error enters directly. NTP over the public internet typically keeps a clock within tens of milliseconds, whether through chrony or ntpd, and a poorly connected host does worse; Xatu sentries measure their drift against an NTP server and attach it to each event. Observers also differ in [[node-hardware|hardware]], which changes execution time, in peers, since a well-connected data-centre node hears blocks earlier, and in client, since implementations emit events at slightly different stages. Compare one observer with itself over time, or distributions across many, never one node against another.",
+          "Measuring costs something too. A sentry subscribed to attestation topics pulls a high-volume stream through the beacon node it is measuring, instrumented clients do extra work on the hot path, and contributors are self-selected, which skews samples toward well-run infrastructure.",
+        ],
+      },
+    ],
+    example: {
+      title: "One mainnet slot as The Lab recorded it",
+      language: "text",
+      code: "# slot 15307259, 2026-09-27 12:12:11 UTC; milliseconds after slot start, one row per observing node\ncurl -s -A 'Mozilla/5.0' 'https://lab.ethpandaops.io/api/v1/mainnet/fct_block_first_seen_by_node?slot_start_date_time_gte=1790511131&slot_start_date_time_lt=1790511132&page_size=500'\n\nblock first seen          148 nodes   min 1394   median 1554   p90 1788   max 2644\n  via gossipsub trace      45 nodes              median 1511\n  via block_gossip event  100 nodes              median 1577\nhead first seen           122 nodes   min 1469   median 1824              max 6180\n\n# same block, from fct_engine_new_payload_by_el_client\nengine_newPayload on EIP-7870 builder-class nodes, median per client:   30 ms to 146 ms",
+      note: "The gap between the block and head medians is roughly import time; the per-client range compares one block on a handful of machines, which is a sample, not a benchmark.",
+    },
+    pitfalls: [
+      "Quoting a propagation figure without saying which instant it measures: gossip arrival, import, head, or RPC availability.",
+      "Comparing two nodes' slot-relative timings when their clocks, hardware and peer sets differ.",
+      "Reading a crawler's node census as stake share, when validators behind one beacon node count once.",
+      "Running a telemetry sentry against a production beacon node without budgeting for the event-stream load.",
+      "Treating one slot's per-client import times as a benchmark rather than one sample on unequal machines.",
+    ],
+    related: ["observability", "client-diversity", "libp2p-gossip", "engine-payload", "beacon-api", "server-sent-events", "discovery", "node-hardware", "fork-choice", "block-proposal", "fastest-head", "rpc-benchmarking"],
+    sources: [
+      { title: "ethPandaOps: Xatu", url: "https://github.com/ethpandaops/xatu" },
+      { title: "ethPandaOps: Xatu data", url: "https://github.com/ethpandaops/xatu-data" },
+      { title: "The Lab by ethPandaOps", url: "https://lab.ethpandaops.io/" },
+      { title: "EIP-7870: Hardware and Bandwidth Recommendations", url: "https://eips.ethereum.org/EIPS/eip-7870" },
+    ],
+  },
+  {
+    id: "fastest-head",
+    title: "Racing for the newest head",
+    category: "operations",
+    aliases: ["first-seen latency", "block delivery network", "head signal", "bdnBlocks", "Chainbound Fiber", "newHeads latency", "fan-in feeds"],
+    summary: "Racing for the newest head means learning of each new [[block|block]] at the tip of the chain as early as possible, by listening to several sources at once (beacon-node events, commercial block feeds, `newHeads` streams) and starting work on whichever reports it first, because [[searcher|searchers]], liquidators and market makers must respond within the same 12-second slot.",
+    sections: [
+      {
+        heading: "Who needs the head first, and where it appears",
+        paragraphs: [
+          "The head is the block that [[fork-choice|fork choice]], the rule a node uses to pick between competing blocks, treats as the tip of the chain. A new one arrives every 12-second [[slot-epoch|slot]], and several consumers start work the moment it does: a [[searcher|searcher]] looks for a trade the new prices open, a [[liquidation-bot|liquidation bot]] re-checks which loans have become unsafe, a market maker re-reads reserves with [[dex-pool-reads|pool reads]], and an [[price-oracle|oracle]] operator decides whether to post a price. In the example's slot the median of 148 observing nodes saw the block 1.39 seconds in, leaving about ten seconds to simulate and submit for the next block.",
+          "An Ethereum node is two programs joined by the [[engine-api|Engine API]]: a [[consensus-client|consensus client]], or beacon node, which receives blocks from peers and runs fork choice, and an [[execution-client|execution client]], which runs transactions and answers JSON-RPC. A new block passes five steps in a fixed order. First the [[beacon-block|beacon block]] arrives on the `beacon_block` [[libp2p-gossip|gossip]] topic, where nodes relay new blocks peer to peer, already carrying its [[execution-payload|execution payload]], the transactions. Second, once proposer and signature check out, before anything executes, the beacon node emits `block_gossip`. Third, it hands the payload to the execution client to run, with `engine_newPayload`. Fourth, it imports the block into fork choice as the new tip and emits `head` and `block` milliseconds apart, in an order that differs by client: current Lighthouse sends `head` first. Last, it tells the execution client with `engine_forkchoiceUpdated`; only then does its `latest` [[block-tag|tag]] move and [[geth|Geth]] fire `newHeads`.",
+        ],
+      },
+      {
+        heading: "What each signal tells you",
+        paragraphs: [
+          "The beacon node publishes its events as [[server-sent-events|server-sent events]] on the [[beacon-api|Beacon API]] at `/eth/v1/events?topics=block_gossip,head,block`, so `block_gossip` is the earliest signal one node offers. Earlier signals carry less: `block_gossip` holds only `slot` and the beacon block root, the consensus block's own hash, and `head` adds the state root; neither names the execution [[block-hash|block hash]] that JSON-RPC uses. For that hash or the transactions, a consumer fetches `/eth/v2/beacon/blocks/{root}` once the block is imported. `newHeads` comes last and carries the most, a full execution header. State can be read a little earlier: Geth stores the block and its state when `engine_newPayload` returns, so a call pinned to the block's hash works once `block` fires, before `latest` moves.",
+          "Block delivery networks, private networks of well-connected nodes that forward blocks and transactions, sell an earlier copy of the first step with the payload attached. bloXroute's BDN streams `bdnBlocks`, documented as possibly including blocks that will not be accepted on chain, beside `newBlocks` for fully validated ones; Chainbound's Fiber offers gRPC streams such as `SubscribeNewExecutionPayloads`. Their edge is placement and peering, not a protocol shortcut, so the do-it-yourself version is a well-peered consensus client on a well-connected host, its execution client beside it, and consumers reading over [[ipc-transport|IPC]].",
+        ],
+      },
+      {
+        heading: "Building the fan-in",
+        paragraphs: [
+          "No source wins every block, so a latency-sensitive consumer subscribes to several: a delivery network, its own beacon node's events, its own execution node's `newHeads` over IPC, and one or two providers' `newHeads`. Picture one table keyed by execution block hash, fed by several queues, each arrival stamped on receipt. The first arrival of a hash starts work; later ones are dropped, with their delay logged. Beacon events name only the beacon root, so they are joined by slot until the body can be read. A second hash at the same height is a competing block, not a duplicate, as when the next proposer skips a late block and builds on its parent, a [[reorg|reorg]]. Each decision records its hash, and state reads go to a node that has the block, pinned to that hash, never to `latest`.",
+          "A source's latency is arrival time minus slot start, which on mainnet is `1606824023 + 12 × slot` seconds, genesis plus 12 seconds a slot. Ranking feeds by one host's clock is safe, since all arrivals share its error; comparing against slot start, or across hosts, adds NTP error of tens of milliseconds, enough to change which feed looks fastest. Keep a distribution per source, not a win count: a feed first by two milliseconds on most blocks but a second late on a few can be worth less than a steady runner-up.",
+        ],
+      },
+    ],
+    example: {
+      title: "One slot through five sources, stamped by one host clock",
+      language: "text",
+      code: "# mainnet slot 15307300 starts at 1606824023 + 12 x 15307300 = 1790511623 (2026-09-27 12:20:23 UTC)\n# its block: number 26068754, hash 0xb0f3…1514, parent 0x9228…34d8, beacon root 0x633e…7c58\n# The Lab: first sighting median +1387 ms across 148 observers (fastest +1251), head median +1608 ms across 122\n# this host's arrivals below are illustrative, in ms after slot start\n# own CL is Lighthouse, streaming GET http://localhost:5052/eth/v1/events?topics=block_gossip,head,block\n\n+1262  fiber      SubscribeNewExecutionPayloads  hash 0xb0f3…1514   FIRST: decode its transactions, start work\n+1281  bloxroute  bdnBlocks                      hash 0xb0f3…1514   same hash, +19 ms\n+1335  own CL     block_gossip  slot 15307300    root 0x633e…7c58   same slot, no hash yet, +73 ms\n+1566  own CL     head          root 0x633e…7c58                    now the tip of fork choice\n+1569  own CL     block         root 0x633e…7c58                    stored, body readable: hash 0xb0f3…1514\n+1597  own EL     newHeads      hash 0xb0f3…1514   parentHash 0x9228…34d8   same hash, +335 ms\n+1766  provider   newHeads      hash 0xb0f3…1514   same hash, +504 ms\n\n# reads sent to the local Geth\n+1270  eth_call {...} \"latest\"                        -> computed on 26068753, the parent\n+1270  eth_call {...} {\"blockHash\":\"0xb0f3…1514\"}   -> -32000 header for hash not found\n+1570  eth_call {...} {\"blockHash\":\"0xb0f3…1514\"}   -> answered on 26068754, before newHeads",
+      note: "The delivery network beat this node's own `block_gossip` by 73 ms and its own `newHeads` by 335 ms. Before the local node had executed the block, the call at `latest` quietly used the parent's state, while the call pinned to the hash failed loudly; once `engine_newPayload` had stored the block, the pinned call worked, even before `newHeads`.",
+    },
+    pitfalls: [
+      "Treating the first arrival as settled, when a delivery-network block may never be accepted and a valid one can still be reorged out.",
+      "Calling `eth_call` at `latest` as soon as a delivery-network block arrives, which reads the parent's state because the local node has not imported it.",
+      "Taking the head from a provider's `newHeads` and reading state through the same URL, which can reach a backend a block behind; see [[head-lag|head lag]].",
+      "Treating a reconnected [[websocket-transport|WebSocket]] as caught up, when heads sent during the gap are never replayed and must be fetched by number.",
+    ],
+    related: ["head-lag", "network-telemetry", "eth-subscribe", "server-sent-events", "beacon-api", "libp2p-gossip", "reorg", "failover", "searcher", "engine-api"],
+    sources: [
+      { title: "beacon-APIs: event stream topics", url: "https://github.com/ethereum/beacon-APIs/blob/master/apis/eventstream/index.yaml" },
+      { title: "Engine API: Paris specification", url: "https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md" },
+      { title: "bloXroute: bdnBlocks stream", url: "https://docs.bloxroute.com/eth/streams/blocks-streams/bdnblocks" },
+      { title: "Chainbound fiber-go client", url: "https://github.com/chainbound/fiber-go" },
+    ],
+  },
+  {
+    id: "transaction-relayer",
+    title: "Transaction relayers",
+    category: "operations",
+    aliases: ["relayer", "OpenZeppelin Relayer", "transaction manager", "nonce manager", "meta-transaction", "ERC-2771", "speed up and cancel", "gasless transactions"],
+    summary: "A transaction relayer is a service that holds signing keys and takes responsibility for landing [[transaction|transactions]]: it assigns [[nonce|nonces]] and fees, signs, broadcasts to several endpoints, replaces transactions that stall, and keeps checking receipts until they are final, so its callers hand over a call rather than a signed transaction.",
+    sections: [
+      {
+        heading: "What callers hand over",
+        paragraphs: [
+          "Signing a transaction is easy; getting it included is not. The fee has to keep up with demand, and every transaction carries its sender's nonce, a counter that must go 0, 1, 2 with no gaps, so one transaction that never lands holds up every later one. Keepers, oracle nodes, bridges and backends that pay gas for their users all need this, so it is packaged as a service.",
+          "OpenZeppelin Relayer, the open-source successor to Defender's relayer, accepts `POST /api/v1/relayers/<relayer_id>/transactions` with `to`, `data`, `value` and either explicit fees or a `speed` such as `fast`, and returns its own id, whose status runs from `Pending` to `Confirmed`. A request with no `valid_until` still unmined after eight hours is cancelled: replaced at the same nonce by a zero-value transfer to the relayer itself, so later transactions can proceed.",
+          "Gasless flows let a user act without holding ether for gas. Under ERC-2771 the user signs a request off chain, and the relayer pays the [[gas|gas]] to send it to a trusted forwarder, a contract the recipient has agreed to believe. The forwarder checks the signature and calls the recipient with the signer's 20-byte address appended to the calldata, which the recipient's `_msgSender()` reads whenever `isTrustedForwarder(msg.sender)` is true. Signed [[eip-3009|EIP-3009]] token transfers are relayed the same way, and an [[erc-4337|ERC-4337]] bundler is a relayer one level up.",
+        ],
+      },
+      {
+        heading: "Nonces and fees",
+        paragraphs: [
+          "A relayer cannot simply ask the chain for its next nonce. [[eth-get-transaction-count|eth_getTransactionCount]] at `latest` ignores transactions still waiting: with nonce 1,204 unmined it answers 1,204 again, and a second transaction signed with that nonce becomes an attempt to replace the first. At `pending` it reflects one node's [[mempool|pool]] of waiting transactions, which differs between backends and can empty on a restart. Relayers count locally and treat the chain as a floor: OpenZeppelin Relayer raises its counter to the on-chain count when it falls behind and never lowers it.",
+          "Fees follow [[eip-1559|EIP-1559]]: each block has a base fee per gas that rises at most 12.5 percent after a full block, and a transaction names the most it will pay, `maxFeePerGas`, and a tip, `maxPriorityFeePerGas`. [[eth-fee-history|eth_feeHistory]] gives recent base fees and tips, and a fee cap of twice the base fee plus the tip survives about six full blocks in a row. A pool keeps one transaction per sender and nonce, so a stalled one is replaced by sending the same nonce with higher fees. [[geth|Geth]], [[nethermind|Nethermind]] and [[reth|Reth]] demand at least 10 percent more on both fee fields (Geth's and Reth's `--txpool.pricebump`). Chainlink nodes bump by 20 percent after three blocks without inclusion.",
+        ],
+      },
+      {
+        heading: "Errors that mean something else",
+        paragraphs: [
+          "Several errors are not failures. Resending bytes a node already holds returns `already known`, which is success. `nonce too low` after a resend usually means one of the relayer's own transactions for that nonce landed, so it first checks the [[eth-get-transaction-receipt|receipts]] of every hash it sent at that nonce. `replacement transaction underpriced` means the slot is taken and the bump was too small; `transaction underpriced` means the fee is below that pool's minimum.",
+          "The strings are conventions, not a specification. Geth, Nethermind and Reth return `nonce too low`, `already known` and `replacement transaction underpriced` under code `-32000`, with Geth and Reth appending the nonces, as in `nonce too low: next nonce 501, tx nonce 500`. [[besu|Besu]] answers `Nonce too low` with code `-32001` and `Known transaction` for a duplicate. Relayers match lower-cased substrings against a table of known texts, which goes stale: OpenZeppelin Relayer's still lists `exceeds next nonce` for Nethermind, which now says `nonce too high`. An [[rpc-provider|RPC provider]] in front of the node may rewrite any of them; see [[rpc-errors|JSON-RPC errors]].",
+        ],
+      },
+      {
+        heading: "Stuck, dropped and reorged",
+        paragraphs: [
+          "A transaction is stuck when its fee cap sits below the base fee, or when it waits behind a lower nonce that never landed. [[txpool-api|txpool_contentFrom]] on the relayer's own node tells which: Geth lists the first under `pending` and the second under `queued`, while Reth puts both under `queued`. A transaction that a node has dropped from its pool comes back by rebroadcasting the same signed bytes, which is safe to repeat, to several endpoints, such as OpenZeppelin Relayer's weighted list of `custom_rpc_urls`; see [[failover|failover]].",
+          "Inclusion is not the end. The relayer polls `eth_getTransactionReceipt` on the endpoint it sent through, records `blockHash`, and re-checks until the block is at or below the `finalized` [[block-tag|tag]], because a [[reorg|reorg]], the chain switching to a competing branch of recent blocks, can remove the receipt, move it, or let the transaction it replaced land instead. The states themselves are in [[transaction-lifecycle|transaction lifecycle]].",
+        ],
+      },
+    ],
+    example: {
+      title: "A stuck transaction, a rejected bump and a replacement",
+      language: "text",
+      code: "block N, base fee 25.0 gwei\n\n1. nonce 1,204 signed: maxFeePerGas 28 gwei, maxPriorityFeePerGas 1 gwei -> 0x9f1c…a3e0\n   eth_sendRawTransaction to endpoints A and B: both return 0x9f1c…a3e0\n\n2. blocks N to N+2 are full, so N+1 to N+3 have base fees of 28.1, 31.6 and 35.6 gwei\n   the fee cap is now below the base fee; Geth's txpool_contentFrom lists nonce 1,204 under pending\n\n3. bump by 5 percent: maxFeePerGas 29.4, tip 1.05 gwei\n   -> -32000 replacement transaction underpriced (pools want 10 percent on both)\n\n4. reprice from the head: maxFeePerGas 2 x 35.6 + 2 = 73.2 gwei, tip 2 gwei -> 0x41d0…77b2\n   A and B both return 0x41d0…77b2\n\n5. block N+5 includes 0x41d0…77b2\n   resending 0x9f1c…a3e0 now answers nonce too low: expected, the nonce is spent\n\n6. receipts: 0x41d0…77b2 status 0x1, blockHash 0x6c3a…e91f; 0x9f1c…a3e0 null for good\n\n7. 13 to 19 minutes later block N+5 is at or below finalized, blockHash unchanged: Confirmed",
+      note: "A 10 percent bump in step 3 would have been accepted and stayed stuck, since 30.8 gwei is still below a 35.6 gwei base fee; the bump rule is only a pool's minimum, and the new fee has to be priced from the current base fee.",
+    },
+    pitfalls: [
+      "Reading the next nonce from `eth_getTransactionCount` with `pending` on whichever backend answers, which reuses or skips nonces.",
+      "Treating `nonce too low` after a resend as a failure and re-signing with a new nonce, which pays the recipient twice.",
+      "Bumping a stuck transaction by the 10 percent minimum after the base fee has risen further, so the replacement stays stuck.",
+    ],
+    related: ["transaction-lifecycle", "nonce", "mempool", "eth-send-raw-transaction", "txpool-api", "failover", "erc-4337", "eth-fee-history", "keeper", "reorg"],
+    sources: [
+      { title: "OpenZeppelin Relayer: EVM integration", url: "https://github.com/OpenZeppelin/openzeppelin-relayer/blob/main/docs/evm.mdx" },
+      { title: "ERC-2771: Secure Protocol for Native Meta Transactions", url: "https://eips.ethereum.org/EIPS/eip-2771" },
+      { title: "Chainlink node configuration (CONFIG.md)", url: "https://github.com/smartcontractkit/chainlink/blob/develop/docs/CONFIG.md" },
+      { title: "Reth CLI: reth node", url: "https://reth.rs/cli/reth/node" },
+    ],
+  },
+  {
+    id: "security-monitoring",
+    title: "On-chain security monitoring",
+    category: "operations",
+    aliases: ["threat monitoring", "exploit detection", "Hypernative", "Forta", "OpenZeppelin Monitor", "Tenderly alerts", "automated pause", "incident response"],
+    summary: "On-chain security monitoring is the continuous inspection of every new block, and often of pending transactions, for signs that a protocol is being attacked or misconfigured, raising alerts and sometimes responding on its own, for example by pausing a contract before an attacker's next transaction lands.",
+    sections: [
+      {
+        heading: "What monitors look for",
+        paragraphs: [
+          "A protocol that holds users' funds wants to learn within seconds that it is under attack, and ideally to stop the attacker before the theft completes. Detectors are rules over decoded chain data. Some watch configuration: an `OwnershipTransferred` [[event-log|event]] (topic `0x8be0079c…`), an ERC-1967 `Upgraded` event (topic `0xbc7cd75a…`), or a bare write to the storage slot where a [[proxy-contract|proxy]] keeps the address of the code it runs. Some watch money: a protocol's balance falling by a fifth in one block, or a flash loan, borrowed and repaid inside one transaction, followed by a large swap. Some watch prices: a pool's spot price moving far from a [[price-oracle|price oracle]] inside one transaction suggests someone is pushing the price a lending contract reads. Forta splits an attack into funding, preparation, exploitation and money laundering; the earlier the stage a detector fires on, the more time a response has.",
+          "Hypernative offers monitoring with automated response, Tenderly pairs alerts with its simulator, and Forta, which built a network of detection bots, now screens transactions before they reach a rollup's [[sequencer|sequencer]]. OpenZeppelin Monitor, the open-source option, matches calls, events and transaction expressions and sends Slack, email, webhook or script alerts, but its EVM client reads only blocks, logs and receipts, through `eth_blockNumber`, `eth_getBlockByNumber`, `eth_getLogs` and `eth_getTransactionReceipt`, so internal calls and the [[mempool|transaction pool]] are outside its view.",
+        ],
+      },
+      {
+        heading: "The RPC workload",
+        paragraphs: [
+          "A full monitor reads everything, every block: the block with full transactions, the receipts from [[eth-get-block-receipts|eth_getBlockReceipts]], and a [[execution-trace|trace]] of every transaction, the record of every inner call it made, from `debug_traceBlockByNumber` with `callTracer`, or `trace_block` where the [[trace-api|trace_ namespace]] exists. Logs are not enough, because the outflows that matter are often [[internal-transaction|internal ether transfers]], and a write to an implementation slot without an `Upgraded` event shows up in a `prestateTracer` state diff but in no log. All of it has to arrive within seconds of the block, which rules out most rate-limited shared endpoints.",
+          "Watching before inclusion adds the pool. Over [[eth-subscribe|eth_subscribe]] with `newPendingTransactions` and full objects, or a dedicated [[mempool-streaming|mempool stream]], a monitor sees public transactions seconds before a block and can run each suspicious one through [[debug-api|debug_traceCall]] or [[eth-simulate|eth_simulateV1]] at the head. An attacker who submits through [[private-rpc|private RPC]] never appears there, so the pool view catches only public flow, and the dependable early signal is the attacker's preparation in earlier blocks.",
+        ],
+      },
+      {
+        heading: "Seven blocks of warning",
+        paragraphs: [
+          "Forta's write-up of the April 2022 Saddle Finance exploit, about 11 million dollars, shows the window that preparation leaves. The attacker's contract was created in block 14,684,300 and used in block 14,684,307. A detector that copies the chain's state just after the creation into a local fork and calls each new function finds that the one taking no arguments, [[abi|selector]] `0xaf8271f7`, lifts the attacker's WETH balance from 0 to 3,375. Seven blocks, 110 seconds by their timestamps, separate a provable threat from the theft: enough for an automated response, and far too little for a human one.",
+          "The usual automated response is a guardian, an account the protocol authorised in advance, calling `pause()`, which emits `Paused(address)` and blocks the functions the attacker needs. That transaction races the attack, so it goes out through private RPC or as a [[mev-bundle|bundle]], where an attacker watching the pool cannot see it and move first. White-hat rescues go further: they front-run a visible exploit, landing a transaction just ahead of it that moves the funds to safety, a [[searcher|searcher]]'s technique used defensively.",
+        ],
+      },
+      {
+        heading: "When the endpoint is the false alarm",
+        paragraphs: [
+          "A monitor is only as right as the data it reads. A lagging endpoint means a late or missed alert. A wrong one is worse: a load balancer can split one evaluation across two heights, so a balance read one block apart shows a drop that never happened; a half-synced backend can return an error or `0x` that careless decoding turns into a zero balance; a node briefly on the losing side of a [[reorg|reorg]] reports transfers that never become canonical. Each of these pages somebody, and the expensive ones pause a protocol that was never attacked; see [[head-lag|head consistency]].",
+          "The defences are mechanical. Pin each evaluation to one block hash. Cross-check the head, and any reading that would trigger action, against at least two independent providers, the quorum pattern an [[rpc-gateway|RPC gateway]] such as dshackle implements. Backfill from a stored cursor after every reconnect, so a dropped [[websocket-transport|WebSocket]] leaves no silent gap. Hypernative gave these reasons, missed blocks, delayed responses and inconsistent reads, for its 2026 move to multi-provider routing. Live detection needs only recent state; the investigation afterwards needs an [[archive-node|archive node]].",
+        ],
+      },
+    ],
+    example: {
+      title: "What a monitor running today would have done with Saddle's preparation block",
+      language: "text",
+      code: "block 14,684,300 (0xe0108c) arrives on newHeads\n\n1. eth_getBlockByNumber 0xe0108c, true            full transaction objects\n2. eth_getBlockReceipts 0xe0108c                  one receipt has contractAddress 0x7336…2191\n3. debug_traceBlockByNumber 0xe0108c, callTracer  the CREATE frame and its deployer, 0x6334…5ac0\n4. detector: unverified code exposing two functions, 0xa15db5c5 and 0xaf8271f7\n5. eth_simulateV1 on base block 0xe0108c, from the deployer:\n     call 1  WETH balanceOf(attacker)            -> 0\n     call 2  new contract, data 0xaf8271f7        -> status 0x1\n     call 3  WETH balanceOf(attacker)            -> 3,375 WETH\n6. cross-check: a second provider, same blockHash, reproduces step 5\n7. alert; the guardian's signed pause() goes out through private RPC\n\nblock 14,684,307 (0xe01093): the real exploit, seven blocks and 110 seconds after block 14,684,300",
+      note: "Forta's 2022 bot ran this check on a Ganache fork; on a current node `eth_simulateV1` does the same at the head without an archive, because the block it forks from is the latest one.",
+    },
+    pitfalls: [
+      "Watching only events, which misses internal ether transfers and storage writes that a malicious upgrade or a drain need not log.",
+      "Sending the response transaction through the public pool, where the attacker can see it and act first.",
+      "Reading a quiet pending-transaction stream as safety, when private submissions never appear in it.",
+    ],
+    related: ["debug-api", "trace-api", "internal-transaction", "mempool-streaming", "private-rpc", "head-lag", "rpc-gateway", "proxy-contract", "transaction-simulation", "archive-node"],
+    sources: [
+      { title: "Forta: attack simulation with Forta (Saddle Finance)", url: "https://forta.org/blog/attack-simulation" },
+      { title: "OpenZeppelin Monitor documentation", url: "https://docs.openzeppelin.com/monitor" },
+      { title: "Hypernative: Smart Router RPC layer for on-chain data reliability", url: "https://www.hypernative.io/blog/hypernative-integrates-smart-router-rpc-layer-to-improve-onchain-data-reliability" },
+      { title: "Forta: the Web3 kill chain", url: "https://www.forta.org/blog/web3-kill-chain" },
+    ],
+  },
+  {
+    id: "rpc-workloads",
+    title: "Who uses Ethereum RPC",
+    category: "operations",
+    aliases: ["RPC use cases", "RPC consumers", "workload shapes", "RPC traffic patterns", "method mix", "who calls RPC"],
+    summary: "An RPC workload is the shape of the traffic a consumer sends to a node — which methods, at which block, over how much history, and how quickly the answer is needed — and this lesson sorts Ethereum's RPC consumers into nine such shapes.",
+    sections: [
+      {
+        heading: "Shapes, not industries",
+        paragraphs: [
+          "A lending protocol's [[liquidation-bot|liquidation bot]] and its accountants read the same contracts but need opposite endpoints: the bot reads loans at the head, the newest [[block|block]], within milliseconds of each block, while the accountants read month-end balances at old blocks and can wait a minute. To the node only the shape matters: which block is read, how much history that forces it to keep, which [[namespaces|namespaces]] are called, and whether a late or a missing answer does more harm. The nine shapes below, one paragraph each, are head reads, pinned-block reads, simulation, proofs, event logs, traces, writes, head streams, and the traffic that drives a chain. Most consumers mix several; a wallet reads, simulates and writes.",
+        ],
+      },
+      {
+        heading: "Reading state: at the head, pinned, simulated, proven",
+        paragraphs: [
+          "Head reads ask what is true now: [[eth-call|eth_call]] and [[eth-get-balance|eth_getBalance]] at `latest`, often packed into one call through [[multicall|Multicall3]] or a [[deployless-call|deployless call]]. Wallets, [[portfolio-tracker|portfolio trackers]], DEX routers reading [[dex-pool-reads|pools]] and [[quoter-contract|quoters]], lending dashboards, [[ens|name]] and attestation lookups, ticket checks, and game and social front ends send them. Packing has a ceiling: Uniswap's smart-order-router sizes each multicall for 150,000,000 [[gas|gas]] on mainnet, three times what a default [[geth|Geth]] node lets one `eth_call` use (`--rpc.gascap`), so its quotes fail there until the cap is raised or the chunks shrink.",
+          "Pinned-block reads ask what was true at one past block: [[governance-voting-power|voting power]] at a proposal's snapshot, [[airdrop-rewards|reward]] eligibility, [[erc-4626|vault]] share prices, reserve reconciliation, insurance claims, risk research and [[fork-testing|fork tests]]. A [[pruned-node|pruned node]] keeps state only for recent blocks, 128 on Geth and other numbers elsewhere, so older reads fail there and need an [[archive-node|archive node]].",
+          "Simulation asks what a transaction would do if sent: [[transaction-simulation|previews]] in wallets and security tools, routes in [[dex-aggregator|aggregators]] and [[intent-solver|solvers]], [[erc-4337|user operations]] in bundlers, and treasury payouts. It runs as `eth_call` with [[state-override|state overrides]], as [[eth-simulate|eth_simulateV1]] or as `debug_traceCall`, against a deadline; aggregators first find the token balance slots they override ([[storage-slot-discovery|slot discovery]]).",
+          "Proofs ask for evidence the caller can check without trusting the node: [[light-client|light clients]] such as [[helios|Helios]], [[bridge|bridges]] and ZK provers, including [[real-time-proving|real-time provers]], call [[eth-get-proof|eth_getProof]]. Succinct's RSP block prover fetches a proof at the parent block for every account and slot a block touches, so it needs an archive node that keeps historical [[merkle-patricia-trie|trie]] nodes.",
+        ],
+      },
+      {
+        heading: "Reading history: event logs and traces",
+        paragraphs: [
+          "[[event-log|Event logs]] are records contracts emit, such as a token's `Transfer`. Their consumers turn them into tables: [[indexer|indexers]], [[exchange-deposits|exchange deposits]], [[stablecoin-payments|payment processors]], [[nft-marketplace|NFT marketplaces]], streaming and vesting apps, prediction-market settlement, carbon-credit retirements, [[cross-chain-relayer|cross-chain relayers]], storage networks, and oracle, dispute and staking nodes. They call [[eth-get-logs|eth_getLogs]], [[eth-get-block-receipts|eth_getBlockReceipts]] and log [[eth-subscribe|subscriptions]], and need logs back to a contract's deployment, which [[history-expiry|history expiry]] can remove; a Hyperlane relayer's first run indexes every past `Dispatch` message event on each origin chain. [[rpc-privacy|Privacy wallets]] download every event their pool contract emits.",
+          "Traces show what happened inside a transaction, such as [[internal-transaction|internal ETH transfers]], which leave no log. [[block-explorer|Explorers]], compliance and [[chain-analytics|analytics]] platforms, [[accounting-reconciliation|accounting]], [[address-history|address history]] and [[security-monitoring|incident forensics]] call [[trace-api|trace_block]], `trace_filter` or [[debug-api|debug_traceBlockByNumber]]; Safe's Transaction Service uses `trace_filter` and `trace_block` on L1 chains but `eth_getLogs` on L2s. Traces are the costliest shape, since the node re-executes the block with a tracer attached, and the least portable: `trace_` and Geth's `debug_` output differ, and neither tracing format is part of the [[execution-apis|execution-apis]] specification.",
+        ],
+      },
+      {
+        heading: "Writing, streaming, and driving the chain",
+        paragraphs: [
+          "Writers need each transaction to land exactly once: [[transaction-relayer|relayers]], [[keeper|keepers]], exchange and custody withdrawals, stablecoin mints and burns, tokenised-asset issuers, [[x402|x402]] settlement, [[onchain-agents|agents]], [[faucet|faucets]], and launch, fundraising and game backends that send in bursts. The loop reads the account's next [[nonce|nonce]] with [[eth-get-transaction-count|eth_getTransactionCount]] at `pending`, estimates the fee, sends with [[eth-send-raw-transaction|eth_sendRawTransaction]] and polls for the receipt; a nonce is usable once, so a resent copy cannot land twice. When ordering is worth money, they send through [[private-rpc|private submission]] or [[mev-share|MEV-Share]] instead of the public mempool.",
+          "Head streams feed consumers racing to see each new block and pending transaction: [[searcher|searchers]] and builders, market makers, [[price-oracle|oracles]], derivatives keepers, [[preconfirmation|preconfirmation]] services and gas estimators watching [[mempool-streaming|the mempool]]. They hold [[eth-subscribe|eth_subscribe]] streams open over WebSocket and pick endpoints by [[fastest-head|time to head]]; a Chainlink node needs a WebSocket URL whenever its log broadcaster is on, the default on Ethereum mainnet.",
+          "The last shape runs the chain itself. An Ethereum node is a [[beacon-node|beacon node]] driving an [[execution-client|execution client]] over the [[engine-api|Engine API]], and [[validator-node|validators]], staking and restaking operators and [[distributed-validator|distributed validators]] run that pair. [[relay|Relays]], which pass builders' blocks to proposers, re-execute each one before a deadline. Rollups rebuild their chain from L1 data through the [[derivation-pipeline|derivation pipeline]], fetching [[blob|blobs]] with [[blob-archive|blob archives]] behind them. Chain teams, rollup-as-a-service platforms, [[testnets|testnet]] and [[permissioned-network|permissioned-network]] operators, [[network-telemetry|telemetry]] and [[portal-network|history]] projects run their own nodes; [[rpc-provider|providers]] and node hosts sell every shape at once.",
+        ],
+      },
+    ],
+    example: {
+      title: "Named consumers, the calls they make and the history they need",
+      language: "text",
+      code: "consumer: its shapes, as named in the paragraphs above\n\nMetaMask wallet: head reads, simulation, writes\n  calls    eth_getBalance, eth_call, eth_estimateGas, eth_feeHistory, eth_sendRawTransaction\n  needs    the head only; Infura is the default endpoint\n\nUniswap smart-order-router: head reads\n  calls    eth_call carrying large Multicall batches to pools and quoters\n  needs    the head, and an eth_call gas cap of at least multicallChunk x gasLimitPerCall,\n           150,000,000 on mainnet by default (Geth's default cap is 50,000,000)\n\nSnapshot voting strategy: pinned-block reads\n  calls    eth_call through Multicall with blockTag set to the proposal snapshot\n  needs    archive state at that block\n\nFoundry fork test: pinned-block reads\n  calls    eth_getBalance, eth_getTransactionCount and eth_getCode (or eth_getAccountInfo\n           where served), eth_getStorageAt per slot\n  needs    archive state once the block is old; reads by block hash by default\n\ngraph-node subgraph: event logs, pinned-block reads, traces\n  calls    eth_getLogs; eth_call at past blocks; trace_filter for call handlers\n  needs    logs from each subgraph's start block, EIP-1898 archive state for calls\n\nSafe Transaction Service: traces on L1, event logs on L2\n  calls    L1: trace_filter, then trace_block near the head; L2: eth_getLogs\n  needs    traces or receipts back to the Safe deployments\n\nBlockscout explorer: nearly every reading shape\n  calls    blocks, receipts, and debug_ or trace_ per ETHEREUM_JSONRPC_VARIANT\n  needs    a full archive node plus a trace endpoint\n\nHyperlane relayer: event logs, writes\n  calls    eth_getLogs for Mailbox Dispatch events on each origin chain;\n           Mailbox.process() on the destination\n  needs    every past message on each origin chain\n\nSwarm Bee node: event logs, on Gnosis Chain\n  calls    eth_getLogs for postage-stamp contract events since the contract was created\n  needs    a full archival endpoint; non-archive ones fail with storage: not found\n\nSuccinct RSP prover: proofs\n  calls    eth_getProof at the parent block for each touched account and its slots,\n           or one debug_executionWitness with --state-backend execution-witness\n  needs    an archive node that keeps historical trie nodes\n\nmev-boost-relay: driving the chain (simulation against a deadline)\n  calls    flashbots_validateBuilderSubmissionV5; beacon payload_attributes events\n  needs    the head; BLOCKSIM_TIMEOUT_MS is 10000 in code (the README says 3000)\n\nSSV node: driving the chain, plus event logs\n  calls    registry contract events over ETH_1_ADDR (WebSocket); BEACON_NODE_ADDR (HTTP)\n  needs    contract events since deployment, then the head\n\nop-challenger: driving a rollup (dispute games), deep pinned-block reads\n  calls    L1 execution, L1 beacon for blobs, L2 archive with debug_, op-node archive\n  needs    L2 state back to the start of every open dispute game",
+      note: "Each row follows the project's public documentation or code; one organisation can appear in several shapes, so place each service by its traffic, not by its brand.",
+    },
+    pitfalls: [
+      "[[rpc-benchmarking|Sizing an endpoint]] by request count, when one trace or wide log scan costs more than a page of head reads.",
+      "Testing a consumer only at `latest`, then failing in production on the pinned-block or history part of its mix.",
+      "Treating archive as one capability, when old state, old receipts, traces and historical proofs are retained separately.",
+    ],
+    related: ["rpc-provider", "endpoint-capabilities", "archive-node", "indexer", "transaction-simulation", "fastest-head", "rpc-benchmarking", "rpc-privacy", "self-hosting", "trace-api"],
+    sources: [
+      { title: "Uniswap smart-order-router: README", url: "https://github.com/Uniswap/smart-order-router" },
+      { title: "The Graph: Graph Node", url: "https://thegraph.com/docs/en/indexing/tooling/graph-node/" },
+      { title: "Safe Transaction Service", url: "https://docs.safe.global/core-api/api-safe-transaction-service" },
+      { title: "OP Stack: op-challenger configuration", url: "https://docs.optimism.io/operators/chain-operators/tools/op-challenger" },
+    ],
+  },
+  {
+    id: "rpc-benchmarking",
+    title: "Benchmarking RPC nodes",
+    category: "operations",
+    aliases: ["RPC load testing", "RPC benchmark", "coordinated omission", "open-loop load", "A/A test", "saturation curve", "flood"],
+    summary: "Benchmarking an RPC node or provider means measuring latency, throughput and correctness under traffic that resembles real use — a realistic method mix, a fixed arrival rate, mainnet-sized state, warm caches — and reporting percentiles against a measured noise floor rather than one average.",
+    sections: [
+      {
+        heading: "Choosing the load",
+        paragraphs: [
+          "A single-method load measures one code path: sending `eth_getBlockByNumber` for `latest` thousands of times a second mostly measures a [[caching|cache]], since every request asks for the same block. Production serves a [[rpc-workloads|mix]] of head reads, [[eth-call|eth_call]] reading uncached storage, [[eth-get-logs|eth_getLogs]] ranges and occasional [[trace-api|traces]], and the expensive minority sets capacity. Realistic mixes come from a [[rpc-gateway|gateway]] request log replayed in order or from a generator such as ethspam, which emits read-only queries around the latest block. Replayed `latest` calls read different state each run, so pin block numbers to make results reproducible.",
+          "State size matters as much as the mix. A [[local-devnet|local devnet]] or a [[kurtosis|Kurtosis]] network starts from a small genesis state that fits in memory, so every storage read is a RAM hit; mainnet state is far larger than RAM, so an uncached storage value is a random read from the SSD, the read [[node-hardware|node hardware]] is sized for. The node should also follow the chain, since importing each new block competes with RPC for disk and CPU; a node cut off from the network looks faster than production ever will. For a [[rpc-provider|provider]], network distance is often most of the latency, so measure from where the application runs.",
+        ],
+      },
+      {
+        heading: "Open loop, closed loop, coordinated omission",
+        paragraphs: [
+          "A closed-loop generator runs a fixed set of workers, each sending its next request only after the previous answer, as k6's `constant-vus` executor does. When the server slows, the workers wait, the request rate falls, and the slow period is barely sampled; this is called coordinated omission. An open-loop generator sends on a schedule regardless: k6's `constant-arrival-rate`, vegeta's `-rate`, and flood, which runs vegeta underneath. wrk2 times each request from when it should have been sent: in its README, one 1.4-second stall during a 2,000-request-per-second run puts the corrected p99, the latency 99% of requests beat, at 1.27 s against 6.04 ms uncorrected.",
+          "The generator can be the bottleneck: a load machine short of CPU or sockets reports its own queueing as server latency, so watch its CPU and k6's `dropped_iterations`, which counts iterations skipped for lack of a free worker (a virtual user). Judge success on the body, not the status: a node returns [[rpc-errors|JSON-RPC errors]] such as `execution reverted` or `missing trie node` inside an HTTP 200 response, and vegeta counts any 200 as a success. flood's `--deep-check` covers this, checking that every body is well-formed JSON without an error and reporting failures separately.",
+        ],
+      },
+      {
+        heading: "Reading the numbers",
+        paragraphs: [
+          "Report latency per method as percentiles, such as p50 (the median) and p99, plus the maximum. RPC latency is skewed, so a mean of 8 ms can hide a p99 of 400 ms from cold reads. Capacity is a saturation curve, not one number. Step the offered rate, what the generator sends, for example with flood's `--rates 100 200 400 800 1600`, and plot the achieved rate, what the node answers, and p99 against it; the knee is where achieved stops tracking offered. Discard the warm-up: after a restart caches are cold and the .NET and JVM runtimes of [[nethermind|Nethermind]] and [[besu|Besu]] still compile hot code, so measure once successive intervals agree.",
+          "Then measure the noise. An A/A run compares two identical builds; their spread is the smallest difference the setup can resolve, and an A/B result, build A against a changed build B, means nothing inside it. Interleave runs in A, B, B, A order so slow drift, such as the database's background compaction, lands on both builds equally.",
+        ],
+      },
+      {
+        heading: "Checking the answers",
+        paragraphs: [
+          "A fast wrong answer is worse than a slow right one, so diff the responses too. flood's `--equality` mode checks that two nodes answer identically, and Infura's versus runs one request stream against several endpoints, comparing bodies, status and timing; its README notes many mismatches are only key order, formatting or extra fields, so normalise first. Pin the block for every diffed request: at `latest`, two healthy nodes one block apart disagree and both are right, which is [[head-lag|head lag]], not a bug.",
+          "Conformance tests cover the other half. The [[execution-apis|execution-apis]] repository keeps recorded requests and responses against a small fixed chain, and [[hive|hive]]'s `rpc-compat` simulator replays them against the major clients, checking that each returns the recorded values over [[json-rpc|JSON-RPC]]. That catches shape and encoding bugs on tiny state; a diffing mainnet benchmark catches what only real state exposes.",
+        ],
+      },
+    ],
+    example: {
+      title: "An A/A saturation run, read step by step",
+      language: "text",
+      code: "# 1. the same build on two identical machines, both following mainnet;\n#    open-loop eth_call load at five offered rates, 60 s each, bodies checked\nflood eth_call a=http://10.0.0.11:8545 b=http://10.0.0.12:8545 \\\n  --rates 100 200 400 800 1600 --duration 60 --deep-check\n\n# 2. summary, abridged to one row per offered rate\noffered   achieved a / b   p50 ms a / b   p99 ms a / b   failed a / b\n  100       100 / 100        3.9 / 4.0      12 / 13      0% / 0%\n  200       200 / 200        4.1 / 4.1      14 / 15      0% / 0%\n  400       400 / 400        4.8 / 5.0      22 / 24      0% / 0%\n  800       797 / 798        9.6 / 9.1      88 / 81      0% / 0%\n 1600      1140 / 1090       690 / 760    3900 / 4300    2.4% / 3.1%\n\n# 3. reading it\n#  below the knee identical code differs by up to 9% at p99 (22 vs 24 ms at 400):\n#    an A/B gap smaller than that is noise\n#  the knee lies between 800 and 1600: achieved stops tracking offered\n#  capacity at a 100 ms p99 target is about 800 req/s for this mix and this state\n#  a closed loop of 50 workers would settle near 1,100 req/s at about 45 ms each\n#    (50 / 1,100 s, Little's law) and never show the queue that open-loop users meet",
+      note: "The two nodes run identical code, so every difference in the table is noise; only after that spread is known does a run comparing two different builds mean anything.",
+    },
+    pitfalls: [
+      "Quoting a closed-loop tool's latency as what users see under load, when its workers waited out the slow periods.",
+      "Counting every HTTP 200 as a success while the bodies carry reverts, `missing trie node` or other JSON-RPC errors.",
+      "Measuring capacity on a small-genesis devnet and quoting it for a mainnet node.",
+      "Calling a 2% change a regression without an A/A run showing the setup can resolve 2%.",
+    ],
+    related: ["rpc-workloads", "observability", "node-hardware", "hive", "execution-apis", "caching", "head-lag", "rpc-errors", "local-devnet", "client-diversity"],
+    sources: [
+      { title: "paradigmxyz/flood: load testing for EVM nodes", url: "https://github.com/paradigmxyz/flood" },
+      { title: "Grafana k6: open and closed models", url: "https://grafana.com/docs/k6/latest/using-k6/scenarios/concepts/open-vs-closed/" },
+      { title: "wrk2: constant-throughput load and coordinated omission", url: "https://github.com/giltene/wrk2" },
+      { title: "hive: rpc-compat simulator", url: "https://github.com/ethereum/hive/tree/master/simulators/ethereum/rpc-compat" },
+    ],
+  },
+  {
+    id: "rpc-privacy",
+    title: "What an RPC endpoint learns about you",
+    category: "operations",
+    aliases: ["RPC privacy", "read privacy", "wallet privacy", "address linking", "private information retrieval", "PIR"],
+    summary: "Every RPC request tells the endpoint's operator who is asking, through the source IP address, and what about, through the addresses, contracts and transactions in its parameters, so the operator can link one user's accounts, see their holdings, and tie a sent transaction to a network location.",
+    sections: [
+      {
+        heading: "What one session gives away",
+        paragraphs: [
+          "Each request arrives with a source IP address, often an API key, and, from a web page, an `Origin` header naming the site. Parameters name the subject: [[eth-get-balance|eth_getBalance]] carries the address, an [[eth-call|eth_call]] to a token's `balanceOf` carries it inside the [[abi|ABI-encoded]] calldata, and an [[eth-get-logs|eth_getLogs]] filter for transfers to a user carries it as a [[event-signature|topic]] padded to 32 bytes. The endpoint cannot answer without reading it.",
+          "Linking is the larger leak. A wallet that refreshes three accounts' balances in one [[batch-request|batch]] or one [[multicall|Multicall3]] call from one IP tells the operator the accounts belong together, even if they never transacted with each other. Sending is stronger still: [[eth-send-raw-transaction|eth_sendRawTransaction]] carries a signed transaction, and the sender's address can be recovered from its [[ecdsa-signature|signature]], so the operator learns the IP behind an address, usually seconds after [[eth-get-transaction-count|eth_getTransactionCount]] at `pending` and an [[eth-estimate-gas|eth_estimateGas]] call that named the recipient and amount.",
+        ],
+      },
+      {
+        heading: "Defaults and stated policies",
+        paragraphs: [
+          "Many users never choose an endpoint. MetaMask's privacy notice names Infura as the RPC provider the wallet uses by default; a user can add another RPC URL for a network and make it the default. In December 2022 Consensys, which runs both, stated that it does not store wallet addresses for read requests made through Infura, that it collects wallet and IP addresses for write requests but stores them apart, and that it was working on narrowing retention to seven days. The current notice gives no retention period for either. A policy governs storage, not visibility: every read still passes through the operator.",
+          "The wallet's endpoint is rarely the only observer. A dapp sends its own reads to an endpoint it chose ([[dapp-architecture|dapp architecture]]), so a second operator sees the same address with the site attached. [[ens|ENS]] lookups reveal the names a user resolves, and a name that uses [[ccip-read|CCIP-Read]] sends the query on to a gateway chosen by the resolver contract. Wallet backends that fetch prices, token lists or [[address-history|address history]] for an account are observers too.",
+        ],
+      },
+      {
+        heading: "Mitigations, and what each one hides",
+        paragraphs: [
+          "A [[self-hosting|self-hosted node]] keeps reads local, though when it broadcasts a transaction it is necessarily the first peer to announce it over [[devp2p|devp2p]]. Tor or a VPN hides the IP but not the linking: one session that refreshes every account still ties them together, so keeping accounts apart takes a separate Tor circuit and session for each. Splitting traffic across [[rpc-provider|providers]] leaves each operator a fragment; Vitalik Buterin's April 2025 privacy roadmap proposes several endpoints, ideally one per dapp, optionally reached through a mixnet, which delays and shuffles messages so they cannot be traced to a sender.",
+          "Verification is not privacy. [[helios|Helios]] and other [[verified-rpc|verified RPC]] setups check answers with [[eth-get-proof|eth_getProof]], so the provider still receives the address. For an `eth_call`, which Helios re-executes locally, the provider receives an [[eth-create-access-list|eth_createAccessList]] for the same call plus a proof request for every account the call touches. Hiding the question itself needs a trusted execution environment (TEE), a hardware enclave whose operator cannot read the computation, which the roadmap suggests for the short term, or private information retrieval (PIR), where the server answers without learning which record was asked, which the roadmap calls not yet efficient for large datasets.",
+        ],
+      },
+      {
+        heading: "Reading everything on purpose",
+        paragraphs: [
+          "Privacy applications avoid the leak by asking questions whose answers are the same for every user. A RAILGUN wallet fetches the pool contract's data to rebuild its Merkle trees and tries to decrypt every note, an encrypted record of value, to find its own balance, so the provider sees a download any wallet would make (by default much of it comes through QuickSync, a [[the-graph|subgraph]], whose indexer gets the same view). ERC-5564 stealth addresses, a fresh address per payment that only the recipient can recognise, work the same way: recipients scan every `Announcement` event from the announcer at `0x55649E01B5Df198D18D95b5cc5051630cfD45564`. A one-byte view tag lets them discard about 255 of every 256 after one elliptic-curve multiplication and one hash.",
+          "The cost is bandwidth, and the protection is partial: timing, deposit and withdrawal amounts, and the endpoint used to submit still leak, and a wallet that also checks the user's public balance through the same endpoint undoes the effort. This differs from [[private-rpc|private transaction RPC]], which keeps a transaction out of the public [[mempool|mempool]] until it is included; the private endpoint still sees the sender's IP and the full transaction, and hides nothing about the queries made before it.",
+        ],
+      },
+    ],
+    example: {
+      title: "One wallet session as the endpoint's log records it",
+      language: "text",
+      code: "source 203.0.113.7, one HTTPS connection, wallet holding accounts 0x4a1F…09c3 and 0x9e27…b81d\n\n1. t+0.00 s  eth_chainId\n             learns nothing about the user\n2. t+0.02 s  batch [ eth_getBalance(0x4a1F…09c3, latest), eth_getBalance(0x9e27…b81d, latest) ]\n             two addresses from one IP in one request: they belong together\n3. t+0.05 s  eth_call to 0xcA11bde05977b3631167028862bE2a173976CA11 (Multicall3), aggregate3:\n             balanceOf(0x4a1F…09c3) and balanceOf(0x9e27…b81d) on USDC, WETH and DAI\n             the token holdings of both accounts\n4. t+9.40 s  eth_getTransactionCount(0x9e27…b81d, pending)\n             which account is about to act\n5. t+9.45 s  eth_estimateGas({from: 0x9e27…b81d, to: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,\n             data: transfer(0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045, 250000000)})\n             recipient and amount, 250 USDC, before anything is signed\n6. t+11.2 s  eth_sendRawTransaction(0x02f8b1…)\n             a signed transaction: sender 0x9e27…b81d, now tied to 203.0.113.7",
+      note: "Steps 2 and 3 link the accounts and step 6 locates one of them; routing the session through Tor would change the source address in every line and remove none of the linking.",
+    },
+    pitfalls: [
+      "Reading a provider's promise not to store read requests as a promise that the reads were never seen.",
+      "Refreshing every account in one batch, which links them for the operator even over Tor.",
+      "Treating a light client or verified RPC as a privacy measure; it proves the answers and leaves the questions in plain view.",
+    ],
+    related: ["rpc-provider", "self-hosting", "private-rpc", "helios", "verified-rpc", "dapp-architecture", "security", "ccip-read", "portfolio-tracker", "rpc-workloads"],
+    sources: [
+      { title: "MetaMask privacy notice", url: "https://metamask.com/privacy-notice" },
+      { title: "Consensys: data retention update for MetaMask and Infura", url: "https://consensys.com/blog/consensys-data-retention-update" },
+      { title: "A maximally simple L1 privacy roadmap", url: "https://ethereum-magicians.org/t/a-maximally-simple-l1-privacy-roadmap/23459" },
+      { title: "ERC-5564: Stealth Addresses", url: "https://eips.ethereum.org/EIPS/eip-5564" },
     ],
   },
 ];

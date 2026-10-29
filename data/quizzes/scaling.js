@@ -63,7 +63,7 @@ export const quizzes = {
       options: [
         "block.number lags because it reads the parent of the block still being built",
         "eth_blockNumber counts only batches posted to L1, block.number counts L2 blocks",
-        "block.number reports the L1 block number, eth_blockNumber reports the L2 one",
+        "block.number reports an approximate L1 number, eth_blockNumber the L2 one",
         "The replica answering eth_blockNumber lags the sequencer by that many blocks",
       ],
       answer: 2,
@@ -562,7 +562,7 @@ export const quizzes = {
       question: "What does PeerDAS, introduced in the Fusaka upgrade, change about how nodes handle blob data?",
       options: [
         "Blob data moves from the consensus layer into the execution layer",
-        "Each node holds only some erasure-coded columns and samples the rest",
+        "Each node downloads and stores only some of the erasure-coded columns",
         "Blob retention is extended from about 18 days to permanent storage",
         "KZG commitments are replaced by Merkle proofs over every blob's contents",
       ],
@@ -679,6 +679,489 @@ export const quizzes = {
         "The commitment stays on chain forever; the data goes after about 18 days",
       ],
       answer: 3,
+    },
+  ],
+
+  "predeploys": [
+    {
+      kind: "scenario",
+      question: "A wallet on an OP Stack chain shows users the eth_estimateGas limit times the gas price, and users are charged more than shown. Which predeploy call supplies the missing part?",
+      options: [
+        "getL1Fee on GasPriceOracle through eth_call with the serialized transaction",
+        "arbBlockNumber on ArbSys, which reports the L1 block the fee is priced from",
+        "sentMessages on L2ToL1MessagePasser, which records the fee owed to L1",
+        "number on L1Block, whose origin block sets a fixed per-transaction fee",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "cause",
+      question: "Why can a call to getL1FeeUpperBound on GasPriceOracle revert at an old block and succeed at latest?",
+      options: [
+        "The oracle's storage is pruned for old blocks on most OP Stack nodes",
+        "The predeploy is a proxy, and the implementation before Fjord lacked it",
+        "Predeploys accept calls at the latest block alone, by protocol rule",
+        "L1Block had not yet recorded any blob base fee at that older block",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "contrast",
+      question: "How does Arbitrum's NodeInterface differ from its ArbSys precompile?",
+      options: [
+        "NodeInterface is EVM bytecode placed in genesis, while ArbSys is native ArbOS code",
+        "NodeInterface serves L1 contracts, while ArbSys serves contracts on L2",
+        "NodeInterface exists at the RPC layer alone, while ArbSys is callable on chain",
+        "NodeInterface is an OP Stack predeploy, while ArbSys is its Arbitrum port",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "What does the first transaction of every OP Stack L2 block do?",
+      options: [
+        "It executes every user deposit from L1 as a single bundled transaction",
+        "It posts the previous block's output root to the L2ToL1MessagePasser",
+        "It upgrades each predeploy proxy to the newest implementation available",
+        "It writes the L1 origin's number, hash and fees into the L1Block contract",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "consequence",
+      question: "A treasury dashboard rebuilds the OP Stack fee vaults' balances by summing the incoming transfers it finds in traces and logs. What goes wrong?",
+      options: [
+        "It overcounts, because every fee payment is logged twice by the vault contract",
+        "It is correct, because every fee payment is a traced internal transfer",
+        "It double counts, because the L1 fee vault mirrors the base fee vault",
+        "It undercounts, since the protocol credits each block's fees with no transfer",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "scenario",
+      question: "A bridge interface must prove a user's OP Stack withdrawal on L1. Which call against the L2 supplies the evidence?",
+      options: [
+        "eth_getProof for the L2ToL1MessagePasser slot at the proven block",
+        "eth_getTransactionReceipt for the withdrawal, checked by the portal",
+        "optimism_syncStatus, whose safe head proves the withdrawal was derived",
+        "eth_call to GasPriceOracle, which returns the signed withdrawal record",
+      ],
+      answer: 0,
+    },
+  ],
+
+  "derivation-pipeline": [
+    {
+      kind: "scenario",
+      question: "An operator resyncs an OP Stack node from genesis with an ordinary beacon endpoint, and derivation stalls on batches from last year. Why?",
+      options: [
+        "The execution client cannot snap sync blocks that old from its peers",
+        "The blobs holding those batches expired, and no archive fallback is set",
+        "Old batches were posted as calldata, which op-node no longer decodes",
+        "The sequencing window for those epochs closed, so they cannot be derived",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "cause",
+      question: "Why do the safe and finalized tags on an OP Stack execution client reflect L1 rather than local consensus?",
+      options: [
+        "op-node sets them in each forkchoice update from what it derived from L1",
+        "The execution client reads the L1 beacon chain directly to compute them",
+        "The sequencer signs safe and finalized markers into every gossiped block",
+        "They are copied from the L1 block tags with a fixed offset of two epochs",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "contrast",
+      question: "How does an unsafe L2 block differ from a safe one?",
+      options: [
+        "Unsafe blocks lack a state root until a batch on L1 fills it in",
+        "Unsafe blocks are derived from L1 data that is still being challenged",
+        "Unsafe blocks came from sequencer gossip, with no batch on L1 yet",
+        "Unsafe blocks hold deposits alone, while safe blocks add user transactions",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "What happens if no batch for an epoch lands on L1 within the sequencing window?",
+      options: [
+        "The chain halts until the sequencer posts the missing batch data",
+        "Derivation builds blocks containing just the deposits for that range",
+        "The last proposed output root is challenged and rolled back on L1",
+        "Replicas keep the gossiped blocks and mark them safe after 12 hours",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "consequence",
+      question: "An L1 reorg replaces the L1 block that carried a recent batch. What can happen to the L2 heads?",
+      options: [
+        "The finalized L2 head moves back while the safe head stays where it was",
+        "Nothing changes, because L2 blocks are final once the sequencer signs",
+        "The unsafe head is frozen until the L1 chain reaches finality again",
+        "The safe L2 head can move backwards while the finalized head cannot",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "detail",
+      question: "How does optimism_syncStatus encode the block numbers in its response?",
+      options: [
+        "As hex quantities with a 0x prefix, like execution client responses",
+        "As decimal strings, the way the Beacon API encodes its slot numbers",
+        "As decimal JSON numbers inside each block reference object",
+        "As RLP-encoded block references that must be decoded first",
+      ],
+      answer: 2,
+    },
+  ],
+
+  "validium": [
+    {
+      kind: "scenario",
+      question: "A validium's data committee stops serving data while its verifier contract keeps working. What happens to user funds?",
+      options: [
+        "They stay withdrawable, because the validity proofs cover every exit as well",
+        "They are frozen, because exit proofs need data the committee alone holds",
+        "They are lost, because the operator can now post a forged state root",
+        "They move to rollup mode, because the contract forces data onto L1",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "cause",
+      question: "Why is an optimium's trust model weaker than a validium's when data is withheld?",
+      options: [
+        "A fraud proof cannot be built without the data, so a bad root can pass",
+        "Optimiums post no state commitments to L1 at all, only certificates",
+        "Validiums keep their data on Ethereum, while optimiums keep it elsewhere",
+        "An optimium's committee is also able to sign invalid state transitions",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "contrast",
+      question: "How does a volition differ from a plain validium?",
+      options: [
+        "It replaces the data committee with an external network like Celestia",
+        "It posts fraud proofs instead of validity proofs for off-chain batches",
+        "It lets users choose on-chain or off-chain data per asset or transaction",
+        "It keeps data on Ethereum but posts its proofs to another settlement layer",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "What does an Arbitrum AnyTrust sequencer post to L1 in place of the batch data?",
+      options: [
+        "A zero-knowledge proof that the committee received the whole batch",
+        "A certificate with the data hash, an expiry and committee signatures",
+        "A blob holding the compressed batch, signed by every committee member",
+        "The batch's state root, signed by the sequencer's own batcher key",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "consequence",
+      question: "An indexer plans to backfill an Alt-DA OP chain using just an L1 archive node and a blob archive. What does it find?",
+      options: [
+        "Complete batch data, since Alt-DA changes nothing but the fee model",
+        "Nothing at all, because Alt-DA chains post no transactions to L1",
+        "Deposits alone, since Alt-DA moves user transactions into calldata",
+        "Commitments on L1 where the batch data itself should have been",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "scenario",
+      question: "A chain operator picks DA-service commitments for an Alt-DA chain. What protection does the on-chain challenge contract give them?",
+      options: [
+        "Full protection, since every commitment can be forced onto L1",
+        "Partial, since challenges work only within the finality window",
+        "Full, but only after the external DA layer confirms the data",
+        "None, since the contract resolves only keccak commitments",
+      ],
+      answer: 3,
+    },
+  ],
+
+  "op-challenger": [
+    {
+      kind: "scenario",
+      question: "An operator points op-challenger's --l2-eth-rpc at a hosted L2 endpoint without debug methods. What goes wrong?",
+      options: [
+        "The program host cannot fetch witnesses and trie nodes to build traces",
+        "The challenger falls back to the rollup node for trie nodes and code",
+        "The challenger plays normally but pays higher bonds for each move",
+        "The challenger posts output roots from that endpoint without checks",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "cause",
+      question: "Why does op-challenger query optimism_safeHeadAtL1Block before defending a claimed block?",
+      options: [
+        "To learn which L2 blocks the sequencer has gossiped but not yet batched",
+        "To cap its claim at what L1 data up to the game's L1 head supports",
+        "To find the output root that the proposer used as the root claim",
+        "To check that the L1 block holding the game has been finalized",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "contrast",
+      question: "How does op-challenger's role differ from the on-chain fault dispute game it plays?",
+      options: [
+        "It replaces the on-chain VM by executing the disputed step off chain",
+        "It is the proposer that creates games and posts their root claims",
+        "It is the L1 contract that holds the bonds and resolves finished games",
+        "It is the off-chain agent that computes honest claims and posts moves",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "detail",
+      question: "Where are the bonds posted with each move held until they are claimed?",
+      options: [
+        "In DelayedWETH, until the game resolves and a withdrawal delay passes",
+        "In the DisputeGameFactory, until the proposer withdraws its own claim",
+        "In the PreimageOracle, until the disputed step is executed on L1",
+        "In the OptimismPortal, until the related withdrawal is finalized",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "consequence",
+      question: "An operator restores op-node's safe-head database from a snapshot taken on another machine. What risk follows?",
+      options: [
+        "The rollup node refuses to start until the database is rebuilt",
+        "The challenger loses its bonds, since the factory rejects all of its moves",
+        "The challenger acts on a wrong safe head, risking attacks on valid outputs",
+        "The rollup node forks from the sequencer's chain at the next batch",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "Which methods does the program host call on op-challenger's L1 execution endpoint to load L1 data?",
+      options: [
+        "debug_getRawHeader and debug_getRawReceipts",
+        "eth_getProof and debug_executionWitness",
+        "optimism_outputAtBlock and eth_getLogs",
+        "engine_newPayloadV4 and engine_getPayloadV4",
+      ],
+      answer: 0,
+    },
+  ],
+
+  "blob-archive": [
+    {
+      kind: "scenario",
+      question: "A team starts an archiving beacon node today and wants blobs posted six months ago. What should they expect?",
+      options: [
+        "The node backfills them from peers during its initial sync",
+        "The node reconstructs them from the columns it now custodies",
+        "Peers are not obliged to serve them, so they must come from an archive",
+        "The execution client supplies them from its stored blob transactions",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "cause",
+      question: "Why can a rollup node safely take blobs from an archive it does not trust?",
+      options: [
+        "Archives sign every blob with the beacon proposer's validator key",
+        "Archives are required to serve blobs from finalized slots alone",
+        "The sequencer re-posts any disputed blob to L1 as plain calldata",
+        "It recomputes each blob's commitment and checks the versioned hash",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "After Fusaka, how does an ordinary beacon node's blob storage differ from a supernode's?",
+      options: [
+        "It keeps all columns for 18 days, while a supernode keeps them forever",
+        "It stores just KZG commitments, while a supernode stores the blob bytes",
+        "It custodies a subset of columns, while a supernode custodies them all",
+        "It prunes after 4096 epochs, while a supernode never prunes anything",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "Which Beacon API route does a current op-node request when fetching blobs from a fallback?",
+      options: [
+        "/eth/v1/beacon/blob_sidecars/{block_id} with blob indices",
+        "/eth/v1/beacon/blobs/{block_id} with versioned_hashes",
+        "/eth/v1/debug/beacon/data_column_sidecars/{block_id}",
+        "/eth/v2/beacon/blocks/{block_id} with its blob bodies",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "consequence",
+      question: "An operator sizes an archive's disk from this year's blob rate and plans to keep everything. What goes wrong?",
+      options: [
+        "Blob limits rise with each blob-parameter fork, so growth outruns the plan",
+        "Blobs are recompressed after 4096 epochs, so most of the disk sits idle",
+        "Archived blobs expire after a year anyway, so the estimate is far too high",
+        "PeerDAS halves the stored size of each blob, so the disk is oversized",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "detail",
+      question: "Where should the versioned hash used to check an archived blob come from?",
+      options: [
+        "From the archive's own response, which carries the hash with the blob",
+        "From the blob's KZG proof, which encodes the hash in its first bytes",
+        "From your own node's copy of the blob transaction in an execution block",
+        "From Blobscan, which indexes the versioned hash of every blob ever posted",
+      ],
+      answer: 2,
+    },
+  ],
+
+  "peerdas": [
+    {
+      kind: "scenario",
+      question: "A rollup node asks a beacon node with no validators attached for the blobs of a two-day-old block and gets an error. What is the likely explanation?",
+      options: [
+        "The node keeps its custody columns, not whole blobs",
+        "Beacon nodes prune blob data once a day after Fusaka",
+        "The blob route answers only when SSZ is requested",
+        "The execution client has not yet finalized the block",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "detail",
+      question: "Since Osaka, how many cell proofs does a blob transaction's network wrapper carry for each blob?",
+      options: [
+        "One, the same single proof per blob as at Cancun",
+        "128, one for each cell of the extended blob",
+        "64, one for each cell of the unextended blob",
+        "Eight, one for each column a node samples",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "cause",
+      question: "Why can a node that holds 64 of a block's 128 columns rebuild every blob in it?",
+      options: [
+        "Each column repeats the whole blob in compressed form",
+        "Its execution client supplies the columns it lacks",
+        "Peers must resend any column it reports as missing",
+        "The extension is a code in which any half suffices",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "How does a supernode differ from a semi-supernode?",
+      options: [
+        "It can reconstruct blobs, which the other cannot do",
+        "It samples eight columns a slot, the other only four",
+        "It custodies all 128 groups, the other exactly 64",
+        "It keeps columns past 4,096 epochs, the other does not",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "consequence",
+      question: "A beacon node has a single consolidated 2,048 ETH validator attached. What follows for its custody?",
+      options: [
+        "It keeps four groups, the same minimum as any node",
+        "It keeps eight groups, the fixed amount for validators",
+        "It keeps 64 groups, enough to reconstruct the blobs",
+        "It keeps all 128 groups, as every staking node must",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "scenario",
+      question: "A wallet built before Osaka signs a blob transaction with one proof per blob and submits it today. What can it expect?",
+      options: [
+        "Acceptance everywhere, because peers compute the cell proofs",
+        "Rejection by some endpoints, while Geth converts the proofs",
+        "Inclusion in a block, but its blobs may go unsampled",
+        "Acceptance, with the node silently dropping the blobs",
+      ],
+      answer: 1,
+    },
+  ],
+
+  "cross-chain-relayer": [
+    {
+      kind: "scenario",
+      question: "A relayer delivers a message on Arbitrum, and the Base transaction that dispatched it is then reorged out. What has happened?",
+      options: [
+        "Nothing harmful, because the Mailbox reverses deliveries whose origin vanished",
+        "The destination acted on a message that never happened, a double spend",
+        "The message is replayed on the new branch, so the recipient is paid twice",
+        "The validators' signatures expire, so the delivery reverts a block later",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "cause",
+      question: "Why does a Hyperlane relayer index origin chains in windows of 1,999 blocks by default?",
+      options: [
+        "Because Hyperlane validators sign one checkpoint for every 1,999 blocks",
+        "Because the Mailbox's Merkle tree holds at most 1,999 messages per subtree",
+        "So that a reorg can never reach deeper than one window of indexed blocks",
+        "So that each eth_getLogs range fits the 2,000-block caps endpoints impose",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "How does an Across relayer differ from a Hyperlane relayer?",
+      options: [
+        "It carries validator signatures to the destination and pays only the gas",
+        "It signs checkpoints of the SpokePool's Merkle tree for others to deliver",
+        "It pays the recipient from its own capital and is repaid after a challenge",
+        "It must be whitelisted by the protocol, while a Hyperlane relayer need not",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "What does a Wormhole message published with consistency level 201 wait for before the guardians sign it?",
+      options: [
+        "The source chain's safe block, as its node reports that tag",
+        "Exactly 201 confirmations on top of the block that included it",
+        "No wait at all, because 201 is the level for instant messages",
+        "The finalized block plus a further 201 blocks built on top of it",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "consequence",
+      question: "A relayer runs Hyperlane's quorum mode over three endpoints for one chain. What does that mode protect?",
+      options: [
+        "Submissions, which go to all three endpoints and count once two confirm",
+        "Every request, since reads and writes alike are compared across endpoints",
+        "Nothing on EVM chains, since quorum applies only to single-URL chains",
+        "Reads, which need a majority to agree; submissions still go to one URL",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "scenario",
+      question: "After a week offline, a relayer resumes against an endpoint that serves logs only for recent blocks. What risk does its catch-up face?",
+      options: [
+        "It must re-sign every checkpoint it missed before indexing can resume",
+        "The Mailbox refuses deliveries older than a week, so they are lost",
+        "Empty eth_getLogs answers look like no messages, so some get skipped",
+        "Destination nonces reset, so old messages need new gas payments",
+      ],
+      answer: 2,
     },
   ],
 };

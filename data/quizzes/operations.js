@@ -130,7 +130,7 @@ export const quizzes = {
       question: "Why are heavy indexing and simulation workloads usually cheaper on owned hardware than through a provider?",
       options: [
         "Owned nodes execute calls in parallel, which providers are not allowed to do",
-        "There are no compute units, range caps, or plan tiers gating methods",
+        "No compute units or plan tiers, and range caps you can raise yourself",
         "Owned nodes skip block validation for reads, so each call is cheaper",
         "Owned nodes serve archive state by default without any extra disk space",
       ],
@@ -1026,7 +1026,7 @@ export const quizzes = {
       kind: "scenario",
       question: "You submitted through a private RPC, and eth_getTransactionByHash on your own node returns null. What does that mean?",
       options: [
-        "The relay rejected the transaction before forwarding it to builders",
+        "The endpoint rejected the transaction before forwarding it to builders",
         "The nonce was already used by an earlier transaction from the account",
         "Nothing is wrong; it never entered the public pool your node sees",
         "The signature failed verification when it reached the private endpoint",
@@ -1049,7 +1049,7 @@ export const quizzes = {
       question: "Why can a privately submitted transaction take longer to be included than a public one?",
       options: [
         "Private transactions pay a lower priority fee by protocol rule",
-        "The relay waits for the previous block to finalize before forwarding",
+        "The endpoint waits for the previous block to finalize before forwarding",
         "Only a block built by a participating builder can include it",
         "Private transactions are only processed at epoch boundaries",
       ],
@@ -1062,7 +1062,7 @@ export const quizzes = {
         "A bare hex string of signed bytes, exactly like eth_sendRawTransaction",
         "An object with tx, an optional maxBlockNumber, and preferences",
         "A list of raw transactions with a target blockNumber and timestamps",
-        "An unsigned transaction object that the relay signs for the sender",
+        "An unsigned transaction object that the endpoint signs for the sender",
       ],
       answer: 1,
     },
@@ -1070,7 +1070,7 @@ export const quizzes = {
       kind: "consequence",
       question: "A bot submits a bundle targeting block N once and waits, but block N is built without it. What happens next?",
       options: [
-        "The relay carries it forward until some later block includes it",
+        "The endpoint carries it forward until some later block includes it",
         "It falls back to the public mempool after that block has passed",
         "It is dropped; bundles must be resubmitted for each later block",
         "It stays pending until the maxBlockNumber field in it passes",
@@ -1087,6 +1087,696 @@ export const quizzes = {
         "It is hidden from builders but gossiped to validators in advance",
       ],
       answer: 2,
+    },
+  ],
+
+  "cors": [
+    {
+      kind: "scenario",
+      question: "A dapp gets a CORS error calling a node from the browser, yet the identical request works from curl. What explains the difference?",
+      options: [
+        "curl signs its requests, which nodes accept in place of CORS",
+        "Nodes allow command-line tools through by their User-Agent",
+        "curl sends no preflight and ignores the CORS headers",
+        "curl reuses a keep-alive connection that skips the CORS check",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "cause",
+      question: "Why does binding a node's RPC to 127.0.0.1 not protect it from a malicious page opened on the same machine?",
+      options: [
+        "The page can rebind its own hostname to 127.0.0.1 and call it",
+        "Browsers treat loopback addresses as the same origin as any page",
+        "Loopback listeners also accept calls from the local network segment",
+        "Preflight requests are exempt from the node's bind address check",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "contrast",
+      question: "How does Geth's --http.vhosts differ from its --http.corsdomain?",
+      options: [
+        "vhosts filters WebSocket origins; corsdomain filters HTTP origins",
+        "vhosts limits which IPs may connect; corsdomain limits which ports",
+        "vhosts sets response headers; corsdomain rejects requests with a 403",
+        "vhosts is checked by the node on Host; corsdomain is enforced by browsers",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "detail",
+      question: "What does Nethermind's JsonRpc.CorsOrigins default to?",
+      options: [
+        "An empty list, admitting no origin at all",
+        "The wildcard, admitting every origin",
+        "Only localhost and 127.0.0.1 as origins",
+        "Whatever hostname JsonRpc.Host is set to",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "consequence",
+      question: "An operator sets --http.vhosts to the wildcard on a workstation node bound to loopback. What follows?",
+      options: [
+        "Hosts on the internet can now connect to the loopback listener",
+        "Browsers stop sending preflights, so JSON-RPC calls get faster",
+        "A rebinding page can reach the node through the user's browser",
+        "Every response now carries a permissive Access-Control header",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "scenario",
+      question: "A dapp's HTTP calls to Geth succeed, but its WebSocket handshake from the same page is refused. What is the likely fix?",
+      options: [
+        "Add the page's origin to --ws.origins",
+        "Add the page's origin to --http.vhosts",
+        "Set --http.corsdomain to the wildcard",
+        "Send a preflight before the upgrade",
+      ],
+      answer: 0,
+    },
+  ],
+
+  "circuit-breaker": [
+    {
+      kind: "scenario",
+      question: "A gateway's single breaker per upstream keeps ejecting an archive node whose trace workers are saturated, though eth_call on it is fast. What fixes this?",
+      options: [
+        "Count timeouts as successes so the window stays under threshold",
+        "Split the breaker by method class so only trace calls are shed",
+        "Shorten the cooldown so the node rejoins the rotation sooner",
+        "Replace the breaker with a TCP connect check every second",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "cause",
+      question: "Why must a revert returned as error code 3 never count toward a breaker's failure window?",
+      options: [
+        "Reverts are too rare to move the error ratio in practice",
+        "Gateways cannot parse error codes above the -32000 range",
+        "Reverts are retried by the client before a breaker sees them",
+        "It is a correct answer that any upstream would also return",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "How does a circuit breaker differ from an active health check?",
+      options: [
+        "It judges an upstream by real traffic, not by synthetic probes",
+        "It probes on a timer, while a health check reacts to live errors",
+        "It checks chain id and sync state before traffic is admitted",
+        "It runs inside the node, while a health check runs in the gateway",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "detail",
+      question: "What happens while a breaker is half-open?",
+      options: [
+        "Half the traffic goes to the upstream until it recovers",
+        "All requests pass, but their failures are not recorded",
+        "A few trial requests are let through to the upstream",
+        "Requests are queued until the cooldown expires again",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "consequence",
+      question: "Three layers each retry a timed-out call three times and no breaker exists. What happens when a node slows down?",
+      options: [
+        "Retries are deduplicated by id, so the node sees one call",
+        "It receives many times its normal load while it is weakest",
+        "The client cancels the other layers' attempts on timeout",
+        "Load stays flat, since each layer waits for the one below",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "contrast",
+      question: "How does a token bucket limiter differ from a leaky bucket?",
+      options: [
+        "It drains queued requests at a perfectly constant rate",
+        "It limits concurrent calls rather than the request rate",
+        "It refills its tokens only after an upstream has failed",
+        "It allows a burst up to its capacity after an idle spell",
+      ],
+      answer: 3,
+    },
+  ],
+
+  "request-cancellation": [
+    {
+      kind: "scenario",
+      question: "A solver's HTTP client abandons a slow debug_traceCall on a Geth node after two seconds. What happens to the trace?",
+      options: [
+        "It runs to the end, and its own timeout stops applying",
+        "It stops at once, since Geth cancels traces on disconnect",
+        "It pauses and resumes when the client reconnects later",
+        "It completes and is cached for the client's next request",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "cause",
+      question: "Why can a WebSocket client not cancel one slow call without side effects?",
+      options: [
+        "WebSocket frames carry no JSON-RPC id, so a call cannot be named",
+        "The node runs WebSocket calls in order and cannot skip one of them",
+        "Closing the socket is the only signal, and it ends everything on it",
+        "eth_unsubscribe cancels calls, but only pending-transaction streams",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "What does a Geth node return when an eth_call outruns --rpc.evmtimeout?",
+      options: [
+        "A result of 0x, since the call ran out of time part-way",
+        "An HTTP 504 with no JSON-RPC body in the response at all",
+        "Error code 3 with the partial return data in its data field",
+        "An error saying execution was aborted, with the timeout",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "How does Geth's --rpc.txfeecap differ from --rpc.gascap?",
+      options: [
+        "It bounds eth_call gas in ether; gascap bounds it in gas units",
+        "It refuses costly submitted transactions; gascap bounds calls",
+        "It caps a batch's total gas; gascap caps each item in the batch",
+        "It limits trace methods; gascap limits eth_call and estimates",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "consequence",
+      question: "A gateway retries a timed-out eth_simulateV1 three times against the same node. How much work has the node done?",
+      options: [
+        "Up to four full simulations for one answer",
+        "One simulation, since retries reuse its state",
+        "One simulation, as duplicate ids are refused",
+        "Two, because the node cancels older duplicates",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "cause",
+      question: "Why should a node's execution limit sit below the gateway's timeout, and that below the caller's deadline?",
+      options: [
+        "So the caller's retries reach the node before the first attempt ends",
+        "So the gateway can cache the partial result for the next caller",
+        "So the node gives up first and says so, instead of working for nobody",
+        "So the gas cap is checked before the execution timeout can apply",
+      ],
+      answer: 2,
+    },
+  ],
+
+  "network-telemetry": [
+    {
+      kind: "scenario",
+      question: "Two reports on the same slot put the block at 1.55 s and 1.82 s after slot start, from the same dataset. What most likely explains the gap?",
+      options: [
+        "One counted slots in hex and the other in decimal strings",
+        "One skipped missed slots, which shifts every later slot",
+        "One read finalized data, which arrives a full slot later",
+        "One measured block arrival and the other the head event",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "cause",
+      question: "Why are slot-relative timings from two different nodes not directly comparable?",
+      options: [
+        "Each node derives slot starts from its own genesis file",
+        "Their clocks, hardware, peers and clients all differ",
+        "Nodes number slots differently until a chain finalizes",
+        "Beacon nodes round event times to the nearest second",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "contrast",
+      question: "How does census data from a crawler differ from sentry timing data?",
+      options: [
+        "It is one look at many nodes, not many looks at one event",
+        "It measures stake share, while timing data measures nodes",
+        "It comes from finalized blocks, not from the event stream",
+        "It is gathered by execution clients, not consensus clients",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "detail",
+      question: "What does the event_date_time column record for a Xatu Beacon API event?",
+      options: [
+        "When the block's proposer signed and published the block",
+        "When the Xatu server wrote the event into its database",
+        "When the sentry received the event from its beacon node",
+        "When the slot started, as computed from genesis time",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "consequence",
+      question: "A crawler finds 40 percent of reachable nodes run one consensus client. What does that say about its share of stake?",
+      options: [
+        "About 40 percent of stake, within the crawler's error bars",
+        "Over a third of stake, so that client can halt finality",
+        "Under 40 percent, since crawlers always overcount nodes",
+        "Nothing directly, since a node counts once whatever it runs",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "detail",
+      question: "Which instant in a block's life is the one an RPC caller actually depends on?",
+      options: [
+        "When the block first arrives on its gossipsub topic",
+        "When the execution client serves the block over RPC",
+        "When the beacon node emits the block_gossip event",
+        "When engine_newPayload finishes executing the block",
+      ],
+      answer: 1,
+    },
+  ],
+
+  "fastest-head": [
+    {
+      kind: "scenario",
+      question: "Your bot sends eth_call at latest the instant a delivery-network block arrives, before the local execution client has imported it. What state does the call read?",
+      options: [
+        "The new block's post-state, since the block is already known on the network",
+        "The parent block's state, because latest has not moved on this node yet",
+        "Nothing: latest is locked and the call errors until the import completes",
+        "A mix of the parent's state and the new block's first few transactions",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "detail",
+      question: "On Geth, which step moves latest and fires the newHeads notification for a new block?",
+      options: [
+        "engine_forkchoiceUpdated naming it as the head",
+        "engine_newPayload returning VALID for the block",
+        "The beacon node emitting block_gossip for the block",
+        "The block's arrival on the beacon_block gossip topic",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "contrast",
+      question: "What does an execution-layer newHeads notification give a consumer that a Beacon API head event does not?",
+      options: [
+        "The beacon block root together with the slot number",
+        "Proof that the block has already been finalized",
+        "The execution header, from a node that executed it",
+        "The attestations that made this block the new head",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "cause",
+      question: "Why does a fan-in consumer join arrivals on the execution block hash instead of the block number?",
+      options: [
+        "Hashes reach every feed earlier than block numbers do",
+        "Providers renumber their blocks after every reorg",
+        "Block numbers are rounded when feeds encode them",
+        "Two competing blocks can share the same height",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "consequence",
+      question: "A team ranks two block feeds by first-seen times recorded on two different hosts. What can make the ranking wrong?",
+      options: [
+        "Clock skew of tens of milliseconds between hosts",
+        "The slot-start formula drifting by a little every slot",
+        "Feeds stamping their own send time on every message",
+        "WebSocket frames reordering block events in transit",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "detail",
+      question: "On one node, which of these signals for a new block normally fires first?",
+      options: [
+        "The beacon node's head event for the block",
+        "The execution client's newHeads notification",
+        "The beacon node's block_gossip event for it",
+        "The beacon node's block event after import",
+      ],
+      answer: 2,
+    },
+  ],
+
+  "transaction-relayer": [
+    {
+      kind: "scenario",
+      question: "A relayer resends the signed bytes for nonce 1,204 and gets nonce too low. What should it do first?",
+      options: [
+        "Sign the same call again with the next free nonce",
+        "Raise both fees by 10 percent and resend that nonce",
+        "Check receipts for every hash it sent at that nonce",
+        "Fail over to another endpoint and resend the bytes",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "By default, what do Geth, Nethermind and Reth require of a replacement for a pending transaction?",
+      options: [
+        "At least 10 percent more on both fee fields",
+        "At least 10 percent more on maxFeePerGas alone",
+        "A higher gas limit as well as a higher tip",
+        "At least 20 percent more after three blocks",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "cause",
+      question: "Why do relayers keep their own nonce counter instead of asking eth_getTransactionCount with pending every time?",
+      options: [
+        "The pending count leaves out the latest block's transactions",
+        "The pending count reflects one node's pool and can disagree",
+        "The pending count is served only over a WebSocket connection",
+        "The pending count includes reverted transactions twice over",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "consequence",
+      question: "A stuck transaction has a 28 gwei fee cap and the base fee is now 35.6 gwei. The relayer bumps both fee fields by exactly 10 percent. What follows?",
+      options: [
+        "Pools reject it as replacement transaction underpriced",
+        "It lands in the next block because the tip went up too",
+        "It cancels the original and frees the nonce right away",
+        "Pools accept it, and it stays stuck below the base fee",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "In an ERC-2771 meta-transaction, how does the recipient contract learn which user signed the request?",
+      options: [
+        "From msg.sender, which the relayer sets to the user",
+        "From tx.origin, which the forwarder swaps for the user",
+        "From the last 20 bytes the trusted forwarder appended",
+        "From the nonce field of the relayer's own transaction",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "A relayer classifies nonce errors by matching code -32000. Why does it miss Besu's answer for a used nonce?",
+      options: [
+        "Besu reports a used nonce as Known transaction instead",
+        "Besu sends Nonce too low under code -32001 instead",
+        "Besu accepts the transaction and drops it from the pool",
+        "Besu returns the error only over a WebSocket connection",
+      ],
+      answer: 1,
+    },
+  ],
+
+  "security-monitoring": [
+    {
+      kind: "scenario",
+      question: "A monitor reads a protocol's balance at latest in two requests that a load balancer sends to nodes one block apart, and sees a 40 percent drop. What is the right first step?",
+      options: [
+        "Pause the protocol, since a drop that size is an attack",
+        "Re-read both values pinned to one block hash and compare",
+        "Switch to the pending tag so both reads see the same pool",
+        "Raise the alert threshold until the drop stops firing",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "cause",
+      question: "Why does a full monitor trace every transaction instead of reading only logs?",
+      options: [
+        "Logs are pruned from receipts as soon as the block is finalized",
+        "eth_getLogs cannot filter by a monitored contract address",
+        "Internal ether transfers and bare storage writes leave no log",
+        "Traces cost less than receipts for a whole block of data",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "In the Saddle Finance case, how much warning did the attacker's contract deployment give before the exploit?",
+      options: [
+        "One block, the very next block after the deployment",
+        "Sixty-four blocks, roughly a quarter of an hour",
+        "About three hours, the pool's queued-transaction age",
+        "Seven blocks, under two minutes by their timestamps",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "How does OpenZeppelin Monitor's view of the chain differ from a trace-based monitor's?",
+      options: [
+        "It reads blocks, logs and receipts, not traces or the pool",
+        "It reads only the pending pool and never confirmed blocks",
+        "It replays every block with vmTrace against an archive node",
+        "It needs eth_simulateV1 for every transaction it matches",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "scenario",
+      question: "A monitor's pending-transaction stream shows nothing unusual while an exploit drains a protocol. What does that most likely mean?",
+      options: [
+        "The monitor's node had been pruned below the current head",
+        "The exploit ran entirely inside a view function call",
+        "The stream drops transactions that later revert",
+        "The attacker submitted privately, outside public pools",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "consequence",
+      question: "A guardian sends its pause() transaction through the public pool during an attack. What can go wrong?",
+      options: [
+        "The pool rejects pause() calls sent by guardian keys",
+        "The node holds it until the attack block is finalized",
+        "The attacker sees it and lands the next drain first",
+        "The builder strips its priority fee and delays it",
+      ],
+      answer: 2,
+    },
+  ],
+
+  "rpc-workloads": [
+    {
+      kind: "scenario",
+      question: "A governance dashboard shows each holder's voting power at a proposal snapshot taken last year, and its endpoint is a pruned full node. What happens to its calls?",
+      options: [
+        "They succeed, because a full node keeps old receipts as well",
+        "They succeed, but quietly return today's balances instead",
+        "They fail once that block is past the node's state window",
+        "They fail only when the dashboard sends them as a batch",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "contrast",
+      question: "A lending protocol's liquidation bot and its accounting team read the same contracts. How do their workloads differ?",
+      options: [
+        "The bot needs archive state, while accounting needs only the head",
+        "The bot reads the head fast; accounting reads old blocks slowly",
+        "They are the same workload, since both call the same contracts",
+        "The bot needs traces, while accounting needs only log subscriptions",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "detail",
+      question: "Which calls are characteristic of the trace-shaped workload of explorers and compliance platforms?",
+      options: [
+        "eth_getLogs over the whole history of one contract",
+        "eth_getProof for each account against an archive node",
+        "eth_subscribe streams for newHeads and pending transactions",
+        "trace_block, trace_filter or debug_traceBlockByNumber",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "cause",
+      question: "Why is the trace shape the least portable workload when moving between endpoints?",
+      options: [
+        "Trace output formats are defined by each client rather than a spec",
+        "Traces need receipts that providers delete after a few weeks",
+        "Trace methods carry rate limits written into the execution-apis",
+        "Traces are served over WebSocket connections rather than HTTP",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "scenario",
+      question: "Safe's Transaction Service is deployed for Safes on an L2 chain. Which method does its indexing rely on there?",
+      options: [
+        "trace_filter, filtered by the Safe singleton address",
+        "eth_getLogs, filtered by the Safe event topics",
+        "trace_block, called for each block near the head",
+        "debug_traceCall, run on each pending transaction",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "consequence",
+      question: "Uniswap's router packs many quotes into large multicalls sent with eth_call. What happens on an endpoint with a low eth_call gas cap?",
+      options: [
+        "The node splits each multicall into several cheaper calls",
+        "The quotes succeed but are computed at an older block",
+        "The multicalls fail until the router uses smaller chunks",
+        "The endpoint bills more units but still returns results",
+      ],
+      answer: 2,
+    },
+  ],
+
+  "rpc-benchmarking": [
+    {
+      kind: "scenario",
+      question: "A load test runs 50 workers that each wait for a reply before sending again, and the server stalls for two seconds. What does the report show?",
+      options: [
+        "A sharp p99 spike, since each scheduled request is still timed",
+        "An error for each request that was scheduled during the stall",
+        "Unchanged throughput, because the workers hold the rate fixed",
+        "Few samples from the stall, so p99 looks better than it was",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "cause",
+      question: "Why does flood offer a deep-check mode on top of the summaries vegeta computes?",
+      options: [
+        "JSON-RPC errors come back with HTTP 200, which vegeta counts as success",
+        "Vegeta drops POST bodies, so flood has to resend each request",
+        "Vegeta reports only the mean, so flood has to recompute the percentiles",
+        "Vegeta drops responses over a megabyte without logging a warning",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "contrast",
+      question: "How does an open-loop load generator differ from a closed-loop one?",
+      options: [
+        "It keeps a fixed number of requests in flight at each moment",
+        "It waits for each reply and then sends the next request at once",
+        "It sends on a fixed schedule whether or not replies have arrived",
+        "It replays recorded traffic instead of generating synthetic calls",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "What does an A/A run between two identical builds tell you?",
+      options: [
+        "The highest rate the node sustains before its knee",
+        "The smallest difference the setup is able to resolve",
+        "Whether the two builds return identical responses",
+        "How long the warm-up lasts after the node restarts",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "consequence",
+      question: "A team measures eth_call capacity on a devnet with a small genesis and quotes the figure for a mainnet node. What is wrong with it?",
+      options: [
+        "Devnet blocks are larger, so the figure is far too pessimistic",
+        "Devnet nodes skip validation, so execution was not measured",
+        "Devnet state is cold on disk, so it overstates storage latency",
+        "Every storage read was served from RAM, so it is far too rosy",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "scenario",
+      question: "Two healthy nodes are diffed on requests sent at latest, and about one response in a hundred differs. What is the likely explanation?",
+      options: [
+        "The nodes were a block apart; pin the block before diffing",
+        "One client has a consensus bug and should be taken offline",
+        "The diffing tool lost requests, so the pairs no longer line up",
+        "The differing bodies are corrupt, since key order changed",
+      ],
+      answer: 0,
+    },
+  ],
+
+  "rpc-privacy": [
+    {
+      kind: "scenario",
+      question: "A wallet refreshes the balances of a user's three accounts in one JSON-RPC batch sent over Tor. What does the endpoint's operator learn?",
+      options: [
+        "Nothing, because Tor hides both the source and the request",
+        "That the three accounts belong together under one owner",
+        "Only the exit relay's address, which links no accounts",
+        "The user's real IP, because batches bypass the circuit",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "contrast",
+      question: "What does a private transaction RPC hide, compared with a measure that protects reads?",
+      options: [
+        "The sender's IP, from the builders that include the transaction",
+        "Each query, encrypted so the operator sees no addresses",
+        "Its reads, routed through a mixnet so no node sees the set",
+        "The transaction, from the public mempool but not its operator",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "cause",
+      question: "Why does running Helios in front of a provider leave the user's addresses visible to that provider?",
+      options: [
+        "Helios stores its answers at the provider for other users",
+        "Helios forwards unverified calls, which carry the addresses",
+        "Helios checks each answer by asking the provider for proofs",
+        "Helios encrypts queries with a key the provider also holds",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "scenario",
+      question: "A user serves all reads from a self-hosted node and broadcasts a transaction from it. What can still point to where the transaction came from?",
+      options: [
+        "The node forwards each transaction to Infura for inclusion",
+        "The transaction payload carries the node's own IP address",
+        "Their node is the first peer to announce it on the network",
+        "The node reports each local sender to the beacon chain",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "consequence",
+      question: "A stealth-address recipient scans every Announcement event from the ERC-5564 announcer. What do those reads tell the endpoint?",
+      options: [
+        "Which announcements matched, from the view tags requested",
+        "The recipient's stealth addresses, since each scan names them",
+        "The recipient's viewing key, sent along to filter the events",
+        "Nothing that singles out the recipient's own announcements",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "detail",
+      question: "Per Consensys's December 2022 statement, what does Infura collect when a MetaMask user sends a transaction?",
+      options: [
+        "Wallet and IP addresses, kept apart from each other",
+        "Wallet addresses only, with no IP address recorded",
+        "IP addresses only, with no wallet address recorded",
+        "Wallet and IP addresses, kept together for a year",
+      ],
+      answer: 0,
     },
   ],
 };

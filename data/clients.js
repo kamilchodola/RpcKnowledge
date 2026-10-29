@@ -27,7 +27,7 @@ export const topics = [
       {
         heading: "Where implementations differ",
         paragraphs: [
-          "The specification fixes the answers, not the machinery. Clients differ in their [[client-storage|storage engines]], in how they sync ([[snap-sync|snap sync]] versus re-executing history in stages), in memory and disk appetite, and most visibly in the non-standard [[namespaces|namespaces]] they serve. Geth-style [[debug-api|debug_]] tracing, Parity-style [[trace-api|trace_]] tracing, and Erigon's `ots_` search API are all optional extras, not part of what every client owes you.",
+          "The specification fixes the answers, not the machinery. Clients differ in their [[client-storage|storage engines]], in how they sync ([[snap-sync|snap sync]] versus re-executing history in stages), in memory and disk appetite, and most visibly in the non-standard [[namespaces|namespaces]] they serve. Geth-style [[debug-api|debug_]] tracing, Parity-style [[trace-api|trace_]] tracing, and the `ots_` search API that Erigon serves for [[otterscan|Otterscan]] are all [[client-namespaces|optional extras]], not part of what every client owes you.",
           "Pick a client by the questions your endpoint must answer: [[archive-node|archive]] state at old blocks, tracing, [[eth-get-proof|eth_getProof]] deep in history, [[eth-simulate|eth_simulateV1]] support. Then confirm what you actually got with [[net-web3-api|web3_clientVersion]] and a few probe calls rather than trusting a provider's feature page; see [[endpoint-capabilities|endpoint capabilities]].",
         ],
       },
@@ -40,15 +40,15 @@ export const topics = [
     },
     pitfalls: [
       "Exposing port 8551 or the `admin_` and `debug_` namespaces to the internet; the Engine API's JWT is the only thing between a caller and your node's fork choice.",
-      "Assuming a method exists everywhere: `trace_block` is absent on Geth, `ots_` methods exist only on Erigon, and `debug_traceCall` tracers vary in detail between clients.",
+      "Assuming a method exists everywhere: `trace_block` is absent on Geth, `ots_` address search works on Erigon but returns an unimplemented error on Reth, and `debug_traceCall` tracers vary in detail between clients.",
       "Treating a synced execution client as a working node; without a consensus client its head stops advancing, while [[eth-syncing|eth_syncing]] may still return `false`.",
       "Pointing two consensus clients at one execution client; each sends its own [[fork-choice|fork choice]] and they will fight over the head.",
     ],
-    related: ["execution-layer", "geth", "engine-api", "json-rpc", "nethermind", "erigon", "reth", "besu", "consensus-client", "client-storage"],
+    related: ["execution-layer", "geth", "engine-api", "json-rpc", "nethermind", "erigon", "reth", "besu", "consensus-client", "client-storage", "client-extensions"],
     sources: [
       { title: "ethereum.org: Nodes and clients", url: "https://ethereum.org/developers/docs/nodes-and-clients/" },
       { title: "ethereum/execution-apis", url: "https://github.com/ethereum/execution-apis" },
-      { title: "Execution API documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution API documentation", url: "https://ethereum.github.io/execution-apis/" },
     ],
   },
   {
@@ -61,14 +61,14 @@ export const topics = [
       {
         heading: "What it is",
         paragraphs: [
-          "Geth is the oldest continuously maintained [[execution-client|execution client]] and, for most of Ethereum's history, the de facto reference implementation: new [[eip|EIPs]] and [[debug-api|debug_]] tracers frequently appeared there first and were then adopted by other clients. The repository also ships the `clef` external signer, the `evm` execution tool, and `abigen`. Running `geth attach` opens a JavaScript console over [[ipc-transport|IPC]] against `geth.ipc` in the data directory, which is the usual way to call [[admin-api|admin_]] methods without opening a network port.",
+          "Geth is the oldest continuously maintained [[execution-client|execution client]] and, for most of Ethereum's history, the de facto reference implementation: new [[eip|EIPs]] and [[debug-api|debug_]] tracers frequently appeared there first and were then adopted by other clients. The repository also ships the `evm` execution tool and `abigen`; the `clef` [[remote-signer|external signer]] was removed from it in June 2026 and continues as its own ethereum/clef project, while Geth still reaches an external signer through `--signer`. Running `geth attach` opens a JavaScript console over [[ipc-transport|IPC]] against `geth.ipc` in the data directory, which is the usual way to call [[admin-api|admin_]] methods without opening a network port.",
           "A default `geth` run uses `--syncmode snap` and `--gcmode full`: it fetches a recent state snapshot from peers, heals the trie, and then follows the head while keeping only recent state. It expects a [[consensus-client|consensus client]] on the [[engine-api|Engine API]]; without one it will sit idle after startup.",
         ],
       },
       {
         heading: "Storage and retention",
         paragraphs: [
-          "Since v1.14 Geth uses the path-based state scheme (`--state.scheme path`) by default for new databases, which keeps one copy of each trie node keyed by its position rather than one per version; see [[client-storage|storage engines]]. That makes disk use predictable, but historical [[state|state]] survives only for a window of roughly 128 recent blocks. Ask for a balance or run [[eth-call|eth_call]] below that window on a [[pruned-node|pruned]] Geth and you get a `missing trie node` error. Serving old state requires `--gcmode archive`, which is a different database shape and costs multiple terabytes.",
+          "Since v1.14 Geth uses the path-based state scheme (`--state.scheme path`) by default for new databases, which keeps one copy of each trie node keyed by its position rather than one per version; see [[client-storage|storage engines]]. That makes disk use predictable, but historical [[state|state]] survives only for a window of roughly 128 recent blocks. Ask for a balance or run [[eth-call|eth_call]] below that window on a [[pruned-node|pruned]] Geth and you get a `missing trie node` error. Serving old state requires `--gcmode archive`. With the path scheme, from v1.16, that is the same database plus an index over its state history, and nothing historical is served until the index is built. `--history.state` sets how many blocks of that history are kept, 90,000 by default and so only a [[partial-archive|recent window]]; a whole-chain archive, around 2 TB on mainnet, needs `--history.state 0` and a full sync from genesis. The legacy hash-based archive stores every trie version instead and exceeds 20 TB.",
           "History is stored separately from state: old headers, bodies, and receipts move into append-only freezer files, which `--datadir.ancient` can place on a slower disk. The transaction lookup index is bounded by `--history.transactions`, which defaults to about 2,350,000 blocks, roughly a year. Past that, [[eth-get-transaction-receipt|eth_getTransactionReceipt]] and [[eth-get-transaction-by-hash|eth_getTransactionByHash]] return `null` for transactions whose blocks Geth still holds; `--history.transactions 0` keeps the full index at the cost of disk.",
         ],
       },
@@ -96,7 +96,8 @@ export const topics = [
     sources: [
       { title: "Geth command-line options", url: "https://geth.ethereum.org/docs/fundamentals/command-line-options" },
       { title: "Geth: JSON-RPC server", url: "https://geth.ethereum.org/docs/interacting-with-geth/rpc" },
-      { title: "Geth documentation", url: "https://geth.ethereum.org/docs" },
+      { title: "Geth: archive mode", url: "https://geth.ethereum.org/docs/fundamentals/archive" },
+      { title: "go-ethereum #35097: remove clef", url: "https://github.com/ethereum/go-ethereum/pull/35097" },
     ],
   },
   {
@@ -109,15 +110,17 @@ export const topics = [
       {
         heading: "What it is",
         paragraphs: [
-          "Nethermind runs on the .NET runtime and is organized as a core plus plugins, which is how it supports several networks from one binary: Ethereum mainnet, [[testnets|Sepolia and Hoodi]], Gnosis Chain, and [[optimistic-rollup|OP Stack]] chains, where it plays the [[execution-client|execution client]] role next to `op-node`. A run is usually started from a named configuration, `--config mainnet`, which sets sane defaults that individual flags then override.",
-          "Its data lives in RocksDB. Sync starts with [[snap-sync|snap sync]] plus a backwards download of headers, bodies, and receipts, so a fresh node serves the head quickly and fills in history behind it. Ancient-history barriers control how far back bodies and receipts are fetched, which is worth checking before you point an [[indexer|indexer]] at a newly synced node.",
+          "Nethermind runs on the .NET runtime and is organized as a core plus [[client-extensions|plugins]], which is how it supports several networks from one binary: Ethereum mainnet, [[testnets|Sepolia and Hoodi]], [[gnosis-chain|Gnosis Chain]], and [[optimistic-rollup|OP Stack]] chains, where it plays the [[execution-client|execution client]] role next to `op-node`. A run is usually started from a named configuration, `--config mainnet`, which sets sane defaults that individual flags then override.",
+          "Its data lives in RocksDB. Sync starts with [[snap-sync|snap sync]] plus a backwards download of headers, bodies, and receipts, so a fresh node serves the head quickly and fills in history behind it. Ancient-history barriers control how far back bodies and receipts are fetched: on mainnet `Sync.AncientBodiesBarrier` and `Sync.AncientReceiptsBarrier` default to block 24,600,000 for a new or resyncing 2.0 node, so older bodies and [[receipt-retention|receipts]] are not there unless both are set to `0`, which is worth checking before you point an [[indexer|indexer]] at a newly synced node.",
         ],
       },
       {
         heading: "Pruning and state",
         paragraphs: [
-          "Nethermind separates in-memory pruning, which keeps recent trie nodes in a cache and writes only what survives, from full pruning, which rewrites the state database in place to drop everything unreachable from the current [[state-root|state root]]. Full pruning runs while the node keeps following the chain, but it needs free disk roughly the size of the state being copied and takes hours, so it is scheduled rather than run on a whim. An [[archive-node|archive]] configuration turns pruning off entirely.",
-          "The on-disk trie uses a half-path layout that keys nodes by their path prefix rather than purely by hash, which shrinks the database and speeds up range reads; Paprika is a separate, experimental state store being developed alongside it. See [[client-storage|storage engines]] for what these layouts mean for historical queries.",
+          "Since 2.0 a new database uses the flat state backend: `FlatDb.Enabled` defaults to `true`, and accounts and storage slots live as flat records beside the trie nodes needed to produce the [[state-root|state root]]. An existing patricia database, the half-path trie of 1.x that keys nodes by their path prefix rather than purely by hash, is detected at start and stays patricia, so an upgrade neither migrates nor resyncs; `--FlatDb.Enabled=false` syncs a fresh node on patricia. The experimental Paprika store is not part of 2.0. See [[client-storage|storage engines]] for what these layouts mean for historical queries.",
+          "An [[archive-node|archive]] on the flat backend is flat history: with `FlatDb.HistoryEnabled`, which `--config mainnet_archive` sets alongside `Pruning.Mode=None`, the node records each finalized block's account and storage changes as it syncs. That history comes in four shapes: full, from genesis or the sync pivot (`FlatDb.HistoryRetention=None`); a rolling window (`Rolling` with `FlatDb.HistoryRetentionBlocks`); everything from a chosen block (`SinceBlock` with `FlatDb.HistoryRetentionSinceBlock`); and deep history for listed contracts on top of a window (`FlatDb.HistorySliceAddresses`); see [[partial-archive|partial archives]]. Below the retained floor, reads fail closed with a pruned-history [[rpc-errors|error]] instead of answering from live state, and enabling history is forward-only: nothing below the point where it was switched on is backfilled.",
+          "Two further opt-ins are meant for full archives. `FlatDb.ArchiveProofBuildEnabled` writes proof commitments beside the history and `FlatDb.ArchiveProofServeEnabled` answers historical [[eth-get-proof|eth_getProof]] from them; both are off by default. `Receipt.DeriveFromState` stops persisting receipt bodies and re-executes a block over its parent state when a receipt is asked for, serving the result only if it reproduces the header's `receiptsRoot`.",
+          "Pruning in the older sense belongs to the patricia backend. There Nethermind separates in-memory pruning, which keeps recent trie nodes in a cache and writes only what survives, from full pruning, which copies everything reachable from the current state root into a fresh database and drops the rest. Full pruning runs while the node keeps following the chain, but it needs free disk roughly the size of the state being copied and takes hours, so it is scheduled rather than run on a whim. Copy-style full pruning is not available on the flat backend in 2.0: a flat node accepts `Pruning.Mode=Hybrid` and the full-pruning triggers without warning but never prunes, and `admin_prune` reports `disabled` (a 2.0 known issue, #13600).",
         ],
       },
       {
@@ -137,12 +140,14 @@ export const topics = [
     pitfalls: [
       "Concluding that Nethermind lacks tracing when `trace_filter` fails; the namespace is implemented but must appear in `--JsonRpc.EnabledModules`.",
       "Opening a WebSocket to port 8546 out of habit; Nethermind serves WebSocket on the JSON-RPC port unless `--JsonRpc.WebSocketsPort` is changed.",
-      "Starting full pruning on a disk that is nearly full; it needs headroom for a copy of the state and will abort otherwise.",
+      "Starting full pruning on a patricia node whose disk is nearly full; it needs headroom for a copy of the state and will abort otherwise.",
+      "Passing `--FlatDb.Enabled=false` to an existing flat data directory, which discards the state and resyncs instead of refusing.",
       "Mixing a JSON config file with flags and forgetting that the flag wins, so an edit to the file appears to have no effect.",
     ],
-    related: ["execution-client", "trace-api", "debug-api", "eth-simulate", "client-storage", "pruned-node", "engine-api", "namespaces", "snap-sync", "archive-node"],
+    related: ["execution-client", "trace-api", "debug-api", "eth-simulate", "client-storage", "pruned-node", "engine-api", "namespaces", "snap-sync", "archive-node", "partial-archive", "gnosis-chain", "client-namespaces"],
     sources: [
-      { title: "Nethermind documentation", url: "https://docs.nethermind.io/" },
+      { title: "Nethermind 2.0.0 release notes", url: "https://github.com/NethermindEth/nethermind/releases/tag/2.0.0" },
+      { title: "Nethermind: archive nodes", url: "https://docs.nethermind.io/fundamentals/archive-nodes" },
       { title: "Nethermind: JSON-RPC configuration", url: "https://docs.nethermind.io/fundamentals/configuration" },
       { title: "NethermindEth/nethermind", url: "https://github.com/NethermindEth/nethermind" },
     ],
@@ -151,14 +156,14 @@ export const topics = [
     id: "erigon",
     title: "Erigon",
     category: "clients",
-    aliases: ["turbo-geth", "rpcdaemon", "ots_", "Otterscan API", "staged sync", "Caplin"],
+    aliases: ["turbo-geth", "rpcdaemon", "ots_", "staged sync", "Caplin"],
     summary: "Erigon is the Go [[execution-client|execution client]] built around staged sync and a flat MDBX database, which runs its [[json-rpc|JSON-RPC]] in a separate `rpcdaemon` process and adds the `erigon_` and Otterscan `ots_` [[namespaces|namespaces]].",
     sections: [
       {
         heading: "What it is",
         paragraphs: [
           "Erigon began as turbo-geth, a fork of [[geth|Geth]] aimed at making an [[archive-node|archive node]] affordable, and is now an independent codebase. Its defining choice is storage: instead of writing a trie of hashed nodes, it keeps accounts and storage slots as flat key-value records in MDBX and computes trie nodes only when a [[state-root|state root]] is needed; see [[client-storage|storage engines]]. History is kept as change sets, so retaining every historical value costs far less than storing a full trie per block.",
-          "Sync is staged rather than block-by-block. A pipeline runs one stage at a time over the whole range — headers, then bodies, then execution, then hashing, then the history and log indices — which is much faster on a fresh machine but means the node is not queryable until the pipeline reaches the head. Erigon 3 also ships Caplin, its own [[consensus-client|consensus client]], inside the same binary; recent versions run it by default, and `--externalcl` switches to a standalone consensus client over the [[engine-api|Engine API]].",
+          "Sync is staged rather than block-by-block, and Erigon 3 changed what the stages do. A fresh node does not re-execute from genesis: its first stage downloads most of the state and history, log and history indices included, as immutable snapshot files shared over BitTorrent, and later stages fetch headers and bodies and execute only the blocks after them, with the execution stage now also doing the hashing, trie and index work that were separate stages in Erigon 2. That is much faster on a fresh machine, but the node's answers are incomplete until the pipeline reaches the head. Erigon 3 also ships Caplin, its own [[consensus-client|consensus client]], inside the same binary; recent versions run it by default, and `--externalcl` switches to a standalone consensus client over the [[engine-api|Engine API]].",
         ],
       },
       {
@@ -171,8 +176,8 @@ export const topics = [
       {
         heading: "What callers notice",
         paragraphs: [
-          "Erigon serves the standard `eth_` surface plus the Parity-style [[trace-api|trace_]] namespace and Geth-style [[debug-api|debug_]] tracers. On top of that it exposes `erigon_` helpers such as `erigon_getHeaderByNumber` and `erigon_getBlockByTimestamp`, and the Otterscan API used by the [[block-explorer|Otterscan explorer]]: `ots_searchTransactionsBefore` and `ots_searchTransactionsAfter` page through an address's history, `ots_getTransactionBySenderAndNonce` finds a transaction without a hash, and `ots_getContractCreator` returns who deployed a contract. None of that exists on other clients, so code written against `ots_` is Erigon-specific.",
-          "Because history indices are built as sync stages, [[eth-get-logs|eth_getLogs]] over wide ranges is usually cheap here, and archive [[eth-call|eth_call]] works at any block. A historical [[eth-get-proof|eth_getProof]] is the opposite case: the trie nodes a proof needs are not stored, so proofs at old blocks are limited even on a node that holds every historical value.",
+          "Erigon serves the standard `eth_` surface plus the Parity-style [[trace-api|trace_]] namespace and Geth-style [[debug-api|debug_]] tracers. On top of that it exposes `erigon_` helpers such as `erigon_getHeaderByNumber` and `erigon_getBlockByTimestamp`, and the `ots_` API used by the [[otterscan|Otterscan]] [[block-explorer|explorer]]: `ots_searchTransactionsBefore` and `ots_searchTransactionsAfter` page through an address's history, `ots_getTransactionBySenderAndNonce` finds a transaction without a hash, and `ots_getContractCreator` returns who deployed a contract. [[reth|Reth]] implements most of the namespace but answers the two address searches with a `-32603` unimplemented error, and Anvil serves all of it on local devnets, so code that depends on `ots_` address search is in practice Erigon-specific.",
+          "Log and history indices ship with the snapshot files, so [[eth-get-logs|eth_getLogs]] over wide ranges is usually cheap here, although since v3.4.0 `--rpc.blockrange.limit` caps it and `trace_filter` at 1,000 blocks by default, and `0` removes the cap. Erigon's documentation also warns that on the default `full` mode an address- or topic-filtered query can miss matches older than the 262,144-block state-history window, about 36 days. Historical [[eth-call|eth_call]] works at any block only when state history covers the whole chain, as `--prune.mode=archive` keeps it; `full` keeps state for that same window unless `--prune.distance` widens it. A historical [[eth-get-proof|eth_getProof]] is the opposite case: by default the trie nodes a proof needs are not stored, so proofs at old blocks fail even on a node that holds every historical value unless it runs with `--prune.include-commitment-history`.",
         ],
       },
     ],
@@ -184,15 +189,17 @@ export const topics = [
     },
     pitfalls: [
       "Writing an [[indexer|indexer]] against `ots_` or `erigon_` methods and then discovering the fallback provider runs a different client.",
-      "Expecting a partially synced Erigon to answer queries; staged sync finishes one stage at a time, so RPC is incomplete until the pipeline reaches the head.",
-      "Assuming an Erigon archive node can produce `eth_getProof` for any historical block; flat storage keeps values, not the trie nodes a proof needs.",
+      "Expecting a partially synced Erigon to answer queries; until the snapshot download and the remaining stages reach the head, RPC answers are incomplete.",
+      "Assuming an Erigon archive node can produce `eth_getProof` for any historical block; without `--prune.include-commitment-history` flat storage keeps values, not the trie nodes a proof needs.",
+      "Leaving a node on the default `--prune.mode=full` and then querying state, or filtered logs, older than its 262,144-block window.",
       "Running `rpcdaemon` against a data directory that the node has open in a mode that conflicts, instead of connecting over the private gRPC address.",
     ],
-    related: ["execution-client", "client-storage", "archive-node", "trace-api", "eth-get-logs", "eth-get-proof", "block-explorer", "consensus-client", "namespaces", "geth"],
+    related: ["execution-client", "client-storage", "archive-node", "trace-api", "eth-get-logs", "eth-get-proof", "block-explorer", "consensus-client", "namespaces", "geth", "otterscan", "client-namespaces"],
     sources: [
       { title: "Erigon documentation", url: "https://docs.erigon.tech/" },
       { title: "erigontech/erigon", url: "https://github.com/erigontech/erigon" },
-      { title: "Otterscan", url: "https://otterscan.io/" },
+      { title: "Erigon: pruning modes", url: "https://docs.erigon.tech/fundamentals/pruning-modes" },
+      { title: "Otterscan book: ots namespace spec", url: "https://github.com/otterscan/otterscan-book/blob/main/src/api-docs/ots-api.md" },
     ],
   },
   {
@@ -205,7 +212,7 @@ export const topics = [
       {
         heading: "What it is",
         paragraphs: [
-          "Reth is a from-scratch [[execution-client|execution client]] in Rust, published as a set of crates rather than a single program: the same building blocks that run `reth node` on mainnet are used to build `op-reth` for [[optimistic-rollup|OP Stack]] chains and custom nodes for private networks. It follows the same [[execution-apis|execution APIs specification]] as every other client and pairs with a [[consensus-client|consensus client]] over the [[engine-api|Engine API]] on port 8551.",
+          "Reth is a from-scratch [[execution-client|execution client]] in Rust, published as a set of crates rather than a single program: the same building blocks that run `reth node` on mainnet are used to build `op-reth` for [[optimistic-rollup|OP Stack]] chains and custom nodes for [[permissioned-network|private networks]]. It follows the same [[execution-apis|execution APIs specification]] as every other client and pairs with a [[consensus-client|consensus client]] over the [[engine-api|Engine API]] on port 8551.",
           "Storage splits in two. MDBX holds the mutable parts — state, the account and storage change sets, and the indices — while headers, bodies, and receipts are written into append-only static files that are never rewritten and compress well; see [[client-storage|storage engines]]. Sync is a staged pipeline in the style of [[erigon|Erigon]]: headers, bodies, sender recovery, execution, then the hashing and index stages.",
         ],
       },
@@ -213,7 +220,7 @@ export const topics = [
         heading: "Archive by default",
         paragraphs: [
           "Reth keeps all historical [[state|state]] unless told otherwise, so a plain `reth node` is an [[archive-node|archive node]]; `--full` is the flag that turns it into a [[pruned-node|pruned node]] that keeps only recent state and history. That is the reverse of most clients' defaults and surprises operators who size a disk for a [[full-node|full node]] and get archive growth, or who add `--full` later and find historical [[eth-call|eth_call]] has stopped working.",
-          "Execution Extensions, known as ExEx, are the other distinctive feature: a Rust task runs inside the node process and receives a stream of committed chain notifications, including reverted segments during a [[reorg|reorg]]. An [[indexer|indexer]] built that way reads state changes directly instead of polling [[eth-get-logs|eth_getLogs]] over [[http-transport|HTTP]], at the cost of being coupled to the node's lifecycle and to Reth itself.",
+          "[[client-extensions|Execution Extensions]], known as ExEx, are the other distinctive feature: a Rust task runs inside the node process and receives a stream of committed chain notifications, including reverted segments during a [[reorg|reorg]]. An [[indexer|indexer]] built that way reads state changes directly instead of polling [[eth-get-logs|eth_getLogs]] over [[http-transport|HTTP]], at the cost of being coupled to the node's lifecycle and to Reth itself.",
         ],
       },
       {
@@ -232,7 +239,7 @@ export const topics = [
     },
     pitfalls: [
       "Sizing disk for a full node and omitting `--full`; the node will keep growing as an archive.",
-      "Adding `--full` to an existing archive node and expecting old data to remain; historical state beyond the retained window stops being queryable.",
+      "Adding `--full` to an existing archive node and expecting old data to remain; historical state beyond [[partial-archive|the retained window]] stops being queryable.",
       "Building an ExEx and treating it as a substitute for an external [[indexer|indexer]]; it dies with the node and must replay on restart.",
       "Assuming `trace_` and `debug_` are reachable by default; both namespaces still have to be named in `--http.api`.",
     ],
@@ -252,8 +259,8 @@ export const topics = [
       {
         heading: "What it is",
         paragraphs: [
-          "Besu runs on the JVM and covers two audiences from one codebase: Ethereum mainnet as a public [[execution-client|execution client]], and permissioned networks, where it supplies the QBFT, IBFT 2.0, and Clique consensus algorithms that public Ethereum does not use, plus account and node permissioning. That second role explains configuration options an operator on mainnet never touches.",
-          "State is stored in the Bonsai format by default (`--data-storage-format=BONSAI`): accounts and storage slots are kept flat, with trie logs recording the difference each block made so the node can roll back. The older Forest format keeps a conventional trie of hashed nodes. Bonsai keeps only a bounded window of historical state, governed by `--bonsai-historical-block-limit`, so an [[archive-node|archive]] deployment is a deliberate configuration rather than the default; see [[client-storage|storage engines]].",
+          "Besu runs on the JVM and covers two audiences from one codebase: Ethereum mainnet as a public [[execution-client|execution client]], and [[permissioned-network|permissioned networks]], where it supplies the QBFT and IBFT 2.0 consensus algorithms that public Ethereum does not use, plus local account and node permissioning. QBFT is the recommended choice and IBFT 2.0 is kept for existing networks; Clique was removed in 26.4.0, apart from syncing chains such as Linea that began as Clique and moved to proof of stake, and Tessera privacy and on-chain permissioning went in 25.6.0, followed by the `PRIV` and `EEA` API groups in 25.7.0. That second role explains configuration options an operator on mainnet never touches.",
+          "State is stored in the Bonsai format by default (`--data-storage-format=BONSAI`): accounts and storage slots are kept flat, with trie logs recording the difference each block made so the node can roll back. The older Forest format keeps a conventional trie of hashed nodes. Bonsai keeps only [[partial-archive|a bounded window of historical state]], governed by `--bonsai-historical-block-limit`, so an [[archive-node|archive]] deployment is a deliberate configuration rather than the default; see [[client-storage|storage engines]].",
         ],
       },
       {
@@ -283,11 +290,12 @@ export const topics = [
       "Expecting historical [[eth-call|eth_call]] to work on a default Bonsai node; only a bounded window of historical state is kept.",
       "Forgetting `--engine-host-allowlist` after moving the [[consensus-client|consensus client]] to another container, which leaves the Engine API unreachable while HTTP RPC still works.",
     ],
-    related: ["execution-client", "client-storage", "trace-api", "namespaces", "archive-node", "snap-sync", "reverse-proxy", "engine-api", "json-rpc", "security"],
+    related: ["execution-client", "client-storage", "trace-api", "namespaces", "archive-node", "snap-sync", "reverse-proxy", "engine-api", "json-rpc", "security", "permissioned-network"],
     sources: [
-      { title: "Besu documentation", url: "https://besu.hyperledger.org/" },
-      { title: "Besu: command-line options", url: "https://besu.hyperledger.org/public-networks/reference/cli/options" },
-      { title: "hyperledger/besu", url: "https://github.com/hyperledger/besu" },
+      { title: "Besu documentation", url: "https://docs.besu-eth.org/" },
+      { title: "Besu: command-line options", url: "https://docs.besu-eth.org/public-networks/reference/cli/options" },
+      { title: "besu-eth/besu", url: "https://github.com/besu-eth/besu" },
+      { title: "Besu changelog", url: "https://github.com/besu-eth/besu/blob/main/CHANGELOG.md" },
     ],
   },
   {
@@ -584,7 +592,7 @@ export const topics = [
         heading: "Why the share matters",
         paragraphs: [
           "Every [[execution-client|execution client]] and [[consensus-client|consensus client]] is an independent reading of the same specifications, and any of them can contain a bug that makes it accept a block the others reject, or the reverse. What that bug costs depends entirely on how many [[validator|validators]] run the client that has it, and three thresholds matter.",
-          "Below a third of the network, a broken client is the one that suffers: its nodes follow a chain nobody else does, its validators miss duties and leak stake, and the rest of the network keeps [[finality|finalizing]] normally. Above a third, no branch can be finalized until the disagreement is resolved, so the whole network stalls at the last finalized checkpoint. Above two thirds, the broken client can finalize its own invalid chain, and undoing that requires coordinated human intervention rather than a protocol mechanism. Those thresholds are why operators are asked to run clients that are not already dominant, and why trackers such as clientdiversity.org publish the distribution.",
+          "Below a third of the network, a broken client is the one that suffers: its nodes follow a chain nobody else does, its validators miss duties and leak stake, and the rest of the network keeps [[finality|finalizing]] normally. Above a third, no branch can be finalized until the disagreement is resolved, so the whole network stalls at the last finalized checkpoint. Above two thirds, the broken client can finalize its own invalid chain, and undoing that requires coordinated human intervention rather than a protocol mechanism. Those thresholds are why operators are asked to run clients that are not already dominant, and why [[network-telemetry|trackers]] such as clientdiversity.org publish the distribution.",
           "This is not theoretical. In May 2023 mainnet twice went several epochs without finalizing when unusual load exposed a bug present in some consensus clients and not others; the unaffected clients kept the chain running while the others were fixed. A single-implementation network would have had no such margin.",
         ],
       },
@@ -619,7 +627,7 @@ export const topics = [
     id: "validator-client",
     title: "Validator client",
     category: "clients",
-    aliases: ["VC", "slashing protection", "Web3Signer", "keymanager", "fee recipient", "EIP-3076"],
+    aliases: ["VC", "slashing protection", "keymanager", "fee recipient", "EIP-3076"],
     summary: "A validator client is the process that holds [[validator|validator]] signing keys, asks a [[beacon-node|beacon node]] over the [[beacon-api|Beacon API]] what duties are due, and signs [[attestation|attestations]], [[block-proposal|block proposals]], and [[sync-committee|sync committee]] messages.",
     sections: [
       {
@@ -633,14 +641,14 @@ export const topics = [
         heading: "The duty loop",
         paragraphs: [
           "Once per epoch the validator client asks for its assignments: `POST /eth/v1/validator/duties/attester/{epoch}` with its validator indices, and `GET /eth/v1/validator/duties/proposer/{epoch}`. At the assigned slot it fetches the data to sign — `GET /eth/v1/validator/attestation_data` for an attestation, `GET /eth/v3/validator/blocks/{slot}` for a proposal — signs it locally, and publishes it back through the beacon node, which gossips it to the network.",
-          "Pointing the validator client at several beacon nodes gives redundancy: if one is down or its execution client is unhealthy, duties continue against another; see [[failover|failover]]. When [[mev-boost|MEV-Boost]] is in use, the proposal path returns a blinded block that the validator signs without seeing the transactions, and the beacon node then exchanges the signature for the full block.",
+          "Pointing the validator client at several beacon nodes gives redundancy: if one is down or its execution client is unhealthy, duties continue against another; see [[failover|failover]]. When [[mev-boost|MEV-Boost]] is in use, the proposal path returns a [[builder-api|blinded block]] that the validator signs without seeing the transactions, and the beacon node then exchanges the signature for the full block.",
         ],
       },
       {
         heading: "Keys and slashing protection",
         paragraphs: [
-          "Because signing two conflicting messages is punished by [[slashing|slashing]], every validator client keeps a slashing protection database recording the highest block slot and the attestation source and target epochs it has signed for each key. That database is as important as the keys themselves: it must move with them, using the EIP-3076 interchange format, and it must never be restored from an old snapshot, because a rolled-back record will happily approve a signature it has already made.",
-          "Keys can also live somewhere else entirely. A remote signer such as Web3Signer holds them and exposes a signing endpoint, so the validator client sends the message to be signed rather than loading a key. Clients additionally offer an authenticated keymanager API for importing and removing keys at runtime, which is a separate listener from the beacon node's [[beacon-api|Beacon API]] and should stay on a private network; see [[authentication|authentication]].",
+          "Because signing two conflicting messages is punished by [[slashing|slashing]], every validator client keeps a [[slashing-protection|slashing protection database]] of what each key has signed: Lighthouse records every block and attestation, while a minimal database keeps only the highest block slot and the attestation source and target epochs. That database is as important as the keys themselves: it must move with them, using the EIP-3076 interchange format, and it must never be restored from an old snapshot, because a rolled-back record will happily approve a signature it has already made.",
+          "Keys can also live somewhere else entirely. [[remote-signer|A remote signer]] such as Web3Signer holds them and exposes a signing endpoint, so the validator client sends the message to be signed rather than loading a key. Clients additionally offer an authenticated keymanager API for importing and removing keys at runtime, which is a separate listener from the beacon node's [[beacon-api|Beacon API]] and should stay on a private network; see [[authentication|authentication]].",
         ],
       },
     ],
@@ -651,12 +659,12 @@ export const topics = [
       note: "Both URLs point at [[beacon-node|beacon nodes]]; no part of this process ever opens a connection to an execution client.",
     },
     pitfalls: [
-      "Running two validator clients with the same keys for redundancy; that is the classic way to get slashed, and no protection database spans two hosts.",
+      "Running two validator clients with the same keys [[distributed-validator|for redundancy]]; that is the classic way to get slashed, and no protection database spans two hosts.",
       "Migrating keys without exporting the EIP-3076 slashing protection interchange, or restoring one from a backup taken before the last signatures.",
       "Exposing the keymanager API on a public interface; it can import and delete keys.",
       "Assuming a validator client needs its own execution endpoint; the fee recipient reaches the execution layer through the beacon node.",
     ],
-    related: ["beacon-node", "consensus-client", "beacon-api", "validator", "slashing", "mev-boost", "block-proposal", "attestation", "authentication", "lighthouse"],
+    related: ["beacon-node", "consensus-client", "beacon-api", "validator", "slashing", "mev-boost", "block-proposal", "attestation", "authentication", "lighthouse", "validator-node", "remote-signer"],
     sources: [
       { title: "Beacon APIs specification", url: "https://ethereum.github.io/beacon-APIs/" },
       { title: "EIP-3076: Slashing protection interchange format", url: "https://eips.ethereum.org/EIPS/eip-3076" },
@@ -673,14 +681,14 @@ export const topics = [
       {
         heading: "What it does",
         paragraphs: [
-          "The beacon node is the half of a node that decides what the chain is. It receives [[beacon-block|beacon blocks]] and [[attestation|attestations]] over gossip on port 9000 (some clients default elsewhere, notably [[prysm|Prysm]]), verifies their BLS signatures, applies them to its fork choice, and keeps the justified and finalized checkpoints up to date; see [[libp2p-gossip|consensus networking]] and [[finality|finality]].",
+          "The beacon node is the half of a node that decides what the chain is. It receives [[beacon-block|beacon blocks]] and [[attestation|attestations]] over gossip on port 9000 (some clients default elsewhere, notably [[prysm|Prysm]]), verifies their [[bls-signature|BLS signatures]], applies them to its fork choice, and keeps the justified and finalized checkpoints up to date; see [[libp2p-gossip|consensus networking]] and [[finality|finality]].",
           "It pairs one-to-one with an execution client. The [[engine-api|Engine API]] has no notion of several callers: each `engine_forkchoiceUpdated` sets one head, so two beacon nodes pointed at the same execution client would overwrite each other's view. One beacon node can, however, serve many [[validator-client|validator clients]], and one validator client can list several beacon nodes for redundancy.",
         ],
       },
       {
         heading: "What it can answer",
         paragraphs: [
-          "The [[beacon-api|Beacon API]] exposes the chain as REST resources: headers and blocks by slot or root, `finality_checkpoints` for a state, the validator registry, and [[blob|blob sidecars]] at `/eth/v1/beacon/blob_sidecars/{block_id}` — blob data lives here, not on the execution client, and is dropped after 4096 epochs, roughly 18 days. `/eth/v1/events` is a server-sent-event stream carrying `head`, `finalized_checkpoint`, and `chain_reorg`, which is how a [[indexer|indexer]] can watch consensus without polling.",
+          "The [[beacon-api|Beacon API]] exposes the chain as REST resources: headers and blocks by slot or root, `finality_checkpoints` for a state, the validator registry, and [[blob|blobs]] at `/eth/v1/beacon/blobs/{block_id}`, which beacon-APIs v4.0.0 added in place of the deprecated `/eth/v1/beacon/blob_sidecars/{block_id}` — blob data lives here, not on the execution client, and is dropped after 4096 epochs, roughly 18 days. Since Fulu a node custodies data columns rather than whole blobs, so only a supernode, which custodies every column, is required to return them; other nodes may reconstruct them or refuse. `/eth/v1/events` is a [[server-sent-events|server-sent-event stream]] carrying `head`, `finalized_checkpoint`, and `chain_reorg`, which is how a [[indexer|indexer]] can watch consensus without polling.",
           "State queries are the expensive case. Beacon nodes store periodic state snapshots and replay blocks to reach the rest, so asking for a state at an old slot either takes real work or is refused, depending on the client's retention settings. `head` and `finalized` state ids are always cheap; arbitrary historical slots are not, which is the consensus-layer counterpart to needing an [[archive-node|archive node]] on the execution side.",
         ],
       },
@@ -702,9 +710,10 @@ export const topics = [
       "Pointing two beacon nodes at one execution client; they will fight over the head through `engine_forkchoiceUpdated`.",
       "Alerting on `is_syncing` alone and missing `el_offline` or `is_optimistic`, which describe a node that looks fine and is not.",
       "Requesting beacon state at an arbitrary old slot from a normally configured node; states are reconstructed, not all stored.",
-      "Expecting blob data from the execution client after roughly 18 days; the [[consensus-layer|consensus layer]] is where sidecars live, and it drops them after 4096 epochs.",
+      "Expecting blob data from the execution client after roughly 18 days; the [[consensus-layer|consensus layer]] is where blob data lives, and it drops it after 4096 epochs, so older blobs come from a [[blob-archive|blob archive]].",
+      "Pointing a blob consumer at an ordinary post-Fulu beacon node; only supernodes are required to answer `/eth/v1/beacon/blobs/{block_id}`.",
     ],
-    related: ["consensus-client", "beacon-api", "engine-api", "validator-client", "checkpoint-sync", "health-check", "fork-choice", "blob", "execution-client", "beacon-endpoints"],
+    related: ["consensus-client", "beacon-api", "engine-api", "validator-client", "checkpoint-sync", "health-check", "fork-choice", "blob", "execution-client", "beacon-endpoints", "validator-node"],
     sources: [
       { title: "Beacon APIs specification", url: "https://ethereum.github.io/beacon-APIs/" },
       { title: "ethereum/consensus-specs", url: "https://github.com/ethereum/consensus-specs" },
@@ -729,15 +738,15 @@ export const topics = [
         heading: "How the state trie is keyed",
         paragraphs: [
           "The original layout keys every node of the [[merkle-patricia-trie|Merkle-Patricia trie]] by the hash of its contents. Because a changed node gets a new hash, every version of every node accumulates, which makes an [[archive-node|archive node]] trivial — never delete anything — and makes an ordinary node expensive, since the database grows and random writes multiply.",
-          "The path-based layouts key a trie node by its position in the trie instead: [[geth|Geth]]'s path-based scheme, the default for new databases since v1.14, [[nethermind|Nethermind]]'s half-path layout, and [[besu|Besu]]'s Bonsai format. Each node then has exactly one current record, the database stops growing with history, and older versions survive only inside a bounded window of diff layers or trie logs — around 128 blocks on Geth. Past that window a [[pruned-node|pruned node]] answers `missing trie node`.",
-          "The flat layouts, used by [[erigon|Erigon]] and [[reth|Reth]] and in spirit by Bonsai, go further: the authoritative record is the value itself, keyed by address and slot, and trie nodes are computed only when a [[state-root|state root]] must be produced. History becomes a set of change sets, so keeping every past value costs far less than keeping a trie per block, which is why archive nodes on these clients are affordable.",
+          "The path-based layouts key a trie node by its position in the trie instead: [[geth|Geth]]'s path-based scheme, the default for new databases since v1.14, [[nethermind|Nethermind]]'s half-path layout, which 2.0 keeps only for upgraded databases and nodes started with `FlatDb.Enabled=false`, and [[besu|Besu]]'s Bonsai format. Each node then has exactly one current record, the database stops growing with history, and older versions survive only inside a bounded window of diff layers or trie logs — around 128 blocks on Geth. Past that window a [[pruned-node|pruned node]] answers `missing trie node`.",
+          "The flat layouts, used by [[erigon|Erigon]], [[reth|Reth]], new Nethermind 2.0 databases, and in spirit by Bonsai, go further: the authoritative record is the value itself, keyed by address and slot, and trie nodes are computed only when a [[state-root|state root]] must be produced. History becomes a set of change sets, so keeping every past value costs far less than keeping a trie per block, which is why archive nodes on these clients are affordable.",
         ],
       },
       {
         heading: "What an RPC caller sees",
         paragraphs: [
           "The first consequence is which blocks answer at all. The same [[eth-call|eth_call]] at a two-year-old block succeeds on a flat archive node, fails with `missing trie node` on a path-based pruned node, and may be answered from an entirely different database on a hash-based archive node. Probing beats assuming; see [[endpoint-capabilities|endpoint capabilities]].",
-          "The second is proofs. [[eth-get-proof|eth_getProof]] returns actual trie nodes, and a client that stores values flat has to rebuild them. Historical proofs are therefore often unavailable even on a node that holds every historical value, which surprises teams building [[state-proof|state proofs]] against an archive endpoint.",
+          "The second is proofs. [[eth-get-proof|eth_getProof]] returns actual trie nodes, and a client that stores values flat has to rebuild them. Historical proofs are therefore unavailable by default even on a node that holds every historical value, which surprises teams building [[state-proof|state proofs]] against an archive endpoint. Clients that offer them make it an opt-in, most of them by storing extra trie or commitment data: Geth 1.17's `--history.trienode`, Nethermind 2.0's `FlatDb.ArchiveProofServeEnabled` with `FlatDb.ArchiveProofBuildEnabled` on unwindowed flat history, Erigon 3's `--prune.include-commitment-history`, and Reth's `--rpc.eth-proof-window`, which reaches at most 1,209,600 blocks below the head.",
           "The third is history retention, which is separate from all of this: transaction indices and old bodies can be trimmed independently of state, as with Geth's `--history.transactions`, and [[history-expiry|history expiry]] removes pre-Merge data entirely. Underneath every layout is the same hardware requirement — random reads dominate, so [[node-hardware|NVMe with high IOPS]] is not optional. [[beacon-node|Beacon nodes]] store differently again: [[ssz|SSZ]] states with periodic snapshots and replay rather than a trie.",
         ],
       },
@@ -745,20 +754,325 @@ export const topics = [
     example: {
       title: "What each execution client writes where",
       language: "text",
-      code: "Geth        Pebble or LevelDB + freezer files   path-based trie by default, ~128-block state window\nNethermind  RocksDB                             half-path trie, in-memory and full pruning\nErigon      MDBX + snapshot files               flat values plus change sets\nReth        MDBX + static files                 flat values, archive unless --full\nBesu        RocksDB                             Bonsai flat state with trie logs, or Forest trie",
+      code: "Geth        Pebble or LevelDB + freezer files   path-based trie by default, ~128-block state window\nNethermind  RocksDB                             2.0: flat values, optional flat history; upgraded nodes keep the half-path trie\nErigon      MDBX + snapshot files               flat values plus change sets\nReth        MDBX + static files                 flat values, archive unless --full\nBesu        RocksDB                             Bonsai flat state with trie logs, or Forest trie",
       note: "Nothing in the [[json-rpc|JSON-RPC]] specification covers retention, so two clients answer the same historical query differently because of this column alone.",
     },
     pitfalls: [
-      "Assuming an archive node can produce a historical `eth_getProof`; flat storage keeps values, not the trie nodes a proof is made of.",
+      "Assuming an archive node can produce a historical `eth_getProof`; by default flat storage keeps values, not the trie nodes a proof is made of.",
       "Reading `missing trie node` as database corruption; it usually means the state at that block was pruned.",
       "Sizing a disk from a client's state size and forgetting history, or converting a node between storage schemes without budgeting for a full resync.",
       "Putting the live state database on network storage because the append-only history files tolerate it; state is random-write and will not.",
     ],
     related: ["execution-client", "archive-node", "pruned-node", "geth", "erigon", "reth", "nethermind", "besu", "eth-get-proof", "history-expiry", "merkle-patricia-trie", "node-hardware"],
     sources: [
-      { title: "Geth: pruning and state schemes", url: "https://geth.ethereum.org/docs/fundamentals/pruning" },
+      { title: "Geth: archive mode and state history", url: "https://geth.ethereum.org/docs/fundamentals/archive" },
+      { title: "Nethermind: archive nodes", url: "https://docs.nethermind.io/fundamentals/archive-nodes" },
       { title: "Erigon documentation", url: "https://docs.erigon.tech/" },
-      { title: "Besu: data storage formats", url: "https://besu.hyperledger.org/public-networks/concepts/data-storage-formats" },
+      { title: "Besu: data storage formats", url: "https://docs.besu-eth.org/public-networks/concepts/data-storage-formats" },
+    ],
+  },
+  {
+    id: "validator-node",
+    title: "Validator node",
+    category: "clients",
+    aliases: ["staking node", "staking setup", "validator deployment", "EL + BN + VC", "home staking machine"],
+    summary: "A validator node is the whole staking deployment — an [[execution-client|execution client]], a [[beacon-node|beacon node]] and a [[validator-client|validator client]], often with [[mev-boost|MEV-Boost]], a [[remote-signer|remote signer]] or [[distributed-validator|distributed-validator]] middleware — wired so that a [[validator|validator]]'s duties are signed and published on time.",
+    sections: [
+      {
+        heading: "Three processes, three interfaces",
+        paragraphs: [
+          "The validator is a key, the validator client is the process that signs with it, and the validator node is everything the signature depends on. The execution client and beacon node talk over the [[engine-api|Engine API]] on port 8551, authenticated by a shared 32-byte JWT secret: the beacon node hands over each block's payload with `engine_newPayload`, names the head with `engine_forkchoiceUpdated`, and asks for a payload to be built when its validator proposes. The validator client talks to the beacon node over the [[beacon-api|Beacon API]] validator endpoints for duties, attestation data, block production and publishing. The beacon node talks to MEV-Boost, on port 18550 by default, over the [[builder-api|builder API]]: register validators, fetch a header bid, submit the signed blinded block.",
+          "The optional pieces slot into those interfaces. A remote signer sits behind the validator client, which sends it signing requests instead of loading keys. Distributed-validator middleware such as Obol's Charon sits between validator clients and beacon nodes, presenting a Beacon API to each client while it coordinates a threshold signature across operators. The counts matter: one execution client per beacon node, because the Engine API has a single fork-choice caller; many validator clients per beacon node; several beacon nodes per validator client; one MEV-Boost for several beacon nodes. The validator client never talks to the execution client.",
+        ],
+      },
+      {
+        heading: "How a failure travels",
+        paragraphs: [
+          "An execution client that is down or syncing cannot validate payloads, so its beacon node stalls or imports blocks optimistically, and `/eth/v1/node/syncing` reports `el_offline` or `is_optimistic`. The optimistic sync specification then forbids the validator from proposing, attesting or taking part in [[sync-committee|sync committee]] duties, so every duty in that period is missed. That costs penalties, not [[slashing|slashing]], and MEV-Boost does not help: an optimistic node must not propose even with a builder bid in hand.",
+          "The other failures are narrower. A beacon node that disappears takes its validator clients with it unless they list another; see [[failover|failover]]. A relay or MEV-Boost outage sends the beacon node back to a locally built payload, so the proposal survives with less value. A wrong JWT secret or clock skew between hosts makes every Engine API call fail, which from the validator's side looks exactly like the execution client being down.",
+        ],
+      },
+      {
+        heading: "RPC load on the validating execution client",
+        paragraphs: [
+          "An attester publishes when the slot's block has been imported or when about a third of the slot has passed, four seconds on mainnet today, whichever comes first. Import includes the execution client running the payload inside `engine_newPayload`. An execution client that shares CPU, disk and database with public traffic — wide [[eth-get-logs|eth_getLogs]] scans, `debug_traceBlockByNumber`, bursts of [[eth-call|eth_call]] — runs that payload later, and when import slips past the deadline the attestation votes for the parent as head and loses the head reward. A proposer that builds or validates slowly publishes late, and a late block risks being orphaned by the next proposer. Nethermind's documentation warns that full pruning can reduce validator rewards for the same reason.",
+          "The usual answer is separation. The validating execution client serves only the Engine API and local monitoring, while public [[json-rpc|JSON-RPC]] goes to other nodes behind a [[load-balancer|load balancer]]. Where one machine has to do both, cap the expensive methods with [[rate-limits|rate limits]], keep the public listener on its own interface, and watch `newPayload` latency and attestation timeliness beside the RPC dashboards.",
+        ],
+      },
+    ],
+    example: {
+      title: "The wiring of one validator node",
+      language: "text",
+      code: "execution client ──Engine API :8551, JWT──▶ beacon node ◀──Beacon API──  validator client\n                                             │                               │\n                                             └──builder API :18550──▶ MEV-Boost ──▶ relays\n                                                                             │\n                                         remote signer (optional) ◀──────────┘\n\none execution client per beacon node\nmany validator clients per beacon node, several beacon nodes per validator client\npublic JSON-RPC: a different execution client",
+      note: "Every arrow is a place where latency or an outage turns into a missed duty; the validator client's only upstreams are beacon nodes and, optionally, a signer.",
+    },
+    pitfalls: [
+      "Pointing public dapp traffic at the execution client behind a validator's beacon node, so tracing bursts delay `newPayload` and cost head votes.",
+      "Building redundancy by duplicating the entire node including its keys, instead of giving one validator client several beacon nodes.",
+      "Alerting on execution sync alone and missing a beacon node that reports `el_offline` or `is_optimistic` while its duties are skipped.",
+      "Assuming MEV-Boost keeps a proposal alive while the execution client is down; an optimistic beacon node must not propose at all.",
+    ],
+    related: ["validator-client", "beacon-node", "execution-client", "engine-api", "mev-boost", "builder-api", "remote-signer", "distributed-validator", "attestation", "load-balancer"],
+    sources: [
+      { title: "Consensus specs: optimistic sync, validator assignments", url: "https://github.com/ethereum/consensus-specs/blob/master/specs/bellatrix/optimistic-sync.md" },
+      { title: "Engine API specification", url: "https://github.com/ethereum/execution-apis/tree/main/src/engine" },
+      { title: "Builder API specification", url: "https://github.com/ethereum/builder-specs" },
+      { title: "Beacon APIs specification", url: "https://ethereum.github.io/beacon-APIs/" },
+    ],
+  },
+  {
+    id: "remote-signer",
+    title: "Remote signer",
+    category: "clients",
+    aliases: ["Web3Signer", "Dirk", "external signer", "keymanager API", "/eth/v1/remotekeys", "EIP-3076", "Clef"],
+    summary: "A remote signer is a separate service that holds [[validator|validator]] keys and returns [[bls-signature|BLS signatures]] to the [[validator-client|validator client]] that asks, so the process that talks to the network never holds the key and slashing protection sits next to the key rather than next to the client.",
+    sections: [
+      {
+        heading: "Signing over a wire",
+        paragraphs: [
+          "A validator client normally loads keystores and signs locally. With a remote signer it builds the object to sign — an [[attestation|attestation]], a block, a RANDAO reveal, a sync committee message — and sends it instead. Web3Signer, from Consensys, takes `POST /api/v1/eth2/sign/{identifier}`, where the identifier is the validator's BLS public key and the body carries a `type` such as `ATTESTATION` or `BLOCK_V2`, the `fork_info` needed for the signing domain, an optional `signingRoot`, and the object itself; it answers with the signature. The major validator clients can all delegate signing to it.",
+          "Dirk, from Attestant, speaks gRPC over mutual TLS with a certificate per client, and is usually driven by Attestant's Vouch validator client. It holds ordinary keys or distributed ones, generated so that any k of n Dirk instances together produce a valid threshold signature and no single machine holds the whole key, the signer-side cousin of [[distributed-validator|distributed validators]]. Keys are managed at runtime through the standard keymanager API, served by whichever binary holds them and authenticated with a token: `/eth/v1/keystores` lists, imports and deletes local keystores, and `/eth/v1/remotekeys` registers public keys whose signing a validator client delegates to a signer URL.",
+        ],
+      },
+      {
+        heading: "Slashing protection belongs with the key",
+        paragraphs: [
+          "The signer that holds a key is the one place that sees every signature made with it, so that is where [[slashing|slashing]] protection belongs. Web3Signer checks each request against a [[slashing-protection|slashing-protection database]] by default, PostgreSQL reached through `--slashing-protection-db-url`, so several validator clients, or several Web3Signer instances sharing that database, cannot obtain conflicting signatures through it. Dirk keeps its own records. Both import and export the EIP-3076 interchange format: JSON whose `metadata` carries `interchange_format_version` 5 and the `genesis_validators_root`, then per key the `signed_blocks` by slot and the `signed_attestations` by source and target epoch. The keymanager API moves the same data: an import carries it and a delete returns it.",
+          "Protection covers only the requests it sees. Two signers with separate databases holding one key, a key still loaded in a validator client after it was registered as remote, or a [[failover|failover]] script that starts a second client against a second signer while the first is merely slow, all bring back the double signature the design exists to rule out. Doppelganger protection, which Lighthouse documents as staying silent for two to three epochs while it listens for the key elsewhere, is a last line of defence that its own documentation calls imperfect.",
+        ],
+      },
+      {
+        heading: "Latency, availability, and Clef",
+        paragraphs: [
+          "Every duty now includes a network round trip and a database write before the signature returns, and an attestation is due about four seconds into the slot. A signer across a slow link, a loaded database, or a threshold signer waiting for k of n instances can push messages past their deadline and cost rewards, and a signer outage misses every duty of every key it holds at once. Web3Signer exposes `/upcheck` and `/healthcheck`; alert on signing latency as well as liveness. The [[validator-node|validator node]] lesson covers the rest of that timing chain.",
+          "Clef is a different tool for a similar idea: an execution-layer signer for transactions and [[eip-712|EIP-712]] typed data that [[geth|Geth]] reached through `--signer`, not a validator signer. It was removed from the go-ethereum repository in June 2026 as no longer maintained and continues in a separate ethereum/clef repository, while Geth still accepts an external signer through `--signer`. For execution-layer signing from applications, see [[signing-methods|signing methods]].",
+        ],
+      },
+    ],
+    example: {
+      title: "A Web3Signer attestation signing request",
+      language: "http",
+      code: "POST /api/v1/eth2/sign/0x989d34725a2bfc3f15105f3f5fc8741f436c25ee1ee4f948e425d6bcb8c56bce6e06c269635b7e985a7ffa639e2409bf HTTP/1.1\nContent-Type: application/json\n\n{\n  \"type\": \"ATTESTATION\",\n  \"fork_info\": {\n    \"fork\": { \"previous_version\": \"0x05000000\", \"current_version\": \"0x06000000\", \"epoch\": \"411392\" },\n    \"genesis_validators_root\": \"0x4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95\"\n  },\n  \"attestation\": {\n    \"slot\": \"15314400\",\n    \"index\": \"0\",\n    \"beacon_block_root\": \"0x7d5a4369…f0d3\",\n    \"source\": { \"epoch\": \"478574\", \"root\": \"0x2b1f8c07…91ab\" },\n    \"target\": { \"epoch\": \"478575\", \"root\": \"0x9b83c12c…ee71\" }\n  }\n}\n\nHTTP/1.1 200 OK\n{ \"signature\": \"0xb3baa751…a5d9\" }",
+      note: "The signer checks `source` and `target` against its slashing-protection database before it signs; a request that would make a surround or double vote is refused rather than signed.",
+    },
+    pitfalls: [
+      "Pointing a standby validator client at a second signer with its own slashing database, so a failover can sign twice.",
+      "Leaving keys imported in the validator client after registering them as remote keys, so two places can sign with them.",
+      "Moving a key between signers without its EIP-3076 export, or importing an export taken before the last signatures.",
+      "Exposing the keymanager API or the signer's HTTP port beyond the validator hosts; either can add, remove or use keys.",
+      "Placing the signer or its database far from the validator client and discovering the latency in attestation timeliness.",
+    ],
+    related: ["validator-client", "validator-node", "slashing", "bls-signature", "distributed-validator", "validator", "failover", "authentication", "signing-methods", "geth"],
+    sources: [
+      { title: "Keymanager API specification", url: "https://github.com/ethereum/keymanager-APIs" },
+      { title: "EIP-3076: Slashing protection interchange format", url: "https://eips.ethereum.org/EIPS/eip-3076" },
+      { title: "Consensys/web3signer", url: "https://github.com/Consensys/web3signer" },
+      { title: "attestantio/dirk", url: "https://github.com/attestantio/dirk" },
+    ],
+  },
+  {
+    id: "helios",
+    title: "Helios",
+    category: "clients",
+    aliases: ["a16z helios", "helios light client", "@a16z/helios", "helios ethereum", "heliosup", "verifying RPC proxy"],
+    summary: "Helios is a16z's Rust [[light-client|light client]] that follows Ethereum consensus through [[sync-committee|sync committee]] signatures and turns an untrusted execution RPC into a local [[json-rpc|JSON-RPC]] endpoint whose answers it checks with [[eth-get-proof|eth_getProof]] and its own EVM.",
+    sections: [
+      {
+        heading: "Two trust paths",
+        paragraphs: [
+          "The consensus side starts from a weak-subjectivity checkpoint, `--checkpoint`, the root of the first beacon block of an epoch. Helios fetches a bootstrap and then [[light-client-update|light client updates]] from `--consensus-rpc`, any beacon node that serves the Beacon API light-client routes, and verifies each sync committee aggregate, walking forward one committee period at a time. That is the [[consensus-proof|consensus proof]] that yields a [[trusted-header|trusted header]] with a `stateRoot` and block hash. The README recommends a checkpoint less than two weeks old; an older one only warns unless `--strict-checkpoint-age` is set, and after the first run Helios caches the latest finalized root in its data directory; see [[weak-subjectivity|weak subjectivity]].",
+          "The execution side is `--execution-rpc`, any provider that serves eth_getProof. A balance, nonce or storage read becomes an eth_getProof call verified against the trusted root, and code is hashed against the proven `codeHash`; see [[state-proof|state proof]]. [[eth-call|eth_call]] and [[eth-estimate-gas|eth_estimateGas]] go further: Helios asks the provider for [[eth-create-access-list|eth_createAccessList]] as a hint of which accounts and slots the call will touch, proves each one, and executes the call in a local EVM, fetching and proving anything the hint missed. The hint affects only speed; a dishonest one cannot change the result.",
+        ],
+      },
+      {
+        heading: "What it serves, and on which chains",
+        paragraphs: [
+          "Helios listens on `127.0.0.1:8545` by default, changed with `--rpc-port` and `--rpc-bind-ip`, and also ships as a Rust library and as the `@a16z/helios` npm package, compiled to WebAssembly, whose provider exposes an [[eip-1193|EIP-1193]]-style `request` method in the browser. Its method list covers state reads, calls and gas estimates, blocks, transactions, receipts, [[eth-get-logs|eth_getLogs]] and filters, `eth_sendRawTransaction`, and `eth_subscribe` for `newHeads` only. Receipts are checked by fetching the block's whole receipt list and matching it against `receiptsRoot`, and blocks within the 8191 hashes kept by the EIP-2935 history contract can be proven through it.",
+          "`helios ethereum` covers mainnet and the testnets it lists, while `helios opstack --network op-mainnet` or `base` and `helios linea` cover rollups. The rollup modes rest on a different root of trust: on OP Stack chains Helios accepts blocks signed by the chain's unsafe-block signer, the [[sequencer|sequencer]] key, whose address it can check against the L1 system configuration. That proves what the sequencer published, not what Ethereum has settled; see [[optimistic-rollup|optimistic rollups]].",
+        ],
+      },
+      {
+        heading: "Where the guarantee stops",
+        paragraphs: [
+          "Some answers are not facts a proof can establish. `eth_gasPrice` is the verified base fee plus a fixed 1 gwei tip, and `eth_maxPriorityFeePerGas` is that constant. `eth_sendRawTransaction` is relayed to the untrusted provider; Helios checks that the returned hash matches the transaction but cannot see the [[mempool|pool]] or force inclusion. Namespaces outside its list, such as [[debug-api|debug_]] and [[trace-api|trace_]], are not served at all rather than passed through unverified, which is the safer failure.",
+          "Logs are the subtle case. Helios checks that every log a provider returns appears in the proven receipts of its block, which proves inclusion; it does not look at blocks the provider left out, so a provider can omit logs without being caught. Everything also rests on the bootstrap: `--load-external-fallback`, which takes the most common checkpoint from a community list of endpoints, is convenient and hands the choice of chain to that list. And Helios verifies for the process that runs it; other hosts using it over the network are trusting its operator, as with any [[verified-rpc|verified RPC]] setup.",
+        ],
+      },
+    ],
+    example: {
+      title: "Running Helios in front of an untrusted provider",
+      language: "bash",
+      code: "helios ethereum \\\n  --network mainnet \\\n  --execution-rpc https://rpc.example \\\n  --consensus-rpc https://beacon.example \\\n  --checkpoint 0x<root of the first block of a recent finalized epoch> \\\n  --strict-checkpoint-age\n\n# USDC balanceOf(vitalik.eth), answered from proven state and a local EVM run\ncurl -s -X POST -H 'content-type: application/json' \\\n  --data '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_call\",\"params\":[{\"to\":\"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\"data\":\"0x70a08231000000000000000000000000d8da6bf26964af9d7eed9e03e53415d37aa96045\"},\"latest\"]}' \\\n  http://127.0.0.1:8545",
+      note: "Behind that one call Helios sends the provider an eth_createAccessList for the hint and an eth_getProof per touched account, then runs the call itself.",
+    },
+    pitfalls: [
+      "Treating a verified `eth_getLogs` result as complete; Helios proves that returned logs exist, not that none were left out.",
+      "Reading `eth_gasPrice` from Helios as a market estimate when its tip component is a fixed 1 gwei.",
+      "Using `--load-external-fallback` as the normal bootstrap, which lets whatever checkpoint the listed endpoints agree on decide the chain.",
+      "Choosing an execution provider that lacks or rate-limits `eth_getProof`, when every verified state read becomes one or more proof calls.",
+      "Assuming the OP Stack mode carries Ethereum's security; it verifies the sequencer's signature on unsafe blocks.",
+    ],
+    related: ["light-client", "verified-rpc", "trusted-header", "consensus-proof", "light-client-update", "sync-committee", "state-proof", "eth-get-proof", "weak-subjectivity", "eth-create-access-list"],
+    sources: [
+      { title: "a16z/helios", url: "https://github.com/a16z/helios" },
+      { title: "Helios: supported RPC methods", url: "https://github.com/a16z/helios/blob/master/rpc.md" },
+      { title: "Consensus specs: Altair light client sync protocol", url: "https://github.com/ethereum/consensus-specs/blob/master/specs/altair/light-client/sync-protocol.md" },
+    ],
+  },
+  {
+    id: "client-extensions",
+    title: "Client extensions",
+    category: "clients",
+    aliases: ["ExEx", "execution extensions", "Nethermind plugins", "live tracing", "--vmtrace", "INethermindPlugin", "tracing.Hooks"],
+    summary: "Client extensions are code that runs inside an [[execution-client|execution client]]'s process — Nethermind plugins, Reth's ExEx, Geth's live tracers — and sees blocks, transactions and state changes as the node executes them, instead of asking for them over [[json-rpc|JSON-RPC]] afterwards.",
+    sections: [
+      {
+        heading: "Why run inside the node",
+        paragraphs: [
+          "An [[indexer|indexer]] that polls [[eth-get-block-receipts|eth_getBlockReceipts]] and a tracer for every block pays three times: serialisation of each response, a re-execution for each trace, and polling latency behind the head. State diffs and [[internal-transaction|internal transactions]] are reachable over RPC only through tracers that run the block again; see [[execution-trace|execution trace]]. Inside the client the same data is a by-product of executing the block once: every call frame, storage write, balance change and log passes through code an extension can observe and write straight to a queue or database. That is the route to a resumable execution stream without polling, which [[firehose|Firehose]] turns into a product.",
+          "The price is shared fate. The extension runs in the node's process and memory, crashes when the node crashes, and stalls block import when it blocks, which on a node feeding a [[validator-node|validator node]] costs attestations. It is also tied to one client's internal API and release cycle, so every upgrade is a rebuild. Geth's documentation states the working rule: keep the in-process code minimal, get the raw data out, and do heavy processing later.",
+        ],
+      },
+      {
+        heading: "Three mechanisms",
+        paragraphs: [
+          "[[nethermind|Nethermind]] plugins are .NET assemblies loaded at start-up from the `plugins` directory, or from `--plugins-dir`, implementing `INethermindPlugin`; much of Nethermind itself, including its Optimism and Taiko support and health checks, is built this way. In 2.0 a plugin contributes an Autofac module that can register initialization steps, JSON-RPC modules declared as interfaces carrying the `RpcModule` attribute, decorators around existing modules, and block tracers attached to main block processing. The bundled TraceStore plugin works exactly so: it records Parity-style traces as blocks are processed and answers `trace_` calls from its own database without the historical state.",
+          "A [[reth|Reth]] ExEx is an asynchronous task installed through the node builder. It receives `ExExNotification` values — `ChainCommitted { new }`, `ChainReorged { old, new }` and `ChainReverted { old }` — each carrying the blocks, receipts and state changes of a chain segment, and answers with `ExExEvent::FinishedHeight` naming the highest block it has fully processed. Reth prunes only data every ExEx has finished with and afterwards sends only notifications above that height; notifications are kept in a write-ahead log, and a stream started from the ExEx's own head backfills by re-executing blocks up to the node's head.",
+          "[[geth|Geth]]'s live tracing, added in v1.14, reuses the tracer interface: a Go tracer compiled into the binary registers under a name and returns `tracing.Hooks` such as `OnBlockStart`, `OnTxStart`, `OnEnter`, `OnStorageChange`, `OnBalanceChange` and `OnLog`, switched on with `--vmtrace <name>` and `--vmtrace.jsonconfig`. The bundled `supply` tracer writes ether issuance and burn for every block to JSONL files. Hooks run synchronously inside block processing. StreamingFast's Firehose runs a patched Geth started with `--vmtrace=firehose`.",
+        ],
+      },
+      {
+        heading: "Resuming and reorgs are the consumer's job",
+        paragraphs: [
+          "The mechanisms differ in how much they hand over. Reth delivers a [[reorg|reorg]] as an explicit reverted and committed segment and holds back pruning until the ExEx confirms progress. Geth's live tracer simply receives the new branch's blocks and leaves unwinding to the consumer, which must compare each block's `parentHash` with what it has already emitted. In every case, after a crash the extension has to know the last block it durably emitted, by hash as well as number, and resume from there, which works only while the node still holds the state to re-execute those blocks.",
+          "This is why the Reth lesson warns that an ExEx is not a substitute for an indexer: the extension is the ingest end, and the database it feeds still needs reorg handling, cursors and backups of its own. It also ties the data to one implementation: an index built only from one client's hooks inherits that client's bugs, which is the [[client-diversity|client diversity]] argument applied to data pipelines.",
+        ],
+      },
+    ],
+    example: {
+      title: "What each client hands an extension",
+      language: "text",
+      code: "Nethermind  plugins/*.dll implementing INethermindPlugin\n            Autofac module: steps, JSON-RPC modules, decorators, block tracers\n\nReth        ExEx task installed through the node builder\n            in:  ChainCommitted { new } | ChainReorged { old, new } | ChainReverted { old }\n            out: FinishedHeight(BlockNumHash)   -- pruning waits for it\n\nGeth        geth --syncmode full --vmtrace supply --vmtrace.jsonconfig '{\"path\": \"output\"}'\n            tracing.Hooks: OnBlockStart, OnTxStart, OnEnter, OnExit, OnStorageChange, OnLog ...",
+      note: "Only Reth's interface carries reorgs and backpressure explicitly; with the other two the extension has to build both itself.",
+    },
+    pitfalls: [
+      "Doing heavy decoding or synchronous database writes inside a live tracer or plugin, which stalls block import and delays the answer to `engine_newPayload`.",
+      "Never emitting `FinishedHeight` from an ExEx, which stops Reth from pruning data the ExEx might still need, so the disk keeps growing.",
+      "Treating a Geth live-tracer stream as reorg-safe; it reports whatever blocks Geth processes and leaves unwinding to the consumer.",
+      "Recording the resume point as a block number alone; after a reorg the same number names a different block.",
+      "Upgrading the client without rebuilding the extension; Nethermind 2.0, for example, changed configuration property types and requires plugins to be recompiled.",
+    ],
+    related: ["execution-client", "indexer", "firehose", "reth", "nethermind", "geth", "execution-trace", "reorg", "internal-transaction", "client-diversity"],
+    sources: [
+      { title: "Nethermind: plugins", url: "https://docs.nethermind.io/developers/plugins/" },
+      { title: "Reth: how ExExes work", url: "https://reth.rs/exex/how-it-works/" },
+      { title: "Geth: live tracing", url: "https://geth.ethereum.org/docs/developers/evm-tracing/live-tracing" },
+    ],
+  },
+  {
+    id: "slashing-protection",
+    title: "Slashing protection",
+    category: "clients",
+    aliases: ["slashing protection database", "EIP-3076", "interchange format", "slashing protection interchange", "doppelganger protection", "signing_root", "low watermark"],
+    summary: "Slashing protection is the record that a [[validator-client|validator client]] or [[remote-signer|remote signer]] keeps of what each key has signed, checked before every new signature so the key never produces the conflicting pair that gets a validator [[slashing|slashed]], and carried between clients in the EIP-3076 interchange format.",
+    sections: [
+      {
+        heading: "Three refusals",
+        paragraphs: [
+          "A [[validator|validator]] signs a block when it proposes and an [[attestation|attestation]] once every [[slot-epoch|epoch]] (32 slots, 6.4 minutes). Each attestation votes for a link between two checkpoints, the blocks at epoch boundaries: from an older one, its source epoch, to a newer one, its target epoch. Three kinds of signature get a validator [[slashing|slashed]], losing stake and being forced out: a second, different block for a slot it already proposed in; a double vote, two different attestations with the same target epoch; and a surround vote, an attestation whose source-to-target span strictly contains another's or sits strictly inside it. After signing source 301 and target 302, for example, a vote from 300 to 303 surrounds it.",
+          "The chain judges only signatures, not intent, so before each one the client checks the key's history and either signs and records the message in one step or refuses. [[lighthouse|Lighthouse]] logs a refusal as `CRIT Not signing slashable attestation`, naming the reason, such as `DoubleVote`.",
+          "Clients store the history differently. Lighthouse records every block and attestation in an SQLite file, `slashing_protection.sqlite`; [[teku|Teku]] keeps one YAML file per key under `slashprotection`; the remote signer Web3Signer uses PostgreSQL. EIP-3076 names the two designs. A complete database keeps every message and refuses only what would be slashable. A minimal one keeps only each key's latest slot and epochs, and refuses any block at or below that slot and any attestation with an older source or a target that is not newer: simpler, but it sometimes refuses a harmless signature.",
+        ],
+      },
+      {
+        heading: "The EIP-3076 interchange file",
+        paragraphs: [
+          "Moving a key between clients means moving its history, and EIP-3076 defines the JSON for it. `metadata` holds `interchange_format_version`, the string `5`, and `genesis_validators_root`, which identifies the chain, so a history from the Hoodi testnet cannot be imported into a mainnet signer. `data` holds, per `pubkey`, lists of `signed_blocks` (each with a `slot`) and `signed_attestations` (each with `source_epoch` and `target_epoch`), all as decimal strings. `signing_root`, the hash that was actually signed, is optional on both; with it a client can tell a harmless repeat of the same message, such as a rebroadcast, from a conflict.",
+          "An import also sets low watermarks, floors below which the key signs nothing, because the file may hold only a minimal history and the importer cannot see what was signed before it. Afterwards the client refuses any block at or below the lowest imported slot, any attestation with a source below the lowest imported source, and any with a target at or below the lowest imported target, unless the `signing_root` shows the same message again. EIP-3076 asks for export and import to happen with the client stopped, so the file is complete and nothing is signed mid-import; `lighthouse account validator slashing-protection export` and `teku slashing-protection import --from` are such commands.",
+        ],
+      },
+      {
+        heading: "What it cannot protect",
+        paragraphs: [
+          "A database protects only the signatures that pass through it. The classic incidents take two forms: one key in two processes, each with a clean history, as when a [[failover|failover]] script starts a standby without first making sure the primary has stopped; and one process with an out-of-date history, as when a backup restored from before the last signatures lets it sign conflicting messages for them. In February 2021 the staking provider Staked had 75 validators slashed after it stopped keeping its validator clients' protection database across restarts, so restarted clients came back with no history. Doppelganger protection, a start-up wait in which the client signs nothing and watches the network for the key's votes (two to three epochs in Lighthouse), catches a key already running elsewhere, not two copies started at once.",
+          "Remote and distributed setups move the database rather than remove it. A remote signer such as Web3Signer checks each request against its own database, so several Web3Signer instances holding one key are safe only if they share that database. The keymanager API, the standard API for managing a validator client's keys, carries the same JSON: `POST /eth/v1/keystores` accepts `slashing_protection` alongside the keys, and `DELETE /eth/v1/keystores` must stop the key signing before it returns the history. In a [[distributed-validator|distributed validator]] run through Charon, each operator's validator client protects its own key share, and a slashable signature needs a threshold of shares to sign conflicting data.",
+        ],
+      },
+    ],
+    example: {
+      title: "An EIP-3076 export, and what the importing client then refuses",
+      language: "json",
+      code: "// exported from the old client after it was stopped\n{\n  \"metadata\": {\n    \"interchange_format_version\": \"5\",\n    \"genesis_validators_root\": \"0x4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95\"\n  },\n  \"data\": [\n    {\n      \"pubkey\": \"0x989d34725a2bfc3f15105f3f5fc8741f436c25ee1ee4f948e425d6bcb8c56bce6e06c269635b7e985a7ffa639e2409bf\",\n      \"signed_blocks\": [\n        { \"slot\": \"15302817\", \"signing_root\": \"0x6f1c…a40b\" }\n      ],\n      \"signed_attestations\": [\n        { \"source_epoch\": \"478210\", \"target_epoch\": \"478211\", \"signing_root\": \"0x2d9e…71c3\" },\n        { \"source_epoch\": \"478211\", \"target_epoch\": \"478212\", \"signing_root\": \"0xb07a…5e28\" }\n      ]\n    }\n  ]\n}\n\n// the new client, after import, is asked to sign:\n// attestation 478211 -> 478212, other signing_root   refused: double vote\n// attestation 478210 -> 478213                       refused: surrounds 478211 -> 478212\n// block at slot 15302817, other signing_root         refused: second block for the slot\n// attestation 478212 -> 478213                       signed and recorded",
+      note: "The `genesis_validators_root` is mainnet's; the signing roots are what let the new client re-sign an identical message while refusing a different one at the same target.",
+    },
+    pitfalls: [
+      "Importing keystores into a new client without the interchange file, which leaves it an empty history and nothing to refuse.",
+      "Exporting while the old client still runs, so the file misses its last signatures and the new client may sign different messages for them.",
+      "Recreating a lost database with Lighthouse's `--init-slashing-protection` while the old client may still be signing, or less than an epoch after it stopped.",
+      "Leaving a key in a validator client's keystores after registering it with a remote signer, so two databases each approve their own conflicting message.",
+    ],
+    related: ["slashing", "validator-client", "remote-signer", "distributed-validator", "validator", "attestation", "block-proposal", "lighthouse", "teku", "failover"],
+    sources: [
+      { title: "EIP-3076: Slashing Protection Interchange Format", url: "https://eips.ethereum.org/EIPS/eip-3076" },
+      { title: "Lighthouse Book: Slashing Protection", url: "https://lighthouse-book.sigmaprime.io/validator_slashing_protection.html" },
+      { title: "Web3Signer: Configure slashing protection", url: "https://docs.web3signer.consensys.com/how-to/configure-slashing-protection" },
+      { title: "ethereum/keymanager-APIs", url: "https://github.com/ethereum/keymanager-APIs" },
+    ],
+  },
+  {
+    id: "hive",
+    title: "Hive",
+    category: "clients",
+    aliases: ["hive", "ethereum/hive", "hiveview", "rpc-compat", "hive simulator", "client integration tests"],
+    summary: "Hive is the Ethereum client integration test harness: it builds each client as a Docker image, starts it on a test [[genesis|genesis]] and chain, and lets simulator programs drive it over [[json-rpc|JSON-RPC]], the [[engine-api|Engine API]] and [[devp2p|devp2p]], recording which behaviours match the expected results.",
+    sections: [
+      {
+        heading: "Clients, simulators and the controller",
+        paragraphs: [
+          "Separate teams write Ethereum's [[execution-client|execution clients]], and all must agree exactly: a block one accepts, every other must accept, and an [[eth-get-block-by-number|eth_getBlockByNumber]] answer must parse the same from all. Hive, a Go program at `github.com/ethereum/hive` that drives Docker, checks this against shared fixtures, stored inputs with their expected outputs. A client definition is a directory under `clients/` with a Dockerfile, usually wrapping the team's published image, and an entry-point script. At start-up the script translates `/genesis.json`, a Geth-format genesis, into the client's own, imports the RLP-encoded blocks in `/chain.rlp` and then `/blocks/`, and opens JSON-RPC on port 8545; once that port opens, hive treats the client as ready.",
+          "Settings arrive as `HIVE_` environment variables, and each build records its version in `/version.txt`. A simulator is a program, in its own container, holding the test logic. It asks the hive controller, over an HTTP API at the address in `HIVE_SIMULATOR`, to start clients with given files and variables, talks to them, and reports suites and test cases back. `./hive --sim ethereum/sync --client go-ethereum,besu,nethermind` builds the simulator and three client images, runs it and removes every container afterwards; a suffix such as `go-ethereum_v1.9.23` picks a version.",
+        ],
+      },
+      {
+        heading: "The simulators",
+        paragraphs: [
+          "Execution-layer simulators cover each client interface. `devp2p` runs the eth, snap, discv4 and discv5 suites against the client's [[peer-to-peer|peer-to-peer]] port. `ethereum/engine` plays the [[consensus-client|consensus client]] and drives Engine API scenarios, from payload building to JWT authentication. `ethereum/sync` checks that every client can sync a test chain from every other. `ethereum/consensus` runs the classic JSON consensus tests, and the `ethereum/eels/` family runs fixtures generated by execution-specs, the Python reference implementation, for example `consume-rlp` to import blocks and `consume-engine` to send them through the Engine API.",
+          "`ethereum/rpc-compat` matters most to RPC consumers. It clones [[execution-apis|execution-apis]], builds its [[openrpc|OpenRPC]] document, starts the client on the specification's test chain and replays every `.io` test file, each a request line followed by the exact expected response. Responses are compared as JSON, so a missing field, an extra one or a differently encoded number fails; tests marked speconly, whose values legitimately differ between nodes, are checked against the schema instead. On 28 October 2026 the suite held 273 tests. `ethereum/graphql` does the same for the GraphQL endpoint.",
+        ],
+      },
+      {
+        heading: "Where results live, and how teams use them",
+        paragraphs: [
+          "Each suite writes a JSON result file, with the client logs beside it, under `./workspace/logs`, and `hiveview` serves them in a browser, as the example shows. The public instance runs from GitHub Actions in `ethpandaops/hive-tests` and publishes at `hive.ethpandaops.io`: a mainnet group under `/generic/`, plus groups for the test networks of upcoming forks. Every run is a line in the group's `listing.jsonl` giving the suite, the client build, the test count and the failures.",
+          "Client teams run hive in their own CI, as workflows in the Reth, Nethermind and Erigon repositories show, and reproduce a public failure locally with `--sim.limit`, a regular expression whose part before the first slash selects suites and whose part after it selects tests. The README lists bugs found this way, from consensus faults to RPC shapes such as Besu not treating an empty topic list as a wildcard. Hive complements [[kurtosis|Kurtosis]]: Kurtosis runs a live multi-client network with real consensus, while hive tests one behaviour at a time against a known answer.",
+        ],
+      },
+      {
+        heading: "What a green run does not tell you",
+        paragraphs: [
+          "Hive checks behaviour, not performance. Apart from timeouts, such as the default three minutes a client gets to open port 8545, nothing is timed: a correct answer in two seconds passes like one in two milliseconds. The chains are tiny, about 60 blocks for the RPC tests, so archive depth, pruning, [[receipt-retention|retention]], mainnet-sized state and gas caps are never exercised. Nothing outside execution-apis is replayed either, including the [[trace-api|trace_ namespace]] and named [[debug-api|debug_]] tracers.",
+          "A result also describes one build in one configuration. The public rpc-compat runs of 28 October 2026 tested unreleased builds such as `Geth/v1.17.11-unstable` and Erigon `3.9.0-dev`, and no run covers the [[namespaces|namespaces]], limits or proxies an [[rpc-provider|RPC provider]] adds. A failure is not always the client's fault either: a wrong fixture fails every client at once, as the first [[eth-capabilities|eth_capabilities]] fixture did, so a red cell is read with its diff and the fixture's history.",
+        ],
+      },
+    ],
+    example: {
+      title: "Running the RPC conformance suite and reading a result",
+      language: "bash",
+      code: "# build hive, then replay the execution-apis tests against two clients\ngit clone https://github.com/ethereum/hive && cd hive && go build .\n./hive --sim ethereum/rpc-compat --client go-ethereum,nethermind\n\n# only the eth_getBlockByNumber tests, in any suite (the part after the first slash matches tests)\n./hive --sim ethereum/rpc-compat --client nethermind --sim.limit /eth_getBlockByNumber\n\n# browse results and client logs at http://127.0.0.1:8080\ngo build ./cmd/hiveview && ./hiveview --serve --logdir ./workspace/logs\n\n# one line of the public index, hive.ethpandaops.io/generic/listing.jsonl (abridged)\n# {\"name\":\"rpc-compat\",\"ntests\":273,\"passes\":273,\"fails\":0,\"timeout\":false,\n#  \"clients\":[\"go-ethereum_default\"],\n#  \"versions\":{\"go-ethereum_default\":\"Geth/v1.17.11-unstable-7d0a3d84-20261028/linux-amd64/go1.27.3\"},\n#  \"start\":\"2026-10-28T11:25:55.862554293Z\",\"end\":\"2026-10-28T11:26:01.738760842Z\", ...}",
+      note: "The listed version is an unstable build from the day of the run, and the whole suite took six seconds, because the chain behind it is about 60 blocks long; a pass says the shapes match, not that a mainnet endpoint behaves the same.",
+    },
+    pitfalls: [
+      "Reading a full rpc-compat pass as proof that an endpoint meets the specification, when your limits and retention go untested.",
+      "Comparing public results with the release you run, when the public instance tests development builds.",
+      "Blaming the client for a red test before reading the fixture, since a wrong expected response fails every client.",
+      "Expecting `trace_` or `callTracer` coverage from rpc-compat, which replays only methods in execution-apis.",
+    ],
+    related: ["execution-apis", "openrpc", "client-diversity", "kurtosis", "engine-api", "devp2p", "execution-client", "consensus-client", "local-devnet", "testnets"],
+    sources: [
+      { title: "hive: overview", url: "https://github.com/ethereum/hive/blob/master/docs/overview.md" },
+      { title: "hive: command-line documentation", url: "https://github.com/ethereum/hive/blob/master/docs/commandline.md" },
+      { title: "hive: rpc-compat simulator", url: "https://github.com/ethereum/hive/tree/master/simulators/ethereum/rpc-compat" },
+      { title: "Hive results (ethPandaOps)", url: "https://hive.ethpandaops.io/" },
     ],
   },
 ];

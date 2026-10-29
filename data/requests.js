@@ -13,7 +13,7 @@ export const topics = [
         heading: "What it does",
         paragraphs: [
           "The request carries an empty `params` array and the result is a single QUANTITY such as `0x12d4f1c`. That number is the height of the node's own head: the block most recently accepted by [[fork-choice|fork choice]] and pushed to the [[execution-client|execution client]] over the [[engine-api|Engine API]]. It is an execution block number, not a consensus slot; slots advance every 12 seconds whether or not a block is produced, so the two counters drift apart permanently. See [[slot-epoch|slots and epochs]].",
-          "The answer says nothing about how settled that block is. `eth_blockNumber` has no block parameter and no tag; if you want the justified or finalized height you must ask for a block with the `safe` or `finalized` [[block-tag|tag]] and read its `number`. The value can also go down: a [[reorg|reorganization]] that replaces the head with a shorter branch lowers it, and a node restarted from an unclean shutdown can briefly report an earlier height while it replays.",
+          "The answer says nothing about how settled that block is. `eth_blockNumber` has no block parameter and no tag; if you want a settled height you must ask for a block with the `safe` or `finalized` [[block-tag|tag]] and read its `number`, where `safe` is the [[fast-confirmation-rule|fast confirmation rule]]'s result on consensus clients that run it and the latest justified checkpoint on the others. The value can also go down: a [[reorg|reorganization]] that replaces the head with a shorter branch lowers it, and a node restarted from an unclean shutdown can briefly report an earlier height while it replays.",
         ],
       },
       {
@@ -45,7 +45,7 @@ export const topics = [
     ],
     related: ["eth-get-block-by-number", "eth-syncing", "head-lag", "block-tag", "reorg", "eth-subscribe", "health-check", "hex-encoding"],
     sources: [
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: eth_blockNumber", url: "https://ethereum.github.io/execution-apis/api/methods/eth_blockNumber" },
       { title: "ethereum.org: eth_blockNumber", url: "https://ethereum.org/developers/docs/apis/json-rpc/#eth_blocknumber" },
     ],
   },
@@ -74,7 +74,7 @@ export const topics = [
         heading: "Practical use",
         paragraphs: [
           "The standard head-tracking loop fetches `latest` with `fullTransactions` set to `false`, then compares the new block's `parentHash` against the `hash` you stored last time. A mismatch is a reorg, and you walk backwards by `parentHash` until the hashes agree again to find the fork point. This is cheaper and more reliable than comparing numbers, which repeat across branches.",
-          "`timestamp` is the proposer's declared slot time in seconds and is the usual way to map a block to wall-clock time; it advances in multiples of 12 seconds with gaps for missed slots. When several reads must describe one consistent moment, take the `hash` from this call and pass it as an [[eip|EIP-1898]] `{\"blockHash\": …}` object to [[eth-call|eth_call]] and the other state methods instead of repeating `latest`.",
+          "`timestamp` is the proposer's declared slot time in seconds and is the usual way to [[block-by-timestamp|map a block to wall-clock time]]; it advances in multiples of 12 seconds with gaps for missed slots. When several reads must describe one consistent moment, take the `hash` from this call and pass it as an [[eip|EIP-1898]] `{\"blockHash\": …}` object to [[eth-call|eth_call]] and the other state methods instead of repeating `latest`.",
         ],
       },
     ],
@@ -91,9 +91,9 @@ export const topics = [
       "Assuming `null` means the block does not exist; it can equally mean this node pruned or expired it, or has not synced that far.",
       "Expecting `withdrawals` on pre-Shapella blocks; the field is absent before EIP-4895 activated in April 2023.",
     ],
-    related: ["block", "block-header", "block-hash", "block-tag", "reorg", "eth-get-block-receipts", "eth-get-transaction-by-hash", "history-expiry", "withdrawals", "eth-subscribe"],
+    related: ["block", "block-header", "block-hash", "block-tag", "reorg", "eth-get-block-receipts", "eth-get-transaction-by-hash", "history-expiry", "withdrawals", "eth-subscribe", "block-by-timestamp"],
     sources: [
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/" },
       { title: "ethereum.org: eth_getBlockByNumber", url: "https://ethereum.org/developers/docs/apis/json-rpc/#eth_getblockbynumber" },
       { title: "EIP-4895: Beacon chain push withdrawals as operations", url: "https://eips.ethereum.org/EIPS/eip-4895" },
     ],
@@ -109,14 +109,14 @@ export const topics = [
         heading: "What it does",
         paragraphs: [
           "The method takes one parameter, a block identifier: a number, one of the [[block-tag|tags]] `latest`, `safe`, `finalized`, `earliest`, `pending`, or a 32-byte [[block-hash|block hash]]. The result is an array of receipt objects in `transactionIndex` order, each identical in shape to what [[eth-get-transaction-receipt|eth_getTransactionReceipt]] returns: `transactionHash`, `transactionIndex`, `blockHash`, `blockNumber`, `from`, `to`, `status`, `gasUsed`, `cumulativeGasUsed`, `effectiveGasPrice`, `contractAddress`, `type`, `logs`, `logsBloom`, and for blob transactions `blobGasUsed` and `blobGasPrice`.",
-          "An empty block returns `[]`. A block the node does not have returns `null`, which is a different answer and worth distinguishing in code. The method went through the [[execution-apis|execution-apis]] standardization process in 2023 after clients had shipped incompatible versions of the same idea, so it is now specified rather than a client extension.",
+          "An empty block returns `[]`. A block the node has never had, such as a number above its head, returns `null`, which is a different answer and worth distinguishing in code. The method went through the [[execution-apis|execution-apis]] standardization process in 2023 after clients had shipped incompatible versions of the same idea, so it is now specified rather than a client extension.",
         ],
       },
       {
         heading: "How the node answers",
         paragraphs: [
           "[[execution-client|Execution clients]] store receipts grouped by block, not by transaction hash. Fetching a single receipt therefore costs a hash-to-block index lookup plus a read of the whole block's receipt list, of which all but one entry is thrown away. This method reads that list once and returns it, so a 300-transaction block costs roughly one disk read instead of 300 index lookups and 300 reads of the same data. Derived fields such as `effectiveGasPrice` and `contractAddress` are recomputed from the block's [[eip-1559|base fee]] and the transaction list.",
-          "No [[state|state]] is required, only history, so a [[pruned-node|pruned node]] serves recent blocks fine. Blocks whose receipts were dropped by [[history-expiry|history expiry]] are unavailable. The transaction-index window that limits `eth_getTransactionReceipt` does not apply, because receipts are read by block rather than looked up by transaction hash, which makes this method the way back to receipts that have aged out of that index. The response is large: a full block of [[event-log|logs]] can run to several megabytes of JSON, which collides with provider response-size caps far more often than the equivalent single-receipt calls do.",
+          "No [[state|state]] is required, only history, so a [[pruned-node|pruned node]] serves recent blocks fine. Blocks whose [[receipt-retention|receipts were dropped]] by [[history-expiry|history expiry]] are unavailable, and [[geth|Geth]], [[reth|Reth]], and [[nethermind|Nethermind]] now say so with error `4444` 'Pruned history unavailable', the code the specification assigns, rather than with `null`. The transaction-index window that limits `eth_getTransactionReceipt` does not apply, because receipts are read by block rather than looked up by transaction hash, which makes this method the way back to receipts that have aged out of that index. The response is large: a full block of [[event-log|logs]] can run to several megabytes of JSON, which collides with provider response-size caps far more often than the equivalent single-receipt calls do.",
         ],
       },
       {
@@ -134,14 +134,14 @@ export const topics = [
       note: "`cumulativeGasUsed` accumulates down the array, so the last entry equals the block's `gasUsed`; a good sanity check that you received the whole block.",
     },
     pitfalls: [
-      "Treating `[]` and `null` as the same answer; the first means an empty block, the second means the node cannot serve that block at all.",
+      "Treating `[]`, `null`, and error `4444` as the same answer; they mean an empty block, a block the node never had, and a block whose receipts it pruned.",
       "Re-sorting the array by transaction hash or by log index; the array is already in execution order, and that order is what `cumulativeGasUsed` depends on.",
       "Requesting `latest` in a scan loop, which can return a different block on each call and leave gaps; pass explicit numbers or hashes.",
       "Assuming every endpoint implements it and hard-failing on `method not found` instead of falling back to per-transaction receipts.",
     ],
     related: ["transaction-receipt", "eth-get-transaction-receipt", "eth-get-block-by-number", "indexer", "eth-get-logs", "reorg", "history-expiry", "endpoint-capabilities", "etl-pipeline"],
     sources: [
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: eth_getBlockReceipts", url: "https://ethereum.github.io/execution-apis/api/methods/eth_getBlockReceipts" },
       { title: "ethereum/execution-apis", url: "https://github.com/ethereum/execution-apis" },
     ],
   },
@@ -188,7 +188,7 @@ export const topics = [
     ],
     related: ["transaction", "eth-get-transaction-receipt", "transaction-types", "mempool", "eth-send-raw-transaction", "nonce", "history-expiry", "block-explorer", "abi"],
     sources: [
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: eth_getTransactionByHash", url: "https://ethereum.github.io/execution-apis/api/methods/eth_getTransactionByHash" },
       { title: "ethereum.org: eth_getTransactionByHash", url: "https://ethereum.org/developers/docs/apis/json-rpc/#eth_gettransactionbyhash" },
       { title: "EIP-2718: Typed Transaction Envelope", url: "https://eips.ethereum.org/EIPS/eip-2718" },
     ],
@@ -234,9 +234,9 @@ export const topics = [
       "Confusing `gasUsed` in the receipt (actual consumption) with `gas` on the transaction object (the limit the sender set).",
       "Expecting `status` on receipts from before the Byzantium upgrade in 2017; those carry a post-state `root` field instead.",
     ],
-    related: ["transaction-receipt", "eth-send-raw-transaction", "eth-get-block-receipts", "confirmations", "reorg", "event-log", "head-lag", "eth-get-transaction-by-hash"],
+    related: ["transaction-receipt", "eth-send-raw-transaction", "eth-get-block-receipts", "confirmations", "reorg", "event-log", "head-lag", "eth-get-transaction-by-hash", "transaction-lifecycle", "receipt-retention"],
     sources: [
-      { title: "Execution APIs: eth_getTransactionReceipt", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: eth_getTransactionReceipt", url: "https://ethereum.github.io/execution-apis/api/methods/eth_getTransactionReceipt" },
       { title: "ethereum.org: eth_getTransactionReceipt", url: "https://ethereum.org/developers/docs/apis/json-rpc/#eth_gettransactionreceipt" },
       { title: "Geth command-line options (history.transactions)", url: "https://geth.ethereum.org/docs/fundamentals/command-line-options" },
     ],
@@ -284,7 +284,7 @@ export const topics = [
     ],
     related: ["nonce", "mempool", "eth-send-raw-transaction", "account", "block-tag", "eth-get-balance", "head-lag", "load-balancer", "retries"],
     sources: [
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: eth_getTransactionCount", url: "https://ethereum.github.io/execution-apis/api/methods/eth_getTransactionCount" },
       { title: "ethereum.org: eth_getTransactionCount", url: "https://ethereum.org/developers/docs/apis/json-rpc/#eth_gettransactioncount" },
       { title: "EIP-161: State trie clearing", url: "https://eips.ethereum.org/EIPS/eip-161" },
     ],
@@ -330,9 +330,9 @@ export const topics = [
       "Reading an error at an old block as an empty account; it means the node no longer holds that state.",
       "Assuming balance changes always correspond to a transaction; withdrawals credit balances with no transaction and no receipt.",
     ],
-    related: ["account", "state", "block-tag", "archive-node", "eth-get-proof", "wei", "eth-call", "withdrawals", "pruned-node", "hex-encoding"],
+    related: ["account", "state", "block-tag", "archive-node", "eth-get-proof", "wei", "eth-call", "withdrawals", "pruned-node", "hex-encoding", "accounting-reconciliation"],
     sources: [
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: eth_getBalance", url: "https://ethereum.github.io/execution-apis/api/methods/eth_getBalance" },
       { title: "ethereum.org: eth_getBalance", url: "https://ethereum.org/developers/docs/apis/json-rpc/#eth_getbalance" },
     ],
   },
@@ -379,7 +379,7 @@ export const topics = [
     ],
     related: ["smart-contract", "eip-7702", "account", "eth-get-storage-at", "state", "keccak-256", "eth-call", "archive-node", "caching"],
     sources: [
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: eth_getCode", url: "https://ethereum.github.io/execution-apis/api/methods/eth_getCode" },
       { title: "EIP-7702: Set EOA account code", url: "https://eips.ethereum.org/EIPS/eip-7702" },
       { title: "EIP-170: Contract code size limit", url: "https://eips.ethereum.org/EIPS/eip-170" },
     ],
@@ -401,8 +401,8 @@ export const topics = [
       {
         heading: "Finding the slot",
         paragraphs: [
-          "Slots are assigned by the compiler in declaration order, with small types packed together into one 32-byte word, so the value you want is often a sub-range of the returned bytes rather than the whole word. Dynamic structures are hashed: for `mapping(address => uint256) balances` at slot `p`, the entry for key `k` is at `keccak256(pad32(k) . pad32(p))`, and a dynamic array's elements start at `keccak256(pad32(p))`. Computing these correctly is the hard part of using the method; the details belong to [[contract-storage|storage layout]].",
-          "Some slots are standardized precisely so tooling can find them without the source. EIP-1967 places a proxy's implementation address at the slot `keccak256('eip1967.proxy.implementation') - 1`, the constant `0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc`, and the admin address at a similarly derived slot. Reading those is the standard way to resolve what a proxy currently points at.",
+          "Slots are assigned by the compiler in declaration order, with small types packed together into one 32-byte word, so the value you want is often a sub-range of the returned bytes rather than the whole word. Dynamic structures are hashed: for `mapping(address => uint256) balances` at slot `p`, the entry for key `k` is at `keccak256(pad32(k) . pad32(p))` in Solidity and at `keccak256(pad32(p) . pad32(k))` in Vyper, and a Solidity dynamic array's elements start at `keccak256(pad32(p))`. [[storage-slot-discovery|Computing these correctly]] is the hard part of using the method; the details belong to [[contract-storage|storage layout]].",
+          "Some slots are standardized precisely so tooling can find them without the source. EIP-1967 places a [[proxy-contract|proxy]]'s implementation address at the slot `keccak256('eip1967.proxy.implementation') - 1`, the constant `0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc`, and the admin address at a similarly derived slot. Reading those is the standard way to resolve what a proxy currently points at.",
         ],
       },
       {
@@ -414,10 +414,10 @@ export const topics = [
       },
     ],
     example: {
-      title: "Reading a proxy's implementation slot",
+      title: "A proxy's implementation slot and a mapping entry",
       language: "json",
-      code: "// EIP-1967 implementation slot\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getStorageAt\",\"params\":[\n  \"0x388c818ca8b9251b393131c08a736a67ccb19297\",\n  \"0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc\",\n  \"latest\"\n]}\n{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"0x000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\"}\n\n// a mapping entry: slot = keccak256(pad32(key) . pad32(2))\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"eth_getStorageAt\",\"params\":[\n  \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n  \"0x7050c9e0f4ca769c69bd3a8ef740bc37934f8e2c036e5a723fd8ee048ed3f8c3\",\n  \"0x12d4f1c\"\n]}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":\"0x0000000000000000000000000000000000000000000000000000000005f5e100\"}",
-      note: "Both results are 32 bytes; the first is an address left-padded to a word, the second a `uint256` worth 100000000 in decimal.",
+      code: "// USDC's proxy predates EIP-1967: its implementation slot is keccak256('org.zeppelinos.proxy.implementation')\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getStorageAt\",\"params\":[\n  \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n  \"0x7050c9e0f4ca769c69bd3a8ef740bc37934f8e2c036e5a723fd8ee048ed3f8c3\",\n  \"latest\"\n]}\n{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"0x00000000000000000000000043506849d7c04f9138d1a2050bbf3a0c054402dd\"}\n\n// a mapping entry: balances sit at slot 9, so slot = keccak256(pad32(0xd8dA…6045) . pad32(9))\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"eth_getStorageAt\",\"params\":[\n  \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n  \"0xbf4954ae1137d99a74d9587692d0c99fcc87859496c91311c267c25a44a35f95\",\n  \"0x12d4f1c\"\n]}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":\"0x000000000000000000000000000000000000000000000000000000021c382892\"}",
+      note: "Both results are 32 bytes: the first is the implementation address left-padded to a word, kept at a pre-standard slot because USDC's [[proxy-contract|proxy]] reads as zero at the EIP-1967 one; the second is 9063377042, or 9,063.377042 USDC at six decimals, in a word whose top bit USDC reserves for a [[stablecoin-payments|blacklist flag]].",
     },
     pitfalls: [
       "Believing a `private` variable is unreadable; the keyword constrains other contracts, not RPC callers.",
@@ -425,9 +425,9 @@ export const topics = [
       "Hard-coding slot numbers across an upgradeable contract's versions, where a new implementation can renumber the layout.",
       "Treating an all-zero result as proof the slot is unused; a slot explicitly set to zero is stored the same way as one never written.",
     ],
-    related: ["contract-storage", "eth-call", "eth-get-proof", "storage-proof", "smart-contract", "state", "archive-node", "eth-get-code", "keccak-256"],
+    related: ["contract-storage", "eth-call", "eth-get-proof", "storage-proof", "smart-contract", "state", "archive-node", "eth-get-code", "keccak-256", "transient-storage"],
     sources: [
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: eth_getStorageAt", url: "https://ethereum.github.io/execution-apis/api/methods/eth_getStorageAt" },
       { title: "Solidity: layout of state variables in storage", url: "https://docs.soliditylang.org/en/latest/internals/layout_in_storage.html" },
       { title: "EIP-1967: Proxy storage slots", url: "https://eips.ethereum.org/EIPS/eip-1967" },
     ],
@@ -449,7 +449,7 @@ export const topics = [
       {
         heading: "Verifying the answer",
         paragraphs: [
-          "Verification is mechanical. Hash the address with [[keccak-256|Keccak-256]] to get the path, walk `accountProof` from the first node down, checking at each step that the hash of the node equals the reference the previous node contained, and that the first node hashes to the block's `stateRoot`. The leaf RLP-decodes to `[nonce, balance, storageRoot, codeHash]`, which must match the top-level fields. Then repeat per storage key, using `keccak256(key)` as the path and `storageHash` as the root. A key that was never written yields an exclusion proof: a valid path that terminates before the key, proving the value really is zero.",
+          "Verification is mechanical. Hash the address with [[keccak-256|Keccak-256]] to get the path, walk `accountProof` from the first node down, checking at each step that the hash of the node equals the reference the previous node contained, and that the first node hashes to the block's `stateRoot`. The leaf RLP-decodes to `[nonce, balance, storageRoot, codeHash]`, which must match the top-level fields. Then repeat per storage key, using `keccak256(key)` as the path and `storageHash` as the root. A key that was never written yields an [[exclusion-proof|exclusion proof]]: a valid path that terminates before the key, proving the value really is zero.",
           "What this proves is narrow and worth stating precisely. It proves the value belongs to the [[state|state]] committed by that `stateRoot`. It does not prove that the block containing that root is canonical — that requires a [[trusted-header|trusted header]] obtained from a [[light-client|light client]], your own node, or a pinned finalized block. Without one, a node could serve a perfectly valid proof against a state root it invented. See [[state-proof|state proof]] and [[verified-rpc|verified RPC]].",
         ],
       },
@@ -464,8 +464,8 @@ export const topics = [
     example: {
       title: "Proving a storage slot against the state root",
       language: "json",
-      code: "// request\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getProof\",\"params\":[\n  \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n  [\"0x7050c9e0f4ca769c69bd3a8ef740bc37934f8e2c036e5a723fd8ee048ed3f8c3\"],\n  \"0x12d4f1c\"\n]}\n\n// result (abridged)\n{\n  \"address\": \"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\",\n  \"balance\": \"0x0\",\n  \"nonce\": \"0x1\",\n  \"codeHash\": \"0xb44fb4e949d0f78f87f79ee46428f23a2a5713ce6fc6e0beb3dda78c2ac1ea55\",\n  \"storageHash\": \"0x1d0a6a1d…7c9e\",\n  \"accountProof\": [\n    \"0xf90211a0b8c1…80\",\n    \"0xf90211a04e7f…80\",\n    \"0xf8719f20b1…c0\"\n  ],\n  \"storageProof\": [\n    {\n      \"key\": \"0x7050c9e0…f8c3\",\n      \"value\": \"0x5f5e100\",\n      \"proof\": [\"0xf90211a0fe32…80\", \"0xe216a0…84\"]\n    }\n  ]\n}",
-      note: "Check the first `accountProof` node against the `stateRoot` of block `0x12d4f1c`, which you must obtain from a header you already trust.",
+      code: "// request\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getProof\",\"params\":[\n  \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n  [\"0x7050c9e0f4ca769c69bd3a8ef740bc37934f8e2c036e5a723fd8ee048ed3f8c3\"],\n  \"0x12d4f1c\"\n]}\n\n// result (abridged)\n{\n  \"address\": \"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\",\n  \"balance\": \"0x0\",\n  \"nonce\": \"0x1\",\n  \"codeHash\": \"0xd80d4b7c890cb9d6a4893e6b52bc34b56b25335cb13716e0d1d31383e6b41505\",\n  \"storageHash\": \"0x2dcc6ffc…ddb6\",\n  \"accountProof\": [\n    \"0xf90211a0d22c…5d80\",\n    \"0xf90211a06eab…3e80\",\n    …,\n    \"0xf8669d2092cd…1505\"\n  ],\n  \"storageProof\": [\n    {\n      \"key\": \"0x7050c9e0…f8c3\",\n      \"value\": \"0x43506849d7c04f9138d1a2050bbf3a0c054402dd\",\n      \"proof\": [\"0xf90211a094c8…2c80\", …, \"0xf59e20466c…02dd\"]\n    }\n  ]\n}",
+      note: "The key is USDC's [[proxy-contract|proxy]] implementation slot, so the proven value is the implementation's address. Check the first `accountProof` node against the `stateRoot` of block `0x12d4f1c`, which you must obtain from a header you already trust.",
     },
     pitfalls: [
       "Verifying a proof against the `stateRoot` the same node handed you, which proves only that the node is internally consistent.",
@@ -476,7 +476,7 @@ export const topics = [
     related: ["state-proof", "account-proof", "storage-proof", "merkle-patricia-trie", "state-root", "trusted-header", "archive-node", "verified-rpc", "eth-get-storage-at", "client-storage"],
     sources: [
       { title: "EIP-1186: RPC-Method to get Merkle Proofs", url: "https://eips.ethereum.org/EIPS/eip-1186" },
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: eth_getProof", url: "https://ethereum.github.io/execution-apis/api/methods/eth_getProof" },
     ],
   },
   {
@@ -498,14 +498,14 @@ export const topics = [
         paragraphs: [
           "The client builds an EVM environment from the named block's header, so `block.number`, `block.timestamp`, `BLOCKHASH`, `PREVRANDAO`, and the [[eip-1559|base fee]] are that block's values, and the [[state|world state]] is the state after that block executed. It runs the call, collects the output, and throws the state changes away. Nothing is broadcast and no [[mempool|pool]] is involved, so the call is invisible to every other node.",
           "Because there is no signature, `from` can be any [[address|address]], including one with no ether. Clients relax the fee and balance checks when fee fields are omitted, which is why a read from the zero address normally works. Supply `gasPrice` or `maxFeePerGas` explicitly and the balance check comes back, and a `from` account without funds starts failing — a frequent surprise when code reuses a transaction object for a call.",
-          "Gas is bounded by the node, not by you: [[geth|Geth]] caps a call at `--rpc.gascap`, 50,000,000 by default, with an execution timeout on top, and other clients expose equivalents. A call against an old block also needs historical state, so it fails on a [[pruned-node|pruned node]] and requires an [[archive-node|archive node]].",
+          "Gas is bounded by the node, not by you: [[geth|Geth]] caps a call at `--rpc.gascap`, 50,000,000 by default, with [[request-cancellation|an execution timeout]] on top, and other clients expose equivalents. A call against an old block also needs historical state, so it fails on a [[pruned-node|pruned node]] and requires an [[archive-node|archive node]].",
         ],
       },
       {
         heading: "Reverts and practical use",
         paragraphs: [
           "A [[revert|revert]] is not a successful result with empty data. It comes back as a JSON-RPC [[rpc-errors|error]], commonly with code `3` and a `data` field holding the revert bytes — `Error(string)` under selector `0x08c379a0`, `Panic(uint256)` under `0x4e487b71`, or a custom error's own selector — though some providers report it as `-32000` with the message `execution reverted` and drop the data. Code that checks only for a result misreads a revert as an empty answer.",
-          "This is the method behind almost every read a wallet or dapp performs: `balanceOf`, `decimals`, [[ens|ENS]] resolution, price quotes, allowance checks. Applications batch them through the [[multicall|Multicall3]] contract, which aggregates many reads into one `eth_call` at one block and so guarantees a consistent snapshot; a plain [[batch-request|JSON-RPC batch]] saves round trips but not consistency, since each entry executes independently and `latest` may move between them.",
+          "This is the method behind almost every read a wallet or dapp performs: `balanceOf`, `decimals`, [[ens|ENS]] resolution, [[quoter-contract|price quotes]], allowance checks. Applications batch them through the [[multicall|Multicall3]] contract, which aggregates many reads into one `eth_call` at one block and so guarantees a consistent snapshot; a plain [[batch-request|JSON-RPC batch]] saves round trips but not consistency, since each entry executes independently and `latest` may move between them.",
           "`eth_call` is also the cheap half of simulation. It tells you what a transaction would return right now; it does not tell you what gas it needs — that is [[eth-estimate-gas|eth_estimateGas]] — and it cannot model a sequence of transactions across blocks, which is what [[eth-simulate|eth_simulateV1]] exists for.",
         ],
       },
@@ -524,7 +524,7 @@ export const topics = [
     ],
     related: ["evm", "eth-estimate-gas", "state-override", "revert", "abi", "block-tag", "eth-simulate", "multicall", "archive-node", "smart-contract", "rpc-errors"],
     sources: [
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: eth_call", url: "https://ethereum.github.io/execution-apis/api/methods/eth_call" },
       { title: "ethereum.org: eth_call", url: "https://ethereum.org/developers/docs/apis/json-rpc/#eth_call" },
       { title: "Geth command-line options (rpc.gascap)", url: "https://geth.ethereum.org/docs/fundamentals/command-line-options" },
     ],
@@ -547,13 +547,13 @@ export const topics = [
         heading: "How the node computes it",
         paragraphs: [
           "The client binary-searches. It runs the call with a high limit, usually the node's gas cap, and then narrows between the amount consumed and the cap, executing the EVM again at each step until it finds the lowest limit that still succeeds. A single estimate therefore costs several full executions, which is why it is one of the most expensive read methods and why [[rpc-provider|providers]] weight it far above [[eth-call|eth_call]] in their [[rate-limits|compute-unit]] pricing.",
-          "The answer is not simply the gas consumed. EIP-150's 63/64 rule means a contract that forwards gas to a subcall needs more supplied than is finally spent, so the search converges above the consumption figure, and refunds applied after execution push the receipt's `gasUsed` lower still. Since [[hardfork|Pectra]], EIP-7623 adds a calldata floor cost that can dominate data-heavy transactions.",
+          "The answer is not simply the gas consumed. [[gas-refunds|EIP-150's 63/64 rule]] means a contract that forwards gas to a subcall needs more supplied than is finally spent, so the search converges above the consumption figure, and refunds applied after execution push the receipt's `gasUsed` lower still. Since [[hardfork|Pectra]], EIP-7623 adds a calldata floor cost that can dominate data-heavy transactions.",
         ],
       },
       {
         heading: "Why estimates go wrong",
         paragraphs: [
-          "An estimate describes one state at one moment, and the world moves before inclusion. A storage slot that was zero when you estimated costs 20,000 gas to fill but only 2,900 to update, so someone else's deposit — or your own earlier transaction — changes the answer. Refunds shift with ordering, and contracts that branch on balances, oracle prices, or block timestamps take a different path entirely.",
+          "An estimate describes one state at one moment, and the world moves before inclusion. A storage slot that was zero when you estimated costs 20,000 gas to fill but only 2,900 to update, so someone else's deposit — or your own earlier transaction — changes the answer. Refunds shift with ordering, and contracts that branch on balances, [[price-oracle|oracle prices]], or block timestamps take a different path entirely.",
           "The practical response is a buffer: wallets commonly add ten to thirty percent and let the surplus go unspent, because unused gas is refunded while underestimating costs a failed transaction that still pays for the gas it burned. Do not buffer a plain 21,000-gas ether transfer, where the cost is fixed. For anything complex, estimate against the state the transaction will actually meet — the `pending` [[block-tag|tag]] when your own transactions are queued, [[state-override|state overrides]] for an approval that has not landed, or [[eth-simulate|eth_simulateV1]] when the calls must run in order.",
         ],
       },
@@ -570,9 +570,9 @@ export const topics = [
       "Estimating with `latest` while your own earlier transactions are still pending, so the estimate assumes state those transactions have not yet produced.",
       "Retrying an estimate in a loop when it reverts; the revert is deterministic for that state, and each attempt costs several executions.",
     ],
-    related: ["eth-call", "gas", "revert", "state-override", "eth-simulate", "eth-create-access-list", "eip-1559", "eth-send-raw-transaction", "rate-limits"],
+    related: ["eth-call", "gas", "revert", "state-override", "eth-simulate", "eth-create-access-list", "eip-1559", "eth-send-raw-transaction", "rate-limits", "gas-refunds", "quoter-contract"],
     sources: [
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: eth_estimateGas", url: "https://ethereum.github.io/execution-apis/api/methods/eth_estimateGas" },
       { title: "ethereum.org: eth_estimateGas", url: "https://ethereum.org/developers/docs/apis/json-rpc/#eth_estimategas" },
       { title: "EIP-7623: Increase calldata cost", url: "https://eips.ethereum.org/EIPS/eip-7623" },
     ],
@@ -609,8 +609,8 @@ export const topics = [
     example: {
       title: "The slots a token transfer touches",
       language: "json",
-      code: "// request\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_createAccessList\",\"params\":[\n  {\n    \"from\": \"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045\",\n    \"to\": \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n    \"data\": \"0xa9059cbb000000000000000000000000388c818ca8b9251b393131c08a736a67ccb192970000000000000000000000000000000000000000000000000000000005f5e100\"\n  },\n  \"latest\"\n]}\n\n// result\n{\n  \"accessList\": [\n    {\n      \"address\": \"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\",\n      \"storageKeys\": [\n        \"0x7050c9e0f4ca769c69bd3a8ef740bc37934f8e2c036e5a723fd8ee048ed3f8c3\",\n        \"0x2b1c1e5c0b5e0a0b7b4b1d1f2a3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e\"\n      ]\n    }\n  ],\n  \"gasUsed\": \"0xd6d8\"\n}",
-      note: "Compare `gasUsed` here with what [[eth-estimate-gas|eth_estimateGas]] returns without the list; if the list is larger, do not attach it.",
+      code: "// request\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_createAccessList\",\"params\":[\n  {\n    \"from\": \"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045\",\n    \"to\": \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n    \"data\": \"0xa9059cbb000000000000000000000000388c818ca8b9251b393131c08a736a67ccb192970000000000000000000000000000000000000000000000000000000001312d00\"\n  },\n  \"latest\"\n]}\n\n// result\n{\n  \"accessList\": [\n    {\n      \"address\": \"0x43506849d7c04f9138d1a2050bbf3a0c054402dd\",\n      \"storageKeys\": []\n    },\n    {\n      \"address\": \"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\",\n      \"storageKeys\": [\n        \"0x0000000000000000000000000000000000000000000000000000000000000001\",\n        \"0x10d6a54a4754c8869d6886b5f5d7fbfa5b4522237ea5c60d11bc4e7a1ff9390b\",\n        \"0x5e6e8ff7be73cf69cee02375844908e5519a8b19486bee4684afda8dd11d2fcb\",\n        \"0x7050c9e0f4ca769c69bd3a8ef740bc37934f8e2c036e5a723fd8ee048ed3f8c3\",\n        \"0xbf4954ae1137d99a74d9587692d0c99fcc87859496c91311c267c25a44a35f95\"\n      ]\n    }\n  ],\n  \"gasUsed\": \"0xb764\"\n}",
+      note: "`0x7050…f8c3` and `0x10d6…390b` are the implementation and admin slots of USDC's [[proxy-contract|proxy]], read on every call before it delegates to `0x4350…02dd`, whose own storage is never touched; slot 1 holds the pause flag, and `0x5e6e…2fcb` and `0xbf49…5f95` are the recipient's and sender's balances. Compare `gasUsed` with what [[eth-estimate-gas|eth_estimateGas]] returns without the list, and if the list is larger, do not attach it.",
     },
     pitfalls: [
       "Attaching a list without comparing gas both ways; each unused entry costs 2,400 or 1,900 gas and can make the transaction dearer.",
@@ -618,11 +618,11 @@ export const topics = [
       "Expecting a saving proportional to the number of entries; each correctly predicted cold access saves only about 100 gas.",
       "Using it on a rollup without counting the calldata, where publishing the extra bytes usually outweighs the warm-access discount.",
     ],
-    related: ["access-list", "transaction-types", "eth-estimate-gas", "eth-call", "gas", "evm", "contract-storage", "debug-api", "archive-node"],
+    related: ["access-list", "transaction-types", "eth-estimate-gas", "eth-call", "gas", "evm", "contract-storage", "debug-api", "archive-node", "storage-slot-discovery"],
     sources: [
       { title: "EIP-2930: Optional access lists", url: "https://eips.ethereum.org/EIPS/eip-2930" },
       { title: "EIP-2929: Gas cost increases for state access opcodes", url: "https://eips.ethereum.org/EIPS/eip-2929" },
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: eth_createAccessList", url: "https://ethereum.github.io/execution-apis/api/methods/eth_createAccessList" },
     ],
   },
   {
@@ -668,7 +668,7 @@ export const topics = [
     ],
     related: ["eip-1559", "eth-fee-history", "gas", "wei", "transaction-types", "blob", "l2-rpc", "eth-send-raw-transaction", "eth-get-block-by-number"],
     sources: [
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/" },
       { title: "EIP-1559: Fee market change", url: "https://eips.ethereum.org/EIPS/eip-1559" },
       { title: "EIP-4844: Shard Blob Transactions", url: "https://eips.ethereum.org/EIPS/eip-4844" },
     ],
@@ -716,7 +716,7 @@ export const topics = [
     ],
     related: ["eip-1559", "eth-gas-price", "gas", "block-header", "blob", "client-libraries", "eth-send-raw-transaction", "history-expiry", "rate-limits"],
     sources: [
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: eth_feeHistory", url: "https://ethereum.github.io/execution-apis/api/methods/eth_feeHistory" },
       { title: "EIP-1559: Fee market change", url: "https://eips.ethereum.org/EIPS/eip-1559" },
       { title: "ethereum.org: eth_feeHistory", url: "https://ethereum.org/developers/docs/apis/json-rpc/#eth_feehistory" },
     ],
@@ -738,7 +738,7 @@ export const topics = [
       {
         heading: "What the node checks",
         paragraphs: [
-          "Before accepting, the client verifies the signature and recovers the sender, checks the `chainId` against its own, and rejects a [[nonce|nonce]] below the account's current one with `nonce too low`. It requires the sender's balance to cover `gas × maxFeePerGas + value` (`insufficient funds for gas * price + value`), the gas limit to be at least the intrinsic cost (`intrinsic gas too low`) and no more than the block gas limit, and the fees to clear the pool's minimum (`transaction underpriced`). Resubmitting the same bytes yields `already known`, and replacing a queued nonce without a large enough fee bump yields `replacement transaction underpriced`.",
+          "Before accepting, the client verifies the signature and recovers the sender, checks the `chainId` against its own, and rejects a [[nonce|nonce]] below the account's current one with `nonce too low`. It requires the sender's balance to cover `gas × maxFeePerGas + value` (`insufficient funds for gas * price + value`), the gas limit to be at least the intrinsic cost (`intrinsic gas too low`) and no more than the block gas limit, and the fees to clear the pool's minimum (`transaction underpriced`). Resubmitting the same bytes yields `already known`, and replacing a pooled nonce without a large enough fee bump yields `replacement transaction underpriced`.",
           "All of this is pool policy layered on consensus rules and differs between clients and [[rpc-provider|providers]]; a transaction whose `maxFeePerGas` sits below the current base fee is held by some and refused by others. None of these checks predicts execution: a transaction that will revert is accepted, mined, and charged for its [[gas|gas]] exactly as a successful one is.",
         ],
       },
@@ -757,14 +757,14 @@ export const topics = [
       note: "Spaces in the payload are only for readability here; the real parameter is one unbroken `0x` string.",
     },
     pitfalls: [
-      "Reading the returned hash as confirmation; it means the node queued the bytes, and the transaction may still be dropped, replaced, or reverted.",
+      "Reading the returned hash as confirmation; it means the node queued the bytes, and the transaction may still be [[transaction-lifecycle|dropped, replaced, or reverted]].",
       "Treating `already known` as an error and re-signing with a new nonce, which creates a second transaction competing with the first.",
       "Submitting to one endpoint and polling for the receipt on another, where the second node has not seen the transaction yet.",
       "Expecting the node to reject a transaction that will revert; pool validation checks funds and encoding, never execution outcome.",
     ],
-    related: ["transaction", "mempool", "eth-get-transaction-receipt", "nonce", "eth-get-transaction-count", "private-rpc", "rpc-errors", "retries", "devp2p", "transaction-types"],
+    related: ["transaction", "mempool", "eth-get-transaction-receipt", "nonce", "eth-get-transaction-count", "private-rpc", "rpc-errors", "retries", "devp2p", "transaction-types", "transaction-relayer"],
     sources: [
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: eth_sendRawTransaction", url: "https://ethereum.github.io/execution-apis/api/methods/eth_sendRawTransaction" },
       { title: "ethereum.org: eth_sendRawTransaction", url: "https://ethereum.org/developers/docs/apis/json-rpc/#eth_sendrawtransaction" },
       { title: "EIP-1474: Remote procedure call specification", url: "https://eips.ethereum.org/EIPS/eip-1474" },
     ],
@@ -794,7 +794,7 @@ export const topics = [
         heading: "Where you still meet it",
         paragraphs: [
           "Browser wallets keep the name alive. A dapp calls `eth_sendTransaction` through the [[eip-1193|EIP-1193 provider]], but the wallet is not a node: it intercepts the request, shows the user a confirmation, signs with its own key, and forwards the raw bytes to its own RPC endpoint. The method name is the same and the trust model is entirely different, which is a routine source of confusion when reading wallet documentation next to node documentation. The wallet's other requests are covered by the [[wallet-rpc|wallet_ methods]].",
-          "[[local-devnet|Local development nodes]] also implement it, and there it is a convenience rather than a risk. Anvil and Hardhat Network start with prefunded unlocked accounts, so tests and scripts can send transactions without key management, and both add impersonation so you can send as any address on a forked chain. Code written against that convenience breaks the moment it points at a real endpoint.",
+          "[[local-devnet|Local development nodes]] also implement it, and there it is a convenience rather than a risk. Anvil and Hardhat's simulated networks start with prefunded unlocked accounts, so tests and scripts can send transactions without key management, and both add impersonation so you can send as any address on a [[fork-testing|forked chain]]. Code written against that convenience breaks the moment it points at a real endpoint.",
         ],
       },
     ],
@@ -835,8 +835,8 @@ export const topics = [
       {
         heading: "How the node answers",
         paragraphs: [
-          "Logs are not stored in a queryable table; they live inside [[transaction-receipt|receipts]]. The classic algorithm tests each [[block-header|block header]]'s 2048-bit [[logs-bloom|logs bloom]] against the requested address and topics, and only for blocks that might match does it load the receipts and filter exactly. The bloom gives false positives but never false negatives, so the only penalty is wasted receipt reads. Modern clients keep an auxiliary index over the blooms or over topics, so a wide range no longer means touching every header, but the work still scales with range width and with how common your topics are.",
-          "The method needs history, not [[state|state]], so a [[pruned-node|pruned node]] answers for whatever receipts it kept. A node under [[history-expiry|history expiry]] returns nothing for pre-Merge ranges, which looks exactly like 'no matching events' unless you check the range against what the node retains. That ambiguity is why serious [[indexer|indexers]] verify their range coverage independently.",
+          "Logs are not stored in a queryable table; they live inside [[transaction-receipt|receipts]]. The classic algorithm tests each [[block-header|block header]]'s 2048-bit [[logs-bloom|logs bloom]] against the requested address and topics, and only for blocks that might match does it load the receipts and filter exactly. The bloom gives false positives but never false negatives, so the only penalty is wasted receipt reads. Several clients now keep an [[log-index|auxiliary index]] over addresses and topics so that a wide range need not touch every header — [[geth|Geth]] for a recent window of about 2.35 million blocks by default (`--history.logs`), [[erigon|Erigon]] as inverted indexes, [[nethermind|Nethermind]] only when `--LogIndex.Enabled` is set — while [[reth|Reth]] still scans header blooms. Either way the work scales with range width and with how common your topics are.",
+          "The method needs history, not [[state|state]], so a [[pruned-node|pruned node]] answers for whatever receipts it kept. A node under [[history-expiry|history expiry]] now answers a range that starts below its cutoff with error `4444` 'Pruned history unavailable', as Geth and Reth do, but on Geth `fromBlock: earliest` quietly means the oldest block it kept, and an older release or a gateway can still return `[]`, which looks exactly like 'no matching events' unless you check the range against what the node retains. That ambiguity is why serious [[indexer|indexers]] verify their range coverage independently.",
         ],
       },
       {
@@ -860,9 +860,9 @@ export const topics = [
       "Advancing an indexer cursor to `latest`, which commits logs that a reorg can still retract.",
       "Treating an empty result over an old range as 'no events' when the node may simply no longer hold those receipts.",
     ],
-    related: ["event-log", "event-signature", "logs-bloom", "cursor-pagination", "indexer", "eth-subscribe", "eth-filters", "reorg", "rate-limits", "eth-get-block-receipts", "history-expiry"],
+    related: ["event-log", "event-signature", "logs-bloom", "cursor-pagination", "indexer", "eth-subscribe", "eth-filters", "reorg", "rate-limits", "eth-get-block-receipts", "history-expiry", "log-index"],
     sources: [
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: eth_getLogs", url: "https://ethereum.github.io/execution-apis/api/methods/eth_getLogs" },
       { title: "ethereum.org: eth_getLogs", url: "https://ethereum.org/developers/docs/apis/json-rpc/#eth_getlogs" },
       { title: "EIP-234: Add blockHash to eth_getLogs", url: "https://eips.ethereum.org/EIPS/eip-234" },
     ],
@@ -910,7 +910,7 @@ export const topics = [
     ],
     related: ["eth-subscribe", "eth-get-logs", "http-transport", "websocket-transport", "load-balancer", "rpc-gateway", "reorg", "event-log", "cursor-pagination"],
     sources: [
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/" },
       { title: "ethereum.org: eth_newFilter", url: "https://ethereum.org/developers/docs/apis/json-rpc/#eth_newfilter" },
     ],
   },
@@ -924,7 +924,7 @@ export const topics = [
       {
         heading: "The four subscription types",
         paragraphs: [
-          "The first parameter names the stream and the second carries its options. `newHeads` pushes each new canonical [[block-header|block header]] as it is accepted, in the same shape [[eth-get-block-by-number|eth_getBlockByNumber]] returns without the transaction list. `logs` takes a filter object with `address` and `topics`, the same one [[eth-get-logs|eth_getLogs]] uses, and pushes matching logs as blocks arrive. `newPendingTransactions` pushes hashes of transactions entering this node's [[mempool|pool]], and several clients accept a boolean to receive full transaction objects instead. `syncing` pushes status changes when the node starts or finishes syncing.",
+          "The first parameter names the stream and the second carries its options. `newHeads` pushes each new canonical [[block-header|block header]] as it is accepted, in the same shape [[eth-get-block-by-number|eth_getBlockByNumber]] returns without the transaction list. `logs` takes a filter object with `address` and `topics`, the same one [[eth-get-logs|eth_getLogs]] uses, and pushes matching logs as blocks arrive. `newPendingTransactions` pushes hashes of transactions entering this node's [[mempool|pool]], and several clients accept a boolean to receive full transaction objects instead, though [[besu|Besu]] reads only the object `{\"includeTransactions\": true}`; see [[mempool-streaming|mempool streaming]]. `syncing` pushes status changes when the node starts or finishes syncing.",
           "The call returns a subscription id. Notifications do not look like responses: they arrive as requests from the server, with `method` set to `eth_subscription` and a `params` object holding `subscription` and `result`. They carry no `id` of their own, so a client must route them by subscription id rather than by request id; see the [[request-response|JSON-RPC envelope]]. `eth_unsubscribe` takes the id and returns a boolean.",
         ],
       },
@@ -938,7 +938,7 @@ export const topics = [
       {
         heading: "Practical use and limits",
         paragraphs: [
-          "`newHeads` is the correct way to drive a per-block loop and replaces polling [[eth-block-number|eth_blockNumber]]. A `logs` subscription is excellent for reacting quickly and poor as a system of record, so production [[indexer|indexers]] usually treat it as a low-latency hint and keep a [[eth-get-logs|eth_getLogs]] scan with a durable cursor as the authority.",
+          "`newHeads` is the correct way to drive a [[keeper|per-block loop]] and replaces polling [[eth-block-number|eth_blockNumber]]. A `logs` subscription is excellent for reacting quickly and poor as a system of record, so production [[indexer|indexers]] usually treat it as a low-latency hint and keep a [[eth-get-logs|eth_getLogs]] scan with a durable cursor as the authority.",
           "`newPendingTransactions` is a firehose — mainnet sees a large and variable number of pool entries per second — and it reports one node's pool, not the network's, so two endpoints legitimately disagree. [[rpc-provider|Providers]] frequently cap the number of concurrent subscriptions per connection, disable pending-transaction streams entirely, or bill notifications individually. Where only [[http-transport|HTTP]] is available, [[eth-filters|polling filters]] are the fallback.",
         ],
       },
@@ -956,10 +956,10 @@ export const topics = [
       "Subscribing to `newPendingTransactions` on a shared endpoint and being throttled or disconnected for the volume it produces.",
       "Assuming a reorg arrives as an event on `newHeads`; you detect it yourself by checking `parentHash` continuity.",
     ],
-    related: ["websocket-transport", "eth-filters", "eth-get-logs", "reorg", "request-response", "indexer", "mempool", "head-lag", "ipc-transport", "eth-block-number"],
+    related: ["websocket-transport", "eth-filters", "eth-get-logs", "reorg", "request-response", "indexer", "mempool", "head-lag", "ipc-transport", "eth-block-number", "server-sent-events"],
     sources: [
       { title: "Geth: RPC PUB/SUB", url: "https://geth.ethereum.org/docs/interacting-with-geth/rpc/pubsub" },
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/" },
     ],
   },
   {
@@ -1005,7 +1005,7 @@ export const topics = [
     ],
     related: ["health-check", "sync-modes", "snap-sync", "engine-api", "head-lag", "net-web3-api", "failover", "beacon-api", "full-node"],
     sources: [
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: eth_syncing", url: "https://ethereum.github.io/execution-apis/api/methods/eth_syncing" },
       { title: "ethereum.org: eth_syncing", url: "https://ethereum.org/developers/docs/apis/json-rpc/#eth_syncing" },
     ],
   },
@@ -1013,7 +1013,7 @@ export const topics = [
     id: "eth-simulate",
     title: "eth_simulateV1",
     category: "requests",
-    aliases: ["simulateV1", "eth_simulateV1", "simulation", "bundle simulation", "multicall rpc", "blockStateCalls"],
+    aliases: ["simulateV1", "eth_simulateV1", "simulation", "multicall rpc", "blockStateCalls"],
     summary: "`eth_simulateV1` runs a sequence of calls across one or more hypothetical [[block|blocks]] on top of real [[state|state]], with per-block [[state-override|state and block overrides]], and returns each call's result, [[event-log|logs]], and [[gas|gas]] usage.",
     sections: [
       {
@@ -1026,8 +1026,8 @@ export const topics = [
       {
         heading: "Why it exists",
         paragraphs: [
-          "Before it, every non-trivial simulation was vendor-specific. Wallets wanting to show 'what will this transaction do to my balances' used provider APIs, searchers used [[debug-api|debug_traceCall]] with overrides, and multi-step flows such as approve-then-swap could not be modelled at all without sending the first transaction for real. `eth_simulateV1` went through the [[execution-apis|execution-apis]] process to make that a standard method with defined semantics.",
-          "The `blockOverrides` are what make future-dated logic testable: move `time` forward to cross a vesting cliff or an auction deadline, raise `number` to pass a block-height check, or set `baseFeePerGas` to see how a contract behaves under congestion. `traceTransfers` matters more than it sounds, because ether movements emit no logs on a real chain, so without it a simulation of a withdrawal shows nothing at all.",
+          "Before it, every non-trivial simulation was vendor-specific. [[transaction-simulation|Wallets wanting to show]] 'what will this transaction do to my balances' used provider APIs, searchers used [[debug-api|debug_traceCall]] with overrides, and multi-step flows such as approve-then-swap could not be modelled at all without sending the first transaction for real. `eth_simulateV1` went through the [[execution-apis|execution-apis]] process to make that a standard method with defined semantics.",
+          "The `blockOverrides` are what make future-dated logic testable: move `time` forward to cross a vesting cliff or an auction deadline, raise `number` to pass a block-height check, or set `baseFeePerGas` to see how a contract behaves under congestion. `traceTransfers` matters more than it sounds, because ether movements emit no logs on mainnet today, so without it a simulation of a withdrawal shows nothing at all; EIP-7708, live on Sepolia since 6 October 2026 but not yet scheduled for mainnet, makes every nonzero ether transfer emit a `Transfer` log whose emitting address is `0xfffffffffffffffffffffffffffffffffffffffe`, with the real sender and recipient in its topics.",
         ],
       },
       {
@@ -1046,14 +1046,14 @@ export const topics = [
     },
     pitfalls: [
       "Running with `validation` off and concluding the transaction will succeed; loose mode skips nonce, balance, and fee checks a real transaction must pass.",
-      "Forgetting `traceTransfers` and reporting 'no value moved' for a call whose entire effect was an ether transfer, which emits no log.",
+      "Forgetting `traceTransfers` and reporting 'no value moved' for a call whose entire effect was an ether transfer, which emits no log on mainnet.",
       "Treating simulated `gasUsed` as a gas limit; it is the cost under your overrides, not a minimum limit that survives real ordering.",
       "Stacking many blocks with large calls until the request trips the client's total gas ceiling, which fails the whole simulation rather than one call.",
     ],
-    related: ["eth-call", "state-override", "eth-estimate-gas", "debug-api", "execution-apis", "archive-node", "endpoint-capabilities", "mev", "block"],
+    related: ["eth-call", "state-override", "eth-estimate-gas", "debug-api", "execution-apis", "archive-node", "endpoint-capabilities", "mev", "block", "request-cancellation", "mev-bundle", "dex-aggregator", "intent-solver", "transaction-simulation"],
     sources: [
       { title: "ethereum/execution-apis", url: "https://github.com/ethereum/execution-apis" },
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: eth_simulateV1", url: "https://ethereum.github.io/execution-apis/api/methods/eth_simulateV1" },
     ],
   },
   {
@@ -1066,15 +1066,15 @@ export const topics = [
       {
         heading: "The shape of an override",
         paragraphs: [
-          "The override set is a JSON object keyed by [[address|address]]. Each value may set `balance`, `nonce`, `code`, and one of `state` or `stateDiff`. `state` discards the account's entire [[contract-storage|storage]] and installs exactly the slots you list; `stateDiff` keeps the real storage and patches only the slots you name. Supplying both for one account is an error, and mixing them up is the difference between 'this contract has one balance entry' and 'this contract has one changed balance entry'. Some clients also accept `movePrecompileToAddress`, which relocates a precompile so you can put your own code at its address.",
+          "The override set is a JSON object keyed by [[address|address]]. Each value may set `balance`, `nonce`, `code`, and one of `state` or `stateDiff`. `state` discards the account's entire [[contract-storage|storage]] and installs exactly the slots you list; `stateDiff` keeps the real storage and patches only the slots you name. Supplying both for one account is an error, and mixing them up is the difference between 'this contract has one balance entry' and 'this contract has one changed balance entry'. Some clients also accept `movePrecompileToAddress`, which relocates a [[precompiles|precompile]] so you can put your own code at its address.",
           "Overrides apply to the [[state|state]] the simulation starts from and are discarded when it ends. They are per-request, never persisted, never gossiped, and invisible to every other caller. In [[eth-simulate|eth_simulateV1]] they are a first-class field of each entry in `blockStateCalls`, alongside `blockOverrides` for header values such as `time` and `number`, which plain `eth_call` cannot change.",
         ],
       },
       {
         heading: "What it is for",
         paragraphs: [
-          "The common case is removing a precondition you have not met. Override your balance to price a trade you cannot yet afford, patch an ERC-20 allowance slot to simulate a swap without sending the approval first, or set a token balance to quote a sale. The next case is testing code that is not deployed: put a candidate implementation in `code` at the real contract's address and run the existing calldata against it, which is how upgrade proposals are checked against live state.",
-          "Overrides also make otherwise impossible reads possible. Deploying a throwaway helper at an unused address and calling it in the same request exposes an internal value the real contract never returns — the technique [[multicall|Multicall]]-style deployless libraries use. And overriding a single storage slot is often the fastest way to confirm a diagnosis: if forcing a flag to `true` makes the [[revert|revert]] go away, that flag was the cause.",
+          "The common case is removing a precondition you have not met. Override your balance to price a trade you cannot yet afford, patch an [[storage-slot-discovery|ERC-20 allowance slot]] to simulate a swap without sending the approval first, or set a token balance to quote a sale. The next case is testing code that is not deployed: put a candidate implementation in `code` at the real contract's address and run the existing calldata against it, which is how upgrade proposals are checked against live state.",
+          "Overrides also make otherwise impossible reads possible. Replacing a contract's `code` with a version that adds a getter exposes an internal value the real contract never returns, because the contract's storage stays in place. A throwaway helper at an unused address cannot see that storage, but it can [[multicall|batch reads]] through public functions, and viem's deployless reads skip the override altogether by sending the helper's creation code with no `to`; both are [[deployless-call|deployless calls]]. And overriding a single storage slot is often the fastest way to confirm a diagnosis: if forcing a flag to `true` makes the [[revert|revert]] go away, that flag was the cause.",
         ],
       },
       {
@@ -1088,8 +1088,8 @@ export const topics = [
     example: {
       title: "Quoting a swap the caller cannot yet afford",
       language: "json",
-      code: "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_call\",\"params\":[\n  { \"from\": \"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045\",\n    \"to\": \"0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D\",\n    \"data\": \"0x38ed1739…\" },\n  \"latest\",\n  {\n    \"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045\": {\n      \"balance\": \"0x56bc75e2d63100000\"\n    },\n    \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\": {\n      \"stateDiff\": {\n        \"0x7050c9e0f4ca769c69bd3a8ef740bc37934f8e2c036e5a723fd8ee048ed3f8c3\": \"0x00000000000000000000000000000000000000000000000000000000e8d4a51000\"\n      }\n    }\n  }\n]}",
-      note: "`balance` gives the caller 100 ether for this call only; `stateDiff` patches one token balance slot while leaving the rest of that contract's storage intact.",
+      code: "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_call\",\"params\":[\n  { \"from\": \"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045\",\n    \"to\": \"0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D\",\n    \"data\": \"0x38ed1739…\" },\n  \"latest\",\n  {\n    \"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045\": {\n      \"balance\": \"0x56bc75e2d63100000\"\n    },\n    \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\": {\n      \"stateDiff\": {\n        \"0xbf4954ae1137d99a74d9587692d0c99fcc87859496c91311c267c25a44a35f95\": \"0x000000000000000000000000000000000000000000000000000000e8d4a51000\",\n        \"0x89db1d6ded8a3e37fd3ff46e5714065a80e75b6559af70f8a0b3b6981410cebc\": \"0x000000000000000000000000000000000000000000000000000000e8d4a51000\"\n      }\n    }\n  }\n]}",
+      note: "`balance` gives the caller 100 ether for this call only; `stateDiff` sets the caller's USDC balance, `keccak256(pad32(caller) . pad32(9))`, and the router's allowance in the nested mapping at slot 10 to 1,000,000 USDC each, leaving the rest of that contract's storage, including its implementation pointer, intact.",
     },
     pitfalls: [
       "Using `state` when you meant `stateDiff`, which wipes every other slot in that contract and makes totals, owners, and pool reserves read as zero.",
@@ -1121,7 +1121,7 @@ export const topics = [
         heading: "Tracers",
         paragraphs: [
           "The `tracer` field in the options object picks what you get back. Omit it and you get the struct logger: one entry per executed opcode with program counter, gas, stack, and optionally memory and storage. It is complete and enormous — a complex transaction produces hundreds of megabytes of JSON — so memory is left out unless you set `enableMemory`, and `disableStack` and `disableStorage` cut it down further.",
-          "`callTracer` is the one most people want: a nested tree of calls with `from`, `to`, `type` (`CALL`, `DELEGATECALL`, `STATICCALL`, `CREATE`), `input`, `output`, `gas`, `gasUsed`, and `error` or `revertReason` on failures. `tracerConfig: {\"onlyTopCall\": true}` collapses it to the outermost frame. `prestateTracer` returns every account and slot the transaction read, and with `diffMode: true` a before-and-after pair, which is how you reconstruct a state diff. `4byteTracer` counts function selectors, `noopTracer` measures the replay overhead, and `muxTracer` runs several at once. [[geth|Geth]] also accepts custom tracers written in JavaScript and ships `flatCallTracer` for output shaped like the [[trace-api|trace_ namespace]].",
+          "`callTracer` is the one most people want: a nested tree of calls with `from`, `to`, `type` (`CALL`, `DELEGATECALL`, `STATICCALL`, `CREATE`), `input`, `output`, `gas`, `gasUsed`, and `error` or `revertReason` on failures. `tracerConfig: {\"onlyTopCall\": true}` collapses it to the outermost frame. `prestateTracer` returns every account and slot the transaction read, and with `diffMode: true` a before-and-after pair, which is how you reconstruct a state diff. `4byteTracer` counts function selectors, `noopTracer` measures the replay overhead, `muxTracer` runs several at once, and `erc7562Tracer`, native since Geth v1.16.0, records the opcodes, storage accesses, and call frames that a bundler checks against the [[erc-7562|ERC-7562]] validation rules. [[geth|Geth]] also accepts custom tracers written in JavaScript and ships `flatCallTracer` for output shaped like the [[trace-api|trace_ namespace]].",
         ],
       },
       {
@@ -1136,7 +1136,7 @@ export const topics = [
     example: {
       title: "A call tree from callTracer",
       language: "json",
-      code: "// request\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"debug_traceTransaction\",\"params\":[\n  \"0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfba1b22060\",\n  { \"tracer\": \"callTracer\", \"tracerConfig\": { \"onlyTopCall\": false }, \"timeout\": \"60s\" }\n]}\n\n// result (abridged)\n{\n  \"type\": \"CALL\",\n  \"from\": \"0xd8da6bf26964af9d7eed9e03e53415d37aa96045\",\n  \"to\": \"0x7a250d5630b4cf539739df2c5dacb4c659f2488d\",\n  \"value\": \"0x0\",\n  \"gas\": \"0x186a0\",\n  \"gasUsed\": \"0x1d4c2\",\n  \"input\": \"0x38ed1739…\",\n  \"output\": \"0x…\",\n  \"calls\": [\n    {\n      \"type\": \"STATICCALL\",\n      \"from\": \"0x7a25…488d\",\n      \"to\": \"0xb4e1…11ec\",\n      \"gas\": \"0x14c08\",\n      \"gasUsed\": \"0x9e4\",\n      \"input\": \"0x0902f1ac\",\n      \"output\": \"0x…\"\n    },\n    {\n      \"type\": \"DELEGATECALL\",\n      \"from\": \"0xa0b8…eb48\",\n      \"to\": \"0x4351…9f1c\",\n      \"gas\": \"0xf2c1\",\n      \"gasUsed\": \"0x62d1\",\n      \"input\": \"0xa9059cbb…\",\n      \"error\": \"execution reverted\",\n      \"revertReason\": \"ERC20: transfer amount exceeds balance\"\n    }\n  ]\n}",
+      code: "// request\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"debug_traceTransaction\",\"params\":[\n  \"0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfba1b22060\",\n  { \"tracer\": \"callTracer\", \"tracerConfig\": { \"onlyTopCall\": false }, \"timeout\": \"60s\" }\n]}\n\n// result (abridged)\n{\n  \"type\": \"CALL\",\n  \"from\": \"0xd8da6bf26964af9d7eed9e03e53415d37aa96045\",\n  \"to\": \"0x7a250d5630b4cf539739df2c5dacb4c659f2488d\",\n  \"value\": \"0x0\",\n  \"gas\": \"0x186a0\",\n  \"gasUsed\": \"0xe2d4\",\n  \"input\": \"0x38ed1739…\",\n  \"error\": \"execution reverted\",\n  \"calls\": [\n    {\n      \"type\": \"STATICCALL\",\n      \"from\": \"0x7a25…488d\",\n      \"to\": \"0xb4e1…11ec\",\n      \"gas\": \"0x11a9c\",\n      \"gasUsed\": \"0x9e4\",\n      \"input\": \"0x0902f1ac\",\n      \"output\": \"0x…\"\n    },\n    {\n      \"type\": \"CALL\",\n      \"from\": \"0x7a25…488d\",\n      \"to\": \"0xa0b8…eb48\",\n      \"gas\": \"0xf8a4\",\n      \"gasUsed\": \"0x6b12\",\n      \"input\": \"0x23b872dd…\",\n      \"error\": \"execution reverted\",\n      \"calls\": [\n        {\n          \"type\": \"DELEGATECALL\",\n          \"from\": \"0xa0b8…eb48\",\n          \"to\": \"0x4350…02dd\",\n          \"gas\": \"0xf2c1\",\n          \"gasUsed\": \"0x62d1\",\n          \"input\": \"0x23b872dd…\",\n          \"error\": \"execution reverted\",\n          \"revertReason\": \"ERC20: transfer amount exceeds balance\"\n        }\n      ]\n    }\n  ]\n}",
       note: "The failure is three frames deep: the receipt alone would only have shown `status` `0x0` on the outermost transaction.",
     },
     pitfalls: [
@@ -1145,19 +1145,19 @@ export const topics = [
       "Tracing an old transaction on a [[pruned-node|pruned node]] and reading 'historical state unavailable' as a bug rather than a retention limit.",
       "Treating a trace as cryptographic evidence; it is one node's replay of execution, verifiable only by re-running it yourself.",
     ],
-    related: ["trace-api", "execution-trace", "eth-call", "state-override", "archive-node", "security", "geth", "namespaces", "revert", "rlp", "indexer"],
+    related: ["trace-api", "execution-trace", "eth-call", "state-override", "archive-node", "security", "geth", "namespaces", "revert", "rlp", "indexer", "erc-7562", "request-cancellation", "transaction-simulation"],
     sources: [
       { title: "Geth: debug namespace", url: "https://geth.ethereum.org/docs/interacting-with-geth/rpc/ns-debug" },
       { title: "Geth: built-in tracers", url: "https://geth.ethereum.org/docs/developers/evm-tracing/built-in-tracers" },
-      { title: "Nethermind: JSON-RPC namespaces", url: "https://docs.nethermind.io/interacting/json-rpc-ns/" },
+      { title: "Nethermind: debug namespace", url: "https://docs.nethermind.io/interacting/json-rpc-ns/debug/" },
     ],
   },
   {
     id: "trace-api",
     title: "trace_ namespace",
     category: "requests",
-    aliases: ["trace", "trace_transaction", "trace_block", "trace_filter", "trace_call", "trace_replayBlockTransactions", "parity traces", "internal transactions"],
-    summary: "The `trace_` [[namespaces|namespace]] is the Parity-style tracing API carried forward by [[nethermind|Nethermind]], [[erigon|Erigon]], and [[reth|Reth]]: it returns a flat list of call frames, optional VM steps, and optional state diffs, and it can query traces across a block range by [[address|address]].",
+    aliases: ["trace", "trace_transaction", "trace_block", "trace_filter", "trace_call", "trace_replayBlockTransactions", "parity traces"],
+    summary: "The `trace_` [[namespaces|namespace]] is the Parity-style tracing API carried forward by [[nethermind|Nethermind]], [[erigon|Erigon]], [[reth|Reth]], and [[besu|Besu]]: it returns a flat list of call frames, optional VM steps, and optional state diffs, and it can query traces across a block range by [[address|address]].",
     sections: [
       {
         heading: "The methods",
@@ -1170,13 +1170,13 @@ export const topics = [
         heading: "The three trace types",
         paragraphs: [
           "Replay and call methods take an array of type names. `trace` gives the call frames. `vmTrace` gives an opcode-level record comparable to the default struct logger and is correspondingly enormous. `stateDiff` gives a per-account before-and-after for balance, nonce, code, and each touched [[contract-storage|storage]] slot, which is the cleanest way to answer 'what did this transaction change'. Ask for only what you need; each type multiplies the work.",
-          "The `trace` output is flat where [[debug-api|callTracer]] output is nested. Each entry has `action` (with `from`, `to`, `value`, `gas`, `input`, or `init` for a creation), `result` (with `gasUsed` and `output` or `address`), `subtraces`, and `traceAddress`, an array of indices giving the frame's position in the tree — `[]` for the top call, `[0,1]` for the second child of the first child. `type` is `call`, `create`, `suicide`, or `reward`; the last only appears on pre-Merge blocks, since after [[the-merge|the Merge]] there is no execution-layer block reward to report.",
+          "The `trace` output is flat where [[debug-api|callTracer]] output is nested. Each entry has `action` (with `from`, `to`, `value`, `gas`, `input`, or `init` for a creation), `result` (with `gasUsed` and `output` or `address`), `subtraces`, and `traceAddress`, an array of indices giving the frame's position in the tree — `[]` for the top call, `[0,1]` for the second child of the first child. `type` is `call`, `create`, `suicide`, or `reward`. On Ethereum mainnet a `reward` entry carries value only before [[the-merge|the Merge]], since there is no execution-layer block reward after it; [[reth|Reth]] then omits the entry, while [[nethermind|Nethermind]] still emits one worth zero for every block's fee recipient, and [[gnosis-chain|Gnosis Chain]] still calls a block-reward contract after its own merge, so its reward entries, with `rewardType` `external`, can carry real value.",
         ],
       },
       {
         heading: "Support, cost, and choosing between the namespaces",
         paragraphs: [
-          "[[geth|Geth]] does not implement `trace_`; it offers `flatCallTracer` under `debug_` to produce similarly shaped output, without `trace_filter`. Nethermind, Erigon, and Reth implement the namespace natively, and Erigon and Reth are usually the clients of choice for heavy trace work because their storage layouts make historical replay cheap. Availability at a [[rpc-provider|provider]] is a paid, separate capability, and which methods are enabled varies; probe before designing around it, as with any [[endpoint-capabilities|endpoint capability]].",
+          "[[geth|Geth]] does not implement `trace_`; it offers `flatCallTracer` under `debug_` to produce similarly shaped output, without `trace_filter`. Nethermind, Erigon, Reth, and Besu implement the namespace natively, and Erigon and Reth are usually the clients of choice for heavy trace work because their storage layouts make historical replay cheap. Availability at a [[rpc-provider|provider]] is a paid, separate capability, and which methods are enabled varies; probe before designing around it, as with any [[endpoint-capabilities|endpoint capability]].",
           "Everything here is re-execution, so the same rules as `debug_` apply: an old block needs an [[archive-node|archive node]], responses are large, and a few unauthenticated `trace_block` calls will flatten a node. Keep the namespace off public listeners; [[nethermind|Nethermind]] serves whatever `--JsonRpc.EnabledModules` lists and its default list is broad, so on any exposed listener set it explicitly, for example `[Eth,Net,Web3]`, and add `Trace` only where it is wanted. Choose `trace_filter` when the question is address-scoped across a range, `trace_replay…` with `stateDiff` when the question is what changed, and the `debug_` tracers when you want a nested tree, a custom tracer, or [[state-override|state overrides]].",
           "As with any [[execution-trace|execution trace]], the answer is one node's replay, not a [[state-proof|proof]]. Two honest clients should agree, and comparing them is a reasonable consistency check, but nothing in the response is verifiable without running the execution yourself.",
         ],
@@ -1195,7 +1195,7 @@ export const topics = [
       "Running `trace_filter` over a wide range with no address filter, which asks the node to replay every block in the window.",
       "Treating a trace as authoritative evidence rather than one node's replay of execution.",
     ],
-    related: ["debug-api", "execution-trace", "nethermind", "erigon", "reth", "archive-node", "block-explorer", "event-log", "state-override", "namespaces", "endpoint-capabilities"],
+    related: ["debug-api", "execution-trace", "nethermind", "erigon", "reth", "archive-node", "block-explorer", "event-log", "state-override", "namespaces", "endpoint-capabilities", "internal-transaction", "gnosis-chain", "security-monitoring", "address-history"],
     sources: [
       { title: "Nethermind: trace namespace", url: "https://docs.nethermind.io/interacting/json-rpc-ns/trace/" },
       { title: "Erigon documentation", url: "https://docs.erigon.tech/" },
@@ -1227,7 +1227,7 @@ export const topics = [
         heading: "Practical use",
         paragraphs: [
           "On your own node the namespace is the right tool for a stuck sender: `txpool_contentFrom` shows exactly which nonces are held and at what fee, which tells you whether to fill a gap, bump a fee, or cancel. `txpool_status` is cheap enough to scrape continuously, and a pending count that climbs steadily while the head advances normally is a good early signal of fee-market pressure; see [[observability|RPC observability]].",
-          "If you expose it, expose `txpool_status` only, and keep `content` and `inspect` behind the same restrictions as the [[debug-api|debug_ namespace]]; see [[security|RPC security]]. Network-wide pool visibility is a data product built from many nodes, not an RPC method. [[eth-subscribe|eth_subscribe]] to `newPendingTransactions` gives the same local view as a stream instead of a dump.",
+          "If you expose it, expose `txpool_status` only, and keep `content` and `inspect` behind the same restrictions as the [[debug-api|debug_ namespace]]; see [[security|RPC security]]. Network-wide pool visibility is [[mempool-streaming|a data product built from many nodes]], not an RPC method. [[eth-subscribe|eth_subscribe]] to `newPendingTransactions` gives the same local view as a stream instead of a dump.",
         ],
       },
     ],
@@ -1243,10 +1243,10 @@ export const topics = [
       "Exposing the namespace publicly, which publishes every user's intended transaction before it is mined.",
       "Concluding a transaction is lost because it is absent here; it may be in another node's pool, or already mined.",
     ],
-    related: ["mempool", "nonce", "eth-get-transaction-count", "eth-send-raw-transaction", "security", "mev", "eth-subscribe", "namespaces", "observability"],
+    related: ["mempool", "nonce", "eth-get-transaction-count", "eth-send-raw-transaction", "security", "mev", "eth-subscribe", "namespaces", "observability", "mempool-streaming"],
     sources: [
       { title: "Geth: txpool namespace", url: "https://geth.ethereum.org/docs/interacting-with-geth/rpc/ns-txpool" },
-      { title: "Nethermind: JSON-RPC namespaces", url: "https://docs.nethermind.io/interacting/json-rpc-ns/" },
+      { title: "Nethermind: txpool namespace", url: "https://docs.nethermind.io/interacting/json-rpc-ns/txpool/" },
     ],
   },
   {
@@ -1293,7 +1293,7 @@ export const topics = [
     ],
     related: ["chain-id", "namespaces", "client-diversity", "health-check", "endpoint-capabilities", "keccak-256", "eth-syncing", "devp2p", "rpc-provider"],
     sources: [
-      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs: method documentation", url: "https://ethereum.github.io/execution-apis/" },
       { title: "ethereum.org: JSON-RPC API", url: "https://ethereum.org/developers/docs/apis/json-rpc/" },
       { title: "clientdiversity.org", url: "https://clientdiversity.org/" },
     ],
@@ -1342,7 +1342,7 @@ export const topics = [
     related: ["security", "namespaces", "ipc-transport", "discovery", "devp2p", "geth", "engine-api", "beacon-api", "peer-to-peer", "health-check"],
     sources: [
       { title: "Geth: admin namespace", url: "https://geth.ethereum.org/docs/interacting-with-geth/rpc/ns-admin" },
-      { title: "Nethermind: JSON-RPC namespaces", url: "https://docs.nethermind.io/interacting/json-rpc-ns/" },
+      { title: "Nethermind: admin namespace", url: "https://docs.nethermind.io/interacting/json-rpc-ns/admin/" },
     ],
   },
   {
@@ -1356,15 +1356,15 @@ export const topics = [
         heading: "The three core methods",
         paragraphs: [
           "`engine_forkchoiceUpdatedVx` takes a forkchoice state — `headBlockHash`, `safeBlockHash`, `finalizedBlockHash` — and an optional `payloadAttributes`. The first parameter tells the [[execution-client|execution client]] which chain to treat as canonical and is what makes the `safe` and `finalized` [[block-tag|block tags]] mean anything. When `payloadAttributes` is present, with `timestamp`, `prevRandao`, `suggestedFeeRecipient`, `withdrawals`, and since Cancun `parentBeaconBlockRoot`, the client also starts assembling a block and returns a `payloadId`.",
-          "`engine_getPayloadVx` exchanges that `payloadId` for the finished [[execution-payload|execution payload]], along with `blockValue` so the [[consensus-client|consensus client]] can compare it against a builder's bid, a `blobsBundle` of [[blob|blob]] commitments and proofs, and `shouldOverrideBuilder`. V4 adds `executionRequests`, the EIP-7685 list carrying deposits, withdrawal requests, and consolidations. `engine_newPayloadVx` runs the other way: the consensus client hands over a payload it received from the network and the execution client validates and executes it.",
-          "Around them sit `engine_exchangeCapabilities`, where the two processes agree on which methods each supports, `engine_getPayloadBodiesByHashV1` and `…ByRangeV1` for backfilling bodies during sync, and `engine_getBlobsV1`, which lets a consensus client take blobs the execution client already holds instead of waiting for gossip.",
+          "`engine_getPayloadVx` exchanges that `payloadId` for the finished [[execution-payload|execution payload]], along with `blockValue` so the [[consensus-client|consensus client]] can compare it against a builder's bid, a `blobsBundle` of [[blob|blob]] commitments and proofs, and `shouldOverrideBuilder`. V4 adds `executionRequests`, [[execution-requests|the EIP-7685 list]] carrying deposits, withdrawal requests, and consolidations. `engine_newPayloadVx` runs the other way: the consensus client hands over a payload it received from the network and the execution client validates and executes it.",
+          "Around them sit `engine_exchangeCapabilities`, where the two processes agree on which methods each supports, `engine_getPayloadBodiesByHashV1` and `…ByRangeV1` for backfilling bodies during sync, and `engine_getBlobsV1`, which lets a consensus client take blobs the execution client already holds instead of waiting for gossip. From Osaka it answers `-38005` and gives way to `engine_getBlobsV2`, which returns every requested blob with its cell proofs or `null`, and `engine_getBlobsV3`, which allows partial answers.",
         ],
       },
       {
         heading: "Payload status and versioning",
         paragraphs: [
           "Both `newPayload` and `forkchoiceUpdated` answer with a `payloadStatus` holding `status`, `latestValidHash`, and `validationError`. `VALID` means executed and accepted. `INVALID` means the payload breaks the rules, and `latestValidHash` names the last good ancestor so the consensus client can back out. `SYNCING` means the execution client does not yet have the parent and has started fetching it — normal during sync, and the reason a fresh node reports an optimistic head. `ACCEPTED` applies to a side-chain payload that is valid so far but not on the current canonical chain. Older specification versions also defined `INVALID_BLOCK_HASH`.",
-          "Methods are versioned per [[hardfork|network upgrade]] because each fork adds fields: V2 brought [[withdrawals|withdrawals]] at Shapella, V3 the blob fields and `parentBeaconBlockRoot` at Cancun, V4 `executionRequests` at Prague. A client must accept the version matching each payload's timestamp and reject mismatches, so upgrading one half of a node without the other breaks the pair at the fork with errors such as `-38005 unsupported fork`. Other Engine-specific codes include `-38001 unknown payload` and `-38002 invalid forkchoice state`.",
+          "Methods are versioned per [[hardfork|network upgrade]] because each fork adds fields: V2 brought [[withdrawals|withdrawals]] at Shapella, V3 the blob fields and `parentBeaconBlockRoot` at Cancun, V4 `executionRequests` at Prague, and at Osaka `engine_getPayloadV5`, whose `blobsBundle` carries 128 cell proofs per blob for [[data-availability|PeerDAS]] instead of one proof, while `newPayload` stayed at V4. A client must accept the version matching each payload's timestamp and reject mismatches, so upgrading one half of a node without the other breaks the pair at the fork with errors such as `-38005 unsupported fork`. Other Engine-specific codes include `-38001 unknown payload` and `-38002 invalid forkchoice state`.",
         ],
       },
       {
@@ -1398,7 +1398,7 @@ export const topics = [
     id: "beacon-endpoints",
     title: "Beacon API endpoints",
     category: "requests",
-    aliases: ["beacon routes", "/eth/v1/beacon", "blob_sidecars", "finality_checkpoints", "node/syncing", "SSE events", "state id"],
+    aliases: ["beacon routes", "/eth/v1/beacon", "blob_sidecars", "beacon/blobs", "finality_checkpoints", "node/syncing", "SSE events", "state id"],
     summary: "The [[beacon-api|Beacon API]] is REST, not JSON-RPC: consensus data is fetched with HTTP GET on paths like `/eth/v1/beacon/headers` and `/eth/v2/beacon/blocks/{block_id}`, with decimal numbers and an optional SSZ encoding.",
     sections: [
       {
@@ -1412,8 +1412,8 @@ export const topics = [
         heading: "The routes that matter for RPC work",
         paragraphs: [
           "`/eth/v1/node/syncing` is the consensus-side health check and reports `head_slot`, `sync_distance`, `is_syncing`, `is_optimistic`, and `el_offline`. The last two are the ones with no execution-layer equivalent: `is_optimistic` means blocks have been imported without the [[execution-client|execution client]] confirming them, and `el_offline` says the pair is broken — exactly the condition that leaves [[eth-syncing|eth_syncing]] reporting `false` while the head freezes.",
-          "`/eth/v1/beacon/headers/{block_id}` gives a [[beacon-block|beacon block]] header with its root and whether it is canonical. `/eth/v2/beacon/blocks/{block_id}` gives the full signed block including the [[execution-payload|execution payload]], which is how you map a slot to an execution block number. `/eth/v1/beacon/states/{state_id}/finality_checkpoints` returns the previous justified, current justified, and finalized checkpoints — the authoritative source for what `safe` and `finalized` mean; see [[finality|finality]]. `/eth/v1/beacon/states/{state_id}/validators/{validator_id}` returns a [[validator|validator]]'s balance and status.",
-          "`/eth/v1/beacon/blob_sidecars/{block_id}` serves the [[blob|blob]] data that execution methods never return; sidecars are retained for roughly 18 days, so older blobs are simply gone. `/eth/v1/events` is a server-sent-events stream with a `topics` query parameter accepting `head`, `finalized_checkpoint`, `chain_reorg`, and others — the consensus equivalent of [[eth-subscribe|eth_subscribe]], and the only place a [[reorg|reorg]] arrives as an explicit event rather than something you infer.",
+          "`/eth/v1/beacon/headers/{block_id}` gives a [[beacon-block|beacon block]] header with its root and whether it is canonical. `/eth/v2/beacon/blocks/{block_id}` gives the full signed block including the [[execution-payload|execution payload]], which is how you map a slot to an execution block number. `/eth/v1/beacon/states/{state_id}/finality_checkpoints` returns the previous justified, current justified, and finalized checkpoints — the authoritative source for `finalized`, and for `safe` only on a consensus client without the [[fast-confirmation-rule|fast confirmation rule]], since one running it sets `safe` a slot or two behind the head; see [[finality|finality]]. `/eth/v1/beacon/states/{state_id}/validators/{validator_id}` returns a [[validator|validator]]'s balance and status.",
+          "`/eth/v1/beacon/blobs/{block_id}` serves the [[blob|blob]] data that execution methods never return; it replaced `/eth/v1/beacon/blob_sidecars/{block_id}`, deprecated in beacon-APIs v4.0.0 for Fulu. Since Fulu a node [[peerdas|keeps data columns]] rather than whole blobs, so only supernodes, which custody every column, are required to answer it, and the data is retained for roughly 18 days, after which older blobs are gone unless a [[blob-archive|blob archive]] kept them. `/eth/v1/events` is a [[server-sent-events|server-sent-events stream]] with a `topics` query parameter accepting `head`, `finalized_checkpoint`, `chain_reorg`, and others — the consensus equivalent of [[eth-subscribe|eth_subscribe]], and the only place a [[reorg|reorg]] arrives as an explicit event rather than something you infer.",
         ],
       },
       {
@@ -1433,15 +1433,332 @@ export const topics = [
     pitfalls: [
       "Parsing the decimal strings as hex because the execution API trained you to; `\"9871234\"` is not `0x9871234`.",
       "Equating slots with execution block numbers; missed slots mean the two are offset by an amount that only grows.",
-      "Requesting blob sidecars for old blocks, which are dropped after roughly 18 days and return nothing.",
+      "Requesting blobs for old blocks, which are dropped after roughly 18 days, or from a node that is not a supernode, which since Fulu need not hold whole blobs at all.",
       "Reading `is_syncing: false` while ignoring `is_optimistic` and `el_offline`, which are the fields that reveal a broken execution pairing.",
       "Assuming an execution RPC endpoint serves these routes; they are a different process on a different port.",
     ],
-    related: ["beacon-api", "beacon-node", "consensus-layer", "finality", "blob", "slot-epoch", "validator-client", "checkpoint-sync", "ssz", "eth-syncing", "light-client"],
+    related: ["beacon-api", "beacon-node", "consensus-layer", "finality", "blob", "slot-epoch", "validator-client", "checkpoint-sync", "ssz", "eth-syncing", "light-client", "validator-rewards", "blob-archive"],
     sources: [
       { title: "Beacon APIs specification", url: "https://ethereum.github.io/beacon-APIs/" },
       { title: "ethereum/consensus-specs", url: "https://github.com/ethereum/consensus-specs" },
-      { title: "Lighthouse Book: HTTP API", url: "https://lighthouse-book.sigmaprime.io/api-bn.html" },
+      { title: "Lighthouse Book: Beacon Node API", url: "https://lighthouse-book.sigmaprime.io/api_bn.html" },
+    ],
+  },
+  {
+    id: "client-namespaces",
+    title: "Client-specific namespaces",
+    category: "requests",
+    aliases: ["erigon_", "ots_", "parity_", "proof_", "reth_", "qbft_", "anvil_", "optimism_"],
+    summary: "Client-specific namespaces are the method groups an [[execution-client|execution client]] or companion node adds beyond the standard `eth_`, `net_` and `web3_` set, such as Erigon's `erigon_`, the Otterscan `ots_` API, Nethermind's `parity_` and `proof_`, Reth's `reth_`, and Besu's `qbft_` and `perm_`, each enabled per listener and answered only by software that implements it.",
+    sections: [
+      {
+        heading: "What the clients add",
+        paragraphs: [
+          "[[erigon|Erigon]] serves `erigon_` helpers such as `erigon_getHeaderByNumber`, `erigon_getBlockByTimestamp`, `erigon_getBalanceChangesInBlock` and `erigon_getLogsByHash`, plus the `ots_` API that the [[otterscan|Otterscan]] explorer runs on: `ots_getApiLevel`, `ots_searchTransactionsBefore` and `ots_searchTransactionsAfter` for address history, `ots_getInternalOperations`, `ots_getContractCreator`. [[reth|Reth]] implements `ots_` too, but partially, answering the two search methods with an `unimplemented` error, and it answers `erigon_getHeaderByNumber` as an alias; its own `reth_` namespace adds `reth_getBalanceChangesInBlock` and chain-notification subscriptions. Anvil serves `ots_` as well.",
+          "[[nethermind|Nethermind]] keeps a `parity_` module from the Parity era, with `parity_pendingTransactions`, `parity_getBlockReceipts` and `parity_netPeers`, and a `proof_` module whose `proof_getTransactionReceipt` returns a receipt with trie proofs of the transaction and the receipt against the block's roots, the [[receipt-proof|receipt proof]] no standard method offers, while `proof_call` returns a call's output with its execution [[witness|witness]]. [[geth|Geth]] adds `miner_` with `miner_setExtra`, `miner_setGasPrice` and `miner_setGasLimit`, alongside [[admin-api|admin_]]. [[besu|Besu]] adds `ibft_` and `qbft_`, for example `qbft_getValidatorsByBlockNumber`, and `perm_` allow-list methods for [[permissioned-network|permissioned networks]]; its `priv_` and `eea_` privacy groups were removed in 25.7.0.",
+        ],
+      },
+      {
+        heading: "Namespaces outside the execution client",
+        paragraphs: [
+          "Some prefixes are answered by a different process altogether. On the OP Stack, the rollup node `op-node` serves `optimism_syncStatus`, `optimism_outputAtBlock`, `optimism_rollupConfig` and `optimism_version` on its own port, while the execution client beside it answers `eth_`; see [[l2-rpc|L2 RPC differences]]. [[local-devnet|Development nodes]] add `anvil_`, `evm_` and `hardhat_` methods that no production endpoint will accept. And some names under `eth_` belong to other software entirely: [[erc-4337|bundlers]] answer `eth_sendUserOperation` and builders answer [[mev-bundle|bundle methods]].",
+        ],
+      },
+      {
+        heading: "Turning them on",
+        paragraphs: [
+          "Every client gates namespaces with a per-listener allow-list, as described in [[namespaces|RPC namespaces]]. Erigon and Reth take `--http.api`, with Reth accepting `admin`, `debug`, `eth`, `net`, `trace`, `txpool`, `web3`, `rpc`, `reth`, `ots`, `flashbots`, `miner`, `mev` and `testing`. Nethermind's `JsonRpc.EnabledModules` defaults in 2.0 to `[Eth,Subscribe,Trace,TxPool,Web3,Proof,Net,Parity,Health,Rpc]`, so `proof_` and `parity_` are already on. Besu's `--rpc-http-api` defaults to `ETH,NET,WEB3` and takes `QBFT` or `PERM` in upper case.",
+          "`rpc_modules`, served by Geth, Nethermind and Reth, lists the namespaces a listener has enabled, each with a version string. It says nothing about which methods inside a namespace work, which matters when two implementations share a prefix: Erigon and Reth both report `ots_` API level 8 while differing in what they actually answer.",
+        ],
+      },
+      {
+        heading: "The portability cost",
+        paragraphs: [
+          "Code written against one client's namespace is married to that client. The moment a [[failover|failover]] sends its traffic to a node running different software, the calls fail with `-32601`, and an [[indexer|indexer]] built on `ots_searchTransactionsBefore` or `erigon_getBlockByTimestamp` stops. A gateway can keep such methods working only by routing them to a pool that serves them, which means recording per-method [[endpoint-capabilities|capabilities]] for each upstream rather than trusting a client name. Where a standard method has since appeared, as [[eth-get-block-receipts|eth_getBlockReceipts]] did for per-block receipts, the standard one is the portable choice. Code that runs inside the client, rather than calling it, is a different thing again; see [[client-extensions|client extensions]].",
+        ],
+      },
+    ],
+    example: {
+      title: "The same Otterscan call on three endpoints",
+      language: "json",
+      code: "// Erigon, or Reth with ots in --http.api\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ots_getApiLevel\",\"params\":[]}\n{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":8}\n\n// the identical request to a Geth endpoint\n{\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":-32601,\"message\":\"the method ots_getApiLevel does not exist/is not available\"}}\n\n// Reth: which namespaces this listener serves\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"rpc_modules\",\"params\":[]}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"eth\":\"1.0\",\"net\":\"1.0\",\"web3\":\"1.0\",\"ots\":\"1.0\",\"rpc\":\"1.0\"}}\n\n// same API level, different coverage: Reth keeps no address-history index for ots_\n{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"ots_searchTransactionsBefore\",\"params\":[\"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045\",0,25]}\n{\"jsonrpc\":\"2.0\",\"id\":3,\"error\":{\"code\":-32603,\"message\":\"unimplemented\"}}",
+      note: "`-32601` means the namespace is absent here; `-32603` with `unimplemented` means it is present but this method is a stub, which no version string or module list reveals.",
+    },
+    pitfalls: [
+      "Building an indexer on `ots_` or `erigon_` methods and discovering at failover time that the backup runs a different client.",
+      "Treating an `ots_getApiLevel` of 8 as proof that every Otterscan method works, when Reth stubs the address-history searches.",
+      "Sending `optimism_syncStatus` to an OP Stack execution client instead of to `op-node`, which is the process that serves it.",
+      "Assuming a namespace is off because nobody enabled it, when Nethermind's default module list already includes `Proof`, `Parity` and `Trace`.",
+      "Copying a Besu command line that lists `PRIV` or `EEA`, groups that current releases no longer accept.",
+    ],
+    related: ["namespaces", "erigon", "reth", "nethermind", "besu", "otterscan", "endpoint-capabilities", "l2-rpc", "local-devnet", "client-extensions"],
+    sources: [
+      { title: "Reth: JSON-RPC namespaces", url: "https://reth.rs/jsonrpc/intro" },
+      { title: "Nethermind: proof namespace", url: "https://docs.nethermind.io/interacting/json-rpc-ns/proof" },
+      { title: "Besu: private network API methods", url: "https://docs.besu-eth.org/private-networks/reference/api" },
+      { title: "OP Stack: op-node JSON-RPC", url: "https://docs.optimism.io/operators/node-operators/json-rpc" },
+    ],
+  },
+  {
+    id: "mev-bundle",
+    title: "MEV bundles",
+    category: "requests",
+    aliases: ["eth_sendBundle", "eth_callBundle", "eth_cancelBundle", "mev_sendBundle", "revertingTxHashes", "replacementUuid", "X-Flashbots-Signature", "bundle simulation"],
+    summary: "A [[mev|MEV]] bundle is an ordered list of signed transactions sent to block builders with `eth_sendBundle`, to be executed in that order within one target [[block|block]] or not at all, and simulated beforehand with `eth_callBundle`; the methods are builder conventions that began at Flashbots, not part of the standard execution API.",
+    sections: [
+      {
+        heading: "The object",
+        paragraphs: [
+          "`eth_sendBundle` takes one object. `txs` is the list of signed raw transactions, which may include someone else's pending transaction copied from the [[mempool|pool]]. `blockNumber` is the single block the bundle is valid for, as hex. `minTimestamp` and `maxTimestamp` optionally bound it in seconds since the epoch, sent as plain numbers. `revertingTxHashes` names transactions allowed to [[revert|revert]]; without it any revert invalidates the whole bundle. `replacementUuid` is an identifier for later replacement or cancellation, and `builders` names registered builders the relay should share it with. The answer is a `bundleHash`.",
+          "The guarantees are atomicity and order within one block: all the transactions land in the given order, or none do, and a bundle that would fail costs nothing because it is simply left out. That is what a [[searcher|searcher]] pays for, and it is also why a strategy aimed at the next three blocks submits three bundles, one per `blockNumber`. A builder folds accepted bundles into the blocks it bids with through the [[builder-api|builder API]]. The Flashbots relay accepts at most 100 transactions and 300,000 bytes per bundle.",
+        ],
+      },
+      {
+        heading: "Simulating with eth_callBundle",
+        paragraphs: [
+          "`eth_callBundle` takes the same `txs`, a `blockNumber` to simulate as, `stateBlockNumber` for the state to start from, a number or a tag such as `latest`, and an optional `timestamp`. It executes the transactions in sequence, each seeing its predecessors' writes, and returns per-transaction entries with `txHash`, `gasUsed`, `gasFees` from priority fees, `coinbaseDiff`, `ethSentToCoinbase` for the rest, and either `value` holding return data or `revert` holding the revert data. Totals follow, with `bundleGasPrice` being the total `coinbaseDiff` divided by gas used. Even the per-transaction `gasPrice` differs by implementation: Flashbots' documented example divides that transaction's `coinbaseDiff` by its gas, while Reth reports the effective priority fee.",
+          "A revert does not fail the call; it appears in its entry, and whether the real bundle survives it depends on `revertingTxHashes`, which the simulation does not apply. Encodings break the `eth_` habits: wei amounts are decimal strings, `gasUsed` and `stateBlockNumber` plain JSON numbers. And the simulation runs on a pinned state, whereas in the real block other transactions may run first, so it predicts rather than promises, just as [[eth-simulate|eth_simulateV1]] does. The Flashbots relay serves the method, and [[reth|Reth]] answers it from its own `eth` module.",
+        ],
+      },
+      {
+        heading: "Replacement, cancellation, and MEV-Share",
+        paragraphs: [
+          "Sending a new bundle with the same `replacementUuid` replaces the old one. `eth_cancelBundle` takes the `replacementUuid` and stops Flashbots builders using the bundle in future bids, but a bid already sent to a [[relay|relay]] is not withdrawn, so a cancelled bundle can still land if that bid wins.",
+          "[[mev-share|MEV-Share]]'s `mev_sendBundle` is a different format rather than a variant. It has `version`, an `inclusion` object with `block` and an optional `maxBlock`, so one submission can cover a range of blocks, a `body` whose items are `{hash}` for a user transaction the searcher knows only by hash, `{tx, canRevert}` for a signed transaction, or a nested bundle, and `validity` and `privacy` objects for refunds and hints. Since 20 October 2025 Flashbots accepts only one backrun transaction per such bundle. It is simulated with `mev_simBundle`.",
+        ],
+      },
+      {
+        heading: "Signing and fanning out",
+        paragraphs: [
+          "Flashbots endpoints require an `X-Flashbots-Signature` header of the form `address:signature`, where the signature is an EIP-191 personal signature over the hex-encoded Keccak-256 hash of the exact request body. Any key will do; the address is a reputation identity, never the key holding funds, and because the signature covers the exact bytes, re-serialising the body after signing breaks it. Flashbots applies the same header to its [[private-rpc|private transaction]] methods.",
+          "Searchers send each bundle to many builders, and each endpoint speaks its own dialect. BuilderNet, for one, adds `replacementNonce`, `droppingTxHashes`, `refundPercent`, `refundRecipient` and `refundTxHashes`, and documents replacement through `eth_sendBundle` rather than listing `eth_cancelBundle`. No [[eip|EIP]] defines any of it, so fan-out code keeps an adapter per builder.",
+        ],
+      },
+    ],
+    example: {
+      title: "Simulating a two-transaction bundle with eth_callBundle",
+      language: "json",
+      code: "// POST https://relay.flashbots.net\n// X-Flashbots-Signature: 0x9f3c…41b2:0x6c1e…d51b   (address:signature over this exact body)\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_callBundle\",\"params\":[{\n  \"txs\": [\"0x02f8b401821a4f…c3\", \"0x02f87201830e5d…7e\"],\n  \"blockNumber\": \"0x18de4c4\",\n  \"stateBlockNumber\": \"0x18de4c3\",\n  \"timestamp\": 1790596823\n}]}\n\n// result\n{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\n  \"bundleGasPrice\": \"201026793975\",\n  \"bundleHash\": \"0x5b1e0c2f…9ad4\",\n  \"coinbaseDiff\": \"50403046000000000\",\n  \"ethSentToCoinbase\": \"50000000000000000\",\n  \"gasFees\": \"403046000000000\",\n  \"results\": [\n    {\n      \"txHash\": \"0x8e4f…12c0\",\n      \"fromAddress\": \"0x4a7c…e2d1\",\n      \"toAddress\": \"0x7a25…488d\",\n      \"gasUsed\": 152318,\n      \"gasPrice\": \"2000000000\",\n      \"gasFees\": \"304636000000000\",\n      \"coinbaseDiff\": \"304636000000000\",\n      \"ethSentToCoinbase\": \"0\",\n      \"value\": \"0x0000…0001\"\n    },\n    {\n      \"txHash\": \"0x3d90…a771\",\n      \"fromAddress\": \"0x4a7c…e2d1\",\n      \"toAddress\": \"0xb0a1…5f2e\",\n      \"gasUsed\": 98410,\n      \"gasPrice\": \"509078447312\",\n      \"gasFees\": \"98410000000000\",\n      \"coinbaseDiff\": \"50098410000000000\",\n      \"ethSentToCoinbase\": \"50000000000000000\",\n      \"value\": \"0x\"\n    }\n  ],\n  \"stateBlockNumber\": 26076355,\n  \"totalGasUsed\": 250728\n}}",
+      note: "The second transaction pays the builder 0.05 ether directly, which `ethSentToCoinbase` separates from its 1 gwei priority fee, and its Flashbots-style `gasPrice` folds that payment in; wei amounts are decimal strings, while `gasUsed` and `stateBlockNumber` are plain numbers.",
+    },
+    pitfalls: [
+      "Submitting a bundle once and waiting, when each submission targets exactly one block and must be repeated for the next.",
+      "Reading a successful `eth_callBundle` response as a passing simulation without checking each entry for a `revert`.",
+      "Parsing `coinbaseDiff` or `gasFees` as hex QUANTITY values, when bundle responses carry decimal strings.",
+      "Pretty-printing or re-serialising the request body after computing `X-Flashbots-Signature`, which invalidates the signature.",
+      "Treating `eth_cancelBundle` as a guarantee, when a bid already at the relay can still include the bundle.",
+    ],
+    related: ["private-rpc", "mev", "searcher", "builder-api", "relay", "mev-boost", "eth-simulate", "eth-call", "eth-send-raw-transaction", "block-proposal", "mev-share"],
+    sources: [
+      { title: "Flashbots: JSON-RPC endpoint", url: "https://docs.flashbots.net/flashbots-auction/advanced/rpc-endpoint" },
+      { title: "Flashbots: bundle cancellations", url: "https://docs.flashbots.net/flashbots-auction/advanced/bundle-cancellations" },
+      { title: "MEV-Share: mev_sendBundle v0.1", url: "https://github.com/flashbots/mev-share/blob/main/specs/bundles/v0.1.md" },
+      { title: "BuilderNet: API", url: "https://buildernet.org/docs/api" },
+    ],
+  },
+  {
+    id: "deployless-call",
+    title: "Deployless calls",
+    category: "requests",
+    aliases: ["deployless read", "deployless multicall", "eth_call without to", "constructor return", "code override", "counterfactual call"],
+    summary: "A deployless call runs helper code that is deployed nowhere, either as creation code in an [[eth-call|eth_call]] with no `to`, whose constructor returns the answer, or as runtime code placed at an address by a [[state-override|state override]], so one request can batch reads or check signatures on any chain.",
+    sections: [
+      {
+        heading: "Creation code as a query",
+        paragraphs: [
+          "Some reads need a helper contract the chain does not have: Multicall3 to batch reads on a new chain, a signature checker for a smart account that does not exist yet, a lens written for one dashboard. A deployless call runs the helper without deploying it. The first way is contract creation. An eth_call without `to` simulates a deployment: the node runs `data` as initcode, the code that runs once when a contract is created, and whatever that code hands to the `RETURN` opcode would normally become the new [[smart-contract|contract]]'s runtime code, the code its address runs from then on. In a call nothing is stored, and the node returns those bytes as `result`. A constructor that performs reads and returns the answer instead of code is therefore a query; its arguments are [[abi|ABI]]-encoded and appended to the creation code exactly as for a real deployment.",
+          "ERC-6492's `ValidateSigOffchain` is the reference case: its constructor creates a `UniversalSigValidator`, checks a signature for a wallet that may not exist yet by running the wallet's factory first, then executes `mstore(0, isValidSig)` and `return(31, 1)`, so the result is one byte, `0x01` or `0x00`; see [[erc-6492|ERC-6492]] and [[erc-1271|ERC-1271]]. viem builds the pattern into its `call` action: with `code` it wraps your contract's creation code in a constructor that deploys it with `CREATE2` and calls it, and with `factory` and `factoryData` it first runs the factory when the target has no code yet, as for a [[erc-4337|smart account]] that is not deployed. Its `multicall` with `deployless: true` sends [[multicall|Multicall3]]'s creation code and the `aggregate3` calldata the same way, as an eth_call with no `to`, for chains where Multicall3 is not deployed.",
+        ],
+      },
+      {
+        heading: "Code placed by an override",
+        paragraphs: [
+          "The second way writes runtime code to an address through a [[state-override|state override]]'s `code` field and calls that address normally. The code runs with that address's storage, empty unless overridden too. Uses include installing Multicall3 at `0xcA11bde05977b3631167028862bE2a173976CA11` on a chain that lacks it, a balance scanner that reads hundreds of balances in one call, a lens contract nobody deployed, and replacing a real contract's code with a version that adds a getter, which exposes its internal variables because the contract's own storage stays in place.",
+          "The two differ in what they need. The creation path needs nothing beyond eth_call, so it works on endpoints that strip or reject overrides; the override path needs the third parameter, which some [[rpc-provider|providers]] drop silently, and support on [[eth-estimate-gas|eth_estimateGas]] is patchier still. Bytecode that does not care how it was entered works both ways: the 55-byte balance scanner in the example returns the same 64 bytes as initcode and as overridden code.",
+        ],
+      },
+      {
+        heading: "Limits",
+        paragraphs: [
+          "A deployless result is checked as contract code, because to the [[evm|EVM]] it is. A result whose first byte is `0xEF` fails under EIP-3541, as `invalid code: must not begin with 0xef` on Geth and `CreateContractStartingWithEF` on Reth. A result longer than 24,576 bytes, the EIP-170 code-size limit on mainnet (Geth's source already defines 65,536 for the Amsterdam upgrade, not active yet), fails with `max code size exceeded` on Geth and `EVM error: CreateContractSizeLimit` on Reth. One hash in 256 begins with `0xEF`, so a deployless read of a function that returns a raw `bytes32` hash fails about once in 256 calls, and a large deployless multicall fails once its return data passes 24 KB, while the same code installed with a `code` override returns either result. The input is capped too: since the Shanghai upgrade, EIP-3860 limits initcode to 49,152 bytes, and a 49,153-byte `data` fails with `max initcode size exceeded`. Each returned byte also costs 200 gas of code deposit, the charge for storing new code.",
+          "The rest is the ordinary eth_call budget. The helper and every call it makes share the node's gas cap, the most gas one call may burn: 50,000,000 by default on [[geth|Geth]] (`--rpc.gascap`) and 100,000,000 on [[nethermind|Nethermind]] (`JsonRpc.GasCap`), plus the node's [[request-cancellation|execution timeout]]. That cap is far above the 16,777,216 gas EIP-7825 allows a real transaction since Fusaka: Geth, Nethermind and [[reth|Reth]] all skip that limit for eth_call but clamp eth_estimateGas to it, so a helper that burns 20 million gas runs as a call and cannot be estimated.",
+        ],
+      },
+    ],
+    example: {
+      title: "One 55-byte balance scanner, run both ways",
+      language: "json",
+      code: "// 73 <addr> 31 6000 52   PUSH20 addr, BALANCE, PUSH1 0, MSTORE   (first balance to memory 0)\n// 73 <addr> 31 6020 52   PUSH20 addr, BALANCE, PUSH1 32, MSTORE  (second balance to memory 32)\n// 6040 6000 f3           RETURN 64 bytes from memory offset 0\n\n// 1. as creation code: no \"to\", the bytes go in \"data\"\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_call\",\"params\":[\n  {\"data\":\"0x73d8da6bf26964af9d7eed9e03e53415d37aa960453160005273388c818ca8b9251b393131c08a736a67ccb192973160205260406000f3\"},\n  \"0x1914665\"\n]}\n{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"0x000000000000000000000000000000000000000000000000502f14b6df19176f000000000000000000000000000000000000000000000000caf38332ffa09f8c\"}\n// 5.7779 ETH and 14.6242 ETH, the two balances in wei\n\n// 2. as runtime code at an unused address, through a state override\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"eth_call\",\"params\":[\n  {\"to\":\"0x00000000000000000000000000000000deadbeef\"},\n  \"0x1914665\",\n  {\"0x00000000000000000000000000000000deadbeef\":{\n    \"code\":\"0x73d8da6bf26964af9d7eed9e03e53415d37aa960453160005273388c818ca8b9251b393131c08a736a67ccb192973160205260406000f3\"}}\n]}\n// same 64-byte result\n\n// 3. creation code whose result starts with 0xEF\n// PUSH32 0xef00…0001, PUSH1 0, MSTORE, RETURN 32 bytes\n{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"eth_call\",\"params\":[\n  {\"data\":\"0x7fef0000000000000000000000000000000000000000000000000000000000000160005260206000f3\"},\n  \"0x1914665\"\n]}\n{\"jsonrpc\":\"2.0\",\"id\":3,\"error\":{\"code\":-32000,\"message\":\"invalid code: must not begin with 0xef\"}}\n// Reth answers the same request with -32003 \"EVM error: CreateContractStartingWithEF\"",
+      note: "Request 3's initcode returns a 32-byte word starting with `0xEF`, which no creation may produce; installed with a `code` override, the same bytes come back as `0xef00…0001` without complaint.",
+    },
+    pitfalls: [
+      "Returning a raw `bytes32` from a deployless constructor, so roughly one result in 256 begins with `0xEF` and the call errors.",
+      "Growing a deployless multicall until its return data passes 24,576 bytes, which fails the whole batch rather than one call.",
+      "Putting creation code into a `code` override, where the constructor logic runs as runtime code and its appended arguments are missing.",
+      "Relying on an override through a provider that strips it, so the call reaches an empty address and returns `0x`.",
+    ],
+    related: ["eth-call", "state-override", "multicall", "erc-6492", "erc-1271", "quoter-contract", "erc-4337", "endpoint-capabilities", "client-libraries", "request-cancellation"],
+    sources: [
+      { title: "ERC-6492: Signature Validation for Predeploy Contracts", url: "https://eips.ethereum.org/EIPS/eip-6492" },
+      { title: "EIP-3860: Limit and meter initcode", url: "https://eips.ethereum.org/EIPS/eip-3860" },
+      { title: "EIP-3541: Reject new contract code starting with the 0xEF byte", url: "https://eips.ethereum.org/EIPS/eip-3541" },
+      { title: "viem: readContract, deployless reads", url: "https://viem.sh/docs/contract/readContract" },
+    ],
+  },
+  {
+    id: "storage-slot-discovery",
+    title: "Finding a token's storage slots",
+    category: "requests",
+    aliases: ["balance slot", "allowance slot", "balance override", "storage slot detection", "deal cheatcode", "ERC-7201", "mapping slot"],
+    summary: "Storage-slot discovery is finding which [[contract-storage|storage slot]] of a token holds `balanceOf[holder]` or `allowance[owner][spender]`, so that a simulator can fake a balance or an approval with a [[state-override|state override]] instead of needing real funds.",
+    sections: [
+      {
+        heading: "Why the slot is needed",
+        paragraphs: [
+          "A [[transaction-simulation|wallet preview]], an [[dex-aggregator|aggregator]] verifying a quote for a user who has not approved yet, and a [[fork-testing|fork test]] all want to run a transaction as if an address held tokens it does not. An override cannot set a token balance directly: it sets storage words, the numbered 32-byte slots in which a contract keeps its variables, and a balance is whatever the token's code computes from them. In Solidity, a `mapping(address => uint256)` declared at slot `p` keeps the entry for `holder` at `keccak256(pad32(holder) . pad32(p))`, where `pad32` left-pads a value with zeros to 32 bytes and `.` joins the two. A nested `allowance[owner][spender]` applies the rule twice, owner first: `keccak256(pad32(spender) . keccak256(pad32(owner) . pad32(p)))`. WETH keeps balances at slot 3 and allowances at 4; USDC at 9 and 10.",
+          "Other compilers and libraries use other formulas. Vyper hashes the slot first and the key second, `keccak256(pad32(p) . pad32(holder))`, so the Solidity formula applied to a Vyper token, such as many Curve LP tokens, gives a valid but empty slot. OpenZeppelin 5's `ERC20Upgradeable` keeps its variables in an ERC-7201 namespace, a struct at a hashed location, `keccak256(uint256(keccak256(id)) - 1)` with the last byte cleared: for the id `openzeppelin.storage.ERC20` that is `0x52c63247…ce00`, where `_balances` lives, so a balance sits at `keccak256(pad32(holder) . 0x52c6…ce00)`. Solady's ERC-20 hashes 32 bytes: the holder's 20, eight zero bytes, and the four-byte seed `0x87a211a2`.",
+        ],
+      },
+      {
+        heading: "Discovering an unknown layout",
+        paragraphs: [
+          "When the layout is unknown, watch which slots `balanceOf` reads. Run `balanceOf(holder)` through [[debug-api|debug_traceCall]] with the default struct logger, which records every executed opcode with its stack, and collect the stack top at each `SLOAD`, the opcode that reads storage: that value is the slot. Track whose storage each read touches: `CALL` and `STATICCALL` switch to the callee's storage, `DELEGATECALL` keeps the caller's. CoW Protocol's `balance-overrides` crate does exactly this. [[eth-create-access-list|eth_createAccessList]] returns the same keys per address in compact form. Each key is then matched against candidate formulas: CoW tries Solidity mapping slots 0 to N and the Solady seed, and a Vyper token needs the same test with the order swapped. A match gives a rule that works for any holder; a key that matches nothing is valid only for the holder it was found with.",
+          "Then prove it by overriding and checking. Write a sentinel, a value nobody would hold by chance, into a candidate slot with `stateDiff`, call `balanceOf` again, and keep the slot whose sentinel comes back. CoW uses `0x0102…1f20`, whose distinct bytes also reveal a packed balance by where the readback sits, and Foundry's `deal` test helper does the same in-process, recording reads with `vm.record` and testing each slot. On USDC at block 26,297,957, the access list for `balanceOf(0xd8dA…6045)` held three keys on the proxy: the admin slot, the implementation slot, and `0xbf49…5f95`, which is `keccak256(pad32(holder) . pad32(9))`; the sentinel written there read back unchanged.",
+        ],
+      },
+      {
+        heading: "Where it breaks",
+        paragraphs: [
+          "A [[proxy-contract|proxy]] is a small contract that forwards every call by `DELEGATECALL` to a separate implementation contract and keeps all the storage itself, so the override must target the proxy's address. Its own bookkeeping slots show up in every trace and have to be filtered out: an EIP-1967 proxy keeps its implementation address at `0x360894…2bbc`, and USDC's older proxy reads the hashes of `org.zeppelinos.proxy.admin` and `org.zeppelinos.proxy.implementation`, the first two keys in the example. Packed slots punish large values: USDC 2.2 keeps a blacklist flag in the top bit of the balance word, so writing all ones reads back `0x7fff…ffff` and a transfer reverts with `Blacklistable: account is blacklisted`, while UNI and COMP store `uint96` balances, so a larger value reads back cut to its low 96 bits.",
+          "Some balances are computed. stETH, Lido's staked-ether token, returns `getPooledEthByShares(shares[account])` from `balanceOf`: the holder's shares times the pool's ether per share. Writing 1,000 × 10^18 into the shares entry, mapping slot 0 of the proxy, read back 1,247.40 stETH at that block. Aave's aTokens, receipts for deposits, scale a stored balance by an interest index. Some live elsewhere: a Balancer v3 pool token's `balanceOf` asks the Vault, so its slot is in the Vault's storage. And layouts move at upgrades, so a slot found today is valid only for the implementation it was found on.",
+        ],
+      },
+    ],
+    example: {
+      title: "Finding and proving USDC's balance slot",
+      language: "json",
+      code: "// 1. which slots does balanceOf(0xd8dA…6045) read?\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_createAccessList\",\"params\":[\n  {\"to\":\"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n   \"data\":\"0x70a08231000000000000000000000000d8da6bf26964af9d7eed9e03e53415d37aa96045\"},\n  \"0x1914665\"\n]}\n{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"accessList\":[\n  {\"address\":\"0x43506849d7c04f9138d1a2050bbf3a0c054402dd\",\"storageKeys\":[]},\n  {\"address\":\"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\",\"storageKeys\":[\n    \"0x10d6a54a4754c8869d6886b5f5d7fbfa5b4522237ea5c60d11bc4e7a1ff9390b\",\n    \"0x7050c9e0f4ca769c69bd3a8ef740bc37934f8e2c036e5a723fd8ee048ed3f8c3\",\n    \"0xbf4954ae1137d99a74d9587692d0c99fcc87859496c91311c267c25a44a35f95\"]}],\n  \"gasUsed\":\"0x81f7\"}}\n// 0x4350…02dd is the implementation: its code ran, its storage was never read\n// on the proxy: the ZeppelinOS admin and implementation slots,\n// then keccak256(pad32(holder) . pad32(9)), the balance candidate\n\n// 2. write a sentinel there and read the balance again\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"eth_call\",\"params\":[\n  {\"to\":\"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\"data\":\"0x70a08231…6045\"},\n  \"0x1914665\",\n  {\"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\":{\"stateDiff\":{\n    \"0xbf4954ae1137d99a74d9587692d0c99fcc87859496c91311c267c25a44a35f95\":\n    \"0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20\"}}}\n]}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":\"0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20\"}\n\n// 3. the same slot set to all ones\n// balanceOf -> 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\n// transfer  -> error 3, execution reverted: Blacklistable: account is blacklisted",
+      note: "The real balance was `0x246c3fc`, 38.192124 USDC; the sentinel came back byte for byte, which proves both the slot and that the balance is not shifted inside it, and step 3 shows why a maximum value is the wrong test.",
+    },
+    pitfalls: [
+      "Hashing in Solidity order for a Vyper token, which produces a valid empty slot and leaves the balance unchanged.",
+      "Overriding the implementation contract's storage instead of the proxy's, which changes nothing the token reads.",
+      "Writing the maximum `uint256` as a fake balance, which blacklists the holder on USDC and is cut to 2^96 − 1 by the `uint96` balances of UNI or COMP.",
+      "Writing the wanted amount into stETH's shares entry, which yields a different balance because the slot holds shares, not ether.",
+      "Caching a discovered slot forever, so an upgrade that moves the layout makes every later override silently ineffective.",
+    ],
+    related: ["state-override", "contract-storage", "eth-get-storage-at", "eth-create-access-list", "debug-api", "proxy-contract", "dex-aggregator", "transaction-simulation", "fork-testing", "keccak-256"],
+    sources: [
+      { title: "Solidity docs: layout of state variables in storage", url: "https://docs.soliditylang.org/en/latest/internals/layout_in_storage.html" },
+      { title: "ERC-7201: Namespaced Storage Layout", url: "https://eips.ethereum.org/EIPS/eip-7201" },
+      { title: "CoW Protocol services: balance-overrides detector", url: "https://github.com/cowprotocol/services/blob/main/crates/balance-overrides/src/balance/mod.rs" },
+      { title: "forge-std: StdStorage.sol", url: "https://github.com/foundry-rs/forge-std/blob/master/src/StdStorage.sol" },
+    ],
+  },
+  {
+    id: "mempool-streaming",
+    title: "Mempool streaming",
+    category: "requests",
+    aliases: ["newPendingTransactions", "pending transaction stream", "mempool feed", "eth_newPendingTransactionFilter", "Mempool Dumpster", "mempool archive"],
+    summary: "Mempool streaming is consuming pending [[transaction|transactions]] as they reach a node's [[mempool|pool]], through an `eth_subscribe` stream, a pending-transaction filter, a `txpool_content` snapshot or a feed merged from many nodes, so a consumer can react before those transactions are included in a block.",
+    sections: [
+      {
+        heading: "Three ways to read the pool",
+        paragraphs: [
+          "A pending transaction is one a node has accepted into its pool that no block contains yet. Watching them lets a consumer act before they land: a [[searcher|searcher]] looks for a large swap to trade behind, a wallet shows a user's unconfirmed transfer and next [[nonce|nonce]], and a security monitor looks for an attack in flight. The push interface is [[eth-subscribe|eth_subscribe]] with `newPendingTransactions` over a [[websocket-transport|WebSocket]] or [[ipc-transport|IPC]] connection, which by default sends one notification per transaction hash as it enters the pool. Full transaction objects need a second parameter whose shape differs by client: [[geth|Geth]], [[erigon|Erigon]] and [[reth|Reth]] take a bare `true`, [[nethermind|Nethermind]] takes `true` or `{\"includeTransactions\": true}`, and [[besu|Besu]] reads only the object form. Geth's own documentation lists no parameter at all, although its source accepts one.",
+          "Over plain HTTP the same feed comes from `eth_newPendingTransactionFilter` polled with `eth_getFilterChanges`, which Geth also lets return full objects, with the usual caveats of [[eth-filters|server-side filters]]. The snapshot interface is [[txpool-api|txpool_content]], every pending transaction plus the queued ones still waiting for an earlier nonce, keyed by sender and nonce, which a consumer calls once at startup and then keeps current from the stream. Arrivals are the only event in the standard streams: nothing reports an eviction, or a replacement by a transaction with the same sender and nonce paying a higher fee, and Geth announces a transaction again when a [[reorg|reorg]] returns it to the pool. Nethermind and Besu add a `droppedPendingTransactions` subscription that sends the hash of each transaction their pool drops.",
+        ],
+      },
+      {
+        heading: "What one node does not see",
+        paragraphs: [
+          "A node hears about a transaction when one of its [[devp2p|devp2p]] peers sends or announces it, so arrival time and order depend on peering, and two well-run nodes disagree on both. [[blob|Blob transactions]], which carry bulk data for rollups, travel worse: EIP-4844 forbids pushing them to peers unasked, so they are announced by hash and fetched on demand, reaching each node later and less evenly. Private transactions never arrive at all: one sent through [[private-rpc|Flashbots Protect, MEV Blocker]] or straight to a builder, one of the parties that assemble most blocks, first appears in a block, and a rollup with a single [[sequencer|sequencer]] usually has no public pool to stream.",
+          "The gap decides what a stream is good for. BlockSec documents that its Phalcon monitor front-runs exploit transactions it sees in the mempool with a transaction that pauses the protocol under attack, and that attacks sent privately, or on layer 2s without a public pool, cannot be caught at that stage; see [[security-monitoring|security monitoring]]. Gas estimators share the limit: Blocknative's `blockprices` API returns confidence levels for next-block inclusion and describes using mempool observations where available, which models the public remainder, not what builders hold privately.",
+        ],
+      },
+      {
+        heading: "Feeds, archives and the load on the node",
+        paragraphs: [
+          "Commercial feeds widen the view by merging many nodes: bloXroute's `newTxs` and `pendingTxs` streams, and Chainbound Fiber's `SubscribeNewTxs`, which ships each transaction with its sender so the client skips signature recovery. Archives answer the question afterwards. Flashbots' Mempool Dumpster publishes daily Parquet and CSV files at `https://mempool-dumpster.flashbots.net`, one to two million unique transactions a day, with the `sources` that saw each one and its `inclusionDelayMs`; ethPandaOps publishes a `mempool_transaction` table of the times its sentries saw each transaction, as daily Parquet at `data.ethpandaops.io`.",
+          "For the node, a full-object stream on mainnet is a firehose of serialised transactions, and a consumer that cannot keep up loses it. Geth's documentation says notifications wait in a buffer and the connection closes once 10,000 are queued, but its current code keeps no such buffer: it writes each notification directly with a 10-second deadline, so once a consumer stops reading long enough for one write to stall that long, the write times out and the connection breaks. Either way every subscription on that connection is lost. That is why [[rpc-provider|providers]] cap or disable the subscription and why latency-sensitive consumers read their own node over IPC. The result is still one node's view; network-wide visibility needs many vantage points, which is what the feeds sell and the archives publish.",
+        ],
+      },
+    ],
+    example: {
+      title: "Full pending transactions, and the hash-only race",
+      language: "json",
+      code: "// full objects: a bare true on Geth, Erigon, Reth and Nethermind\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_subscribe\",\"params\":[\"newPendingTransactions\",true]}\n{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"0x9ce59a13059e417087c02d3236a0b1cc\"}\n\n// Besu reads the option only as an object\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"eth_subscribe\",\"params\":[\"newPendingTransactions\",{\"includeTransactions\":true}]}\n\n// one notification: the transaction as it sits in this node's pool\n{\"jsonrpc\":\"2.0\",\"method\":\"eth_subscription\",\"params\":{\n  \"subscription\": \"0x9ce59a13059e417087c02d3236a0b1cc\",\n  \"result\": {\n    \"type\": \"0x2\",\n    \"hash\": \"0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfba1b22060\",\n    \"from\": \"0xd8da6bf26964af9d7eed9e03e53415d37aa96045\",\n    \"to\": \"0x7a250d5630b4cf539739df2c5dacb4c659f2488d\",\n    \"nonce\": \"0x1f4\",\n    \"gas\": \"0x3d090\",\n    \"maxFeePerGas\": \"0x6fc23ac00\",\n    \"maxPriorityFeePerGas\": \"0x3b9aca00\",\n    \"value\": \"0x0\",\n    \"input\": \"0x38ed1739…\",\n    \"blockHash\": null,\n    \"blockNumber\": null,\n    \"transactionIndex\": null\n  }\n}}\n\n// a second subscription, opened with no second parameter, sends hashes only;\n// here the follow-up lookup arrives after the transaction has left the pool\n{\"jsonrpc\":\"2.0\",\"method\":\"eth_subscription\",\"params\":{\"subscription\":\"0x7b1e04c2a9d3f5e6c18a2b9d04e7f316\",\"result\":\"0x9d0e77a1c4b2e8f0…4a12\"}}\n{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"eth_getTransactionByHash\",\"params\":[\"0x9d0e77a1c4b2e8f0…4a12\"]}\n{\"jsonrpc\":\"2.0\",\"id\":3,\"result\":null}",
+      note: "The object is trimmed: a real one also carries `chainId`, `accessList` and the signature fields. A pending object has `blockHash`, `blockNumber` and `transactionIndex` set to `null`. A `null` result from `eth_getTransactionByHash` means the transaction left this pool, evicted or replaced, or the call reached a different backend; a mined transaction would come back with its block fields.",
+    },
+    pitfalls: [
+      "Subscribing for hashes and fetching each one with `eth_getTransactionByHash`, which doubles the requests and loses transactions that leave the pool before the lookup arrives.",
+      "Sending a bare `true` to Besu, which expects the `includeTransactions` object, and getting a parameter error instead of a stream.",
+      "Reading arrival order as the next block's order, when the builder that wins the slot orders by its own rules and adds flow nobody streamed.",
+      "Concluding a transaction was never sent because no feed showed it, when it may have gone to builders privately.",
+      "Consuming the stream slower than it arrives until the connection breaks, at the 10,000 queued notifications Geth's documentation names or at the 10-second write timeout in its code, taking every subscription on it.",
+    ],
+    related: ["mempool", "txpool-api", "eth-subscribe", "eth-filters", "private-rpc", "searcher", "security-monitoring", "mev-share", "fastest-head", "network-telemetry"],
+    sources: [
+      { title: "Geth: real-time events (pubsub)", url: "https://geth.ethereum.org/docs/interacting-with-geth/rpc/pubsub" },
+      { title: "EIP-4844: Shard Blob Transactions", url: "https://eips.ethereum.org/EIPS/eip-4844" },
+      { title: "Flashbots Mempool Dumpster", url: "https://github.com/flashbots/mempool-dumpster" },
+      { title: "xatu-data: mempool_ tables", url: "https://github.com/ethpandaops/xatu-data/blob/master/schema/mempool_.md" },
+    ],
+  },
+  {
+    id: "eth-capabilities",
+    title: "eth_capabilities",
+    category: "requests",
+    aliases: ["eth_capabilities", "retention reporting", "capability discovery", "oldestBlock", "deleteStrategy", "retentionBlocks"],
+    summary: "`eth_capabilities` returns a node's head and, for each kind of data it reports on (state, transactions, logs, receipts, blocks and state proofs), whether it is served, the oldest block it covers and the sliding window it is pruned by, so a router can read an endpoint's retention instead of probing for it.",
+    sections: [
+      {
+        heading: "The question it answers",
+        paragraphs: [
+          "A router in front of many nodes has to know which can answer a request for an old block. A [[full-node|full node]] keeps only recent state, so an [[eth-get-balance|eth_getBalance]] at a block from last year fails there with a missing-state error but succeeds on an [[archive-node|archive node]]; logs, receipts and old block bodies have limits of their own. Until now a router found them with test calls, the probing that [[endpoint-capabilities|endpoint capabilities]] describes. `eth_capabilities` asks the node instead. It takes no parameters and returns seven required members: `head`, the `number` and `hash` of the current head, and six resources.",
+          "The specification names the methods each resource governs. `state` covers eth_getBalance, [[eth-get-storage-at|eth_getStorageAt]], [[eth-call|eth_call]], [[eth-estimate-gas|eth_estimateGas]] and the other state reads; `stateproofs` covers [[eth-get-proof|eth_getProof]]; `logs` covers [[eth-get-logs|eth_getLogs]] and [[eth-filters|filters]]; `receipts` covers [[eth-get-transaction-receipt|eth_getTransactionReceipt]] and [[eth-get-block-receipts|eth_getBlockReceipts]]; `tx` covers transaction lookups by hash or position; and `blocks` covers [[eth-get-block-by-number|eth_getBlockByNumber]] and the count methods. Each resource has a required boolean `disabled`, an optional `oldestBlock`, the earliest block it is expected to serve correctly, and an optional `deleteStrategy`. The schema forbids extra members, and every number is a [[hex-encoding|hex QUANTITY]] string.",
+        ],
+      },
+      {
+        heading: "Reading the answer",
+        paragraphs: [
+          "The only strategy defined is `window`, with `retentionBlocks`: the node keeps that many recent blocks, so `oldestBlock` equals `head.number - retentionBlocks + 1` and rises by one with every new block. A router therefore recomputes the floor rather than caching it. A resource with no strategy has a fixed floor, such as pre-Merge bodies removed by [[history-expiry|history expiry]], or no floor at all.",
+          "A floor is not always a wall. In the example below, `logs` reports Geth's default log-index window of 2,350,000 blocks, yet Geth answers older log ranges with a slower unindexed scan, so that floor marks where queries slow down, not where they fail. A node without the method answers `-32601`, and a filtering gateway may use another code such as `-32600`; either way the caller falls back to probing.",
+        ],
+      },
+      {
+        heading: "How clients fill it in",
+        paragraphs: [
+          "The method was proposed in [[execution-apis|execution-apis]] pull request 755 and merged on 2 June 2026. Its first fixtures, copied from Geth's unit-test vectors, paired a block number with the mainnet genesis hash, an answer no node can give, so no client passed. Pull request 819 regenerated them from a running client and made the test speconly: [[hive|hive]] checks only the schema and that `head` matches the test chain, because retention differs per node and configuration.",
+          "All five major execution clients serve it: [[geth|Geth]] from v1.17.4, [[nethermind|Nethermind]] from 1.39.0, [[reth|Reth]] from v2.3.0, [[erigon|Erigon]] from v3.5.0 and [[besu|Besu]] from 26.5.0. Geth reports a 128-block state window on a full node. A path-based Geth archive keeps old state but keeps the old trie nodes a proof needs only with `--history.trienode`, so its `stateproofs` can be far shallower than `state`. Nethermind reports the `receipts` floor and window for `tx` and `logs` as well. Erigon disables `stateproofs` unless `--prune.include-commitment-history` was set. Besu reports one floor for every resource, never a window, and since 26.6.0 disables `state` and `stateproofs` when the genesis state is missing, as on a snap-synced node that still answers `latest`. Reth's `--full` default reports a 10,064-block `state` window, and Reth before v2.4.0 and Nethermind 1.39.x write `retentionBlocks` as a plain JSON number, `10064`.",
+        ],
+      },
+      {
+        heading: "What it cannot say",
+        paragraphs: [
+          "The schema allows one floor per resource, so it cannot describe a [[partial-archive|partial archive]] that keeps deep history for listed contracts only, as Nethermind's `FlatDb.HistorySliceAddresses` does, or Reth's receipts log filter, which keeps old receipts for chosen addresses. It cannot say an index is still being built: Geth computes its answer from configuration, so during a path-based archive's long first indexing it reports a range it cannot serve yet. Nor does it cover [[trace-api|trace_]] or [[debug-api|debug_]], gas caps or [[rate-limits|range and rate limits]].",
+          "The answer is self-reported and describes only the backend that served that request. Behind a [[load-balancer|load balancer]] the next call can land elsewhere: on 29 October 2026 one public endpoint answered [[net-web3-api|web3_clientVersion]] with `reth/v2.8.0` on one call and `Geth/v1.17.9` on the next. A router that relies on the answer therefore spot-checks one call at the reported floor, such as an eth_getBalance at `oldestBlock`, before sending archive traffic there.",
+        ],
+      },
+    ],
+    example: {
+      title: "A Geth v1.17.9 full node's answer, 29 October 2026",
+      language: "json",
+      code: "// request\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_capabilities\",\"params\":[]}\n\n// result\n{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\n  \"head\":        {\"number\":\"0x191464e\",\"hash\":\"0x21cae586b5c43cbc2c1190c7e6e4f3d25874ee041645ec9634568e3d8b4dae58\"},\n  \"state\":       {\"disabled\":false,\"oldestBlock\":\"0x19145cf\",\"deleteStrategy\":{\"type\":\"window\",\"retentionBlocks\":\"0x80\"}},\n  \"tx\":          {\"disabled\":false,\"oldestBlock\":\"0x0\"},\n  \"logs\":        {\"disabled\":false,\"oldestBlock\":\"0x16d6a9f\",\"deleteStrategy\":{\"type\":\"window\",\"retentionBlocks\":\"0x23dbb0\"}},\n  \"receipts\":    {\"disabled\":false,\"oldestBlock\":\"0x0\"},\n  \"blocks\":      {\"disabled\":false,\"oldestBlock\":\"0x0\"},\n  \"stateproofs\": {\"disabled\":false,\"oldestBlock\":\"0x19145cf\",\"deleteStrategy\":{\"type\":\"window\",\"retentionBlocks\":\"0x80\"}}\n}}\n\n// a node or gateway without the method\n{\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":-32601,\"message\":\"Method not found\"}}",
+      note: "The head is block 26,297,934. `state` and `stateproofs` keep a 128-block window (`0x80`), so their floor sits 127 blocks under the head; `logs` keeps 2,350,000 blocks (`0x23dbb0`); `tx`, `receipts` and `blocks` reach genesis with no window. Geth still serves logs older than its index by scanning, only more slowly.",
+    },
+    pitfalls: [
+      "Reading `-32601` as a node with no history, when older releases and filtering gateways do not expose the method.",
+      "Caching `oldestBlock` for a windowed resource, which is stale twelve seconds later; recompute it from the head and `retentionBlocks`.",
+      "Parsing `retentionBlocks` only as a hex string, when some Reth and Nethermind releases return a plain JSON number.",
+      "Routing `eth_getProof` by the `state` floor, when on a path-based Geth archive and on Erigon `stateproofs` can be far shallower or disabled.",
+    ],
+    related: ["endpoint-capabilities", "receipt-retention", "partial-archive", "history-expiry", "archive-node", "execution-apis", "rpc-gateway", "load-balancer", "eth-get-proof", "client-storage"],
+    sources: [
+      { title: "execution-apis: eth_capabilities method", url: "https://github.com/ethereum/execution-apis/blob/main/src/eth/capabilities.yaml" },
+      { title: "execution-apis: EthCapabilities schema", url: "https://github.com/ethereum/execution-apis/blob/main/src/schemas/capabilities.yaml" },
+      { title: "execution-apis PR 755: Add eth_capabilities method for routing capability discovery", url: "https://github.com/ethereum/execution-apis/pull/755" },
+      { title: "go-ethereum: internal/ethapi/capabilities.go", url: "https://github.com/ethereum/go-ethereum/blob/master/internal/ethapi/capabilities.go" },
     ],
   },
 ];

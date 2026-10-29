@@ -543,7 +543,7 @@ export const quizzes = {
     },
     {
       kind: "consequence",
-      question: "A sender sets a gas limit ten times higher than the transaction will need. What does that do?",
+      question: "A sender sets a gas limit ten times higher than the transaction will need, still under the per-transaction cap. What does that do?",
       options: [
         "The whole limit is charged, as with an out-of-gas failure",
         "The node rejects it, as limits must be within 10 percent of use",
@@ -971,7 +971,7 @@ export const quizzes = {
   "contract-storage": [
     {
       kind: "detail",
-      question: "A contract declares mapping(address => uint256) balances at slot 2. Where is the value for holder H stored?",
+      question: "A Solidity contract declares mapping(address => uint256) balances at slot 2. Where is the value for holder H stored?",
       options: [
         "At keccak256 of 2 as 32 bytes followed by H as 32 bytes",
         "At slot 2 plus the numeric value of H's address",
@@ -1015,7 +1015,7 @@ export const quizzes = {
     },
     {
       kind: "scenario",
-      question: "A script hashes the slot number before the key when locating a mapping entry, and eth_getStorageAt returns zero. What went wrong?",
+      question: "A script hashes the slot number before the key when locating an entry of a Solidity mapping, and eth_getStorageAt returns zero. What went wrong?",
       options: [
         "The mapping is empty, since zero means no entries exist",
         "The order is key then slot, so it read an unused slot",
@@ -1998,6 +1998,489 @@ export const quizzes = {
         "7702 changes existing accounts in-protocol; 4337 uses new ones",
         "7702 works only on new accounts; 4337 on existing ones",
         "7702 lives in the mempool only; 4337 changes consensus",
+      ],
+      answer: 1,
+    },
+  ],
+
+  "precompiles": [
+    {
+      kind: "detail",
+      question: "A transaction's access list names the sha256 precompile at 0x02. What does that entry do to the transaction's gas?",
+      options: [
+        "It saves 100 gas on the first call to the precompile",
+        "It lowers the per-word price that sha256 charges",
+        "It costs 2400 gas for an address that is already warm",
+        "It is rejected by the pool as an invalid list entry",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "scenario",
+      question: "A backend labels any address where eth_getCode returns 0x as an externally owned account. How does it label the ecrecover address 0x01?",
+      options: [
+        "As a contract, because the node returns stub bytecode",
+        "As an empty account, because precompiles hold no code",
+        "As an error, because nodes refuse to serve code there",
+        "As a delegated account, because it shows a designator",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "contrast",
+      question: "What separates an OP Stack predeploy from a precompile when you call eth_getCode on each?",
+      options: [
+        "Both return 0x, because both kinds of contract run natively",
+        "The precompile returns a stub; the predeploy returns 0x",
+        "Both return a single 0xfe byte that marks native code",
+        "The predeploy returns bytecode; the precompile returns 0x",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "cause",
+      question: "Why can a Solidity check that ecrecover's result equals a stored owner accept a forged signature when the owner was never set?",
+      options: [
+        "A bad signature gives empty output, read as address(0)",
+        "A bad signature makes ecrecover revert without a reason",
+        "The precompile skips verification when the owner is zero",
+        "Solidity caches the signer from the last successful call",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "scenario",
+      question: "In eth_simulateV1 you override 0x01 with code that returns a fixed signer and set movePrecompileToAddress to 0x…1234. What answers at 0x…1234?",
+      options: [
+        "Your override code, which is copied to the new address",
+        "Nothing, because the new address is an empty account",
+        "The real ecrecover, moved before your code was applied",
+        "An error, because precompiles cannot be overridden",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "consequence",
+      question: "A passkey wallet calls 0x100 to verify signatures and is deployed unchanged on a chain with no P256VERIFY. What happens to a valid signature?",
+      options: [
+        "The call reverts, so every transaction using it fails",
+        "The call succeeds and returns 1 for any input at all",
+        "The node rejects the transaction before executing it",
+        "The call succeeds with empty output, read as invalid",
+      ],
+      answer: 3,
+    },
+  ],
+
+  "transient-storage": [
+    {
+      kind: "cause",
+      question: "Why can a call in an eth_simulateV1 block not see a transient flag set by the previous call in that same block?",
+      options: [
+        "Each call runs as its own transaction, which resets it",
+        "The simulator disables TSTORE unless validation is on",
+        "Transient writes are discarded when each frame returns",
+        "The block's state overrides clear every transient slot",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "scenario",
+      question: "A contract declares uint256 total at storage slot 0 and bool transient locked at transient slot 0. What does eth_getStorageAt for slot 0 return?",
+      options: [
+        "The value of locked, because transient slots shadow storage",
+        "Zero, because the node blanks slots used by both maps",
+        "The value that locked held at the end of the latest block mined",
+        "The value of total, because transient slots are not in state",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "How does a transient write differ from a storage write when the frame that made it reverts?",
+      options: [
+        "Only the storage write is undone; the transient one stays",
+        "Both are undone, because transient writes follow reverts",
+        "Only the transient write is undone; storage keeps its value",
+        "Neither is undone until the whole transaction has ended",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "detail",
+      question: "What does a TSTORE cost, and does writing zero back earn a refund?",
+      options: [
+        "2100 gas cold or 100 warm, with 4800 back on clearing",
+        "20000 gas for a first write, with 19900 back on reset",
+        "100 gas, with no refund for setting the value to zero",
+        "100 gas, with a 4800 refund when the slot is cleared",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "consequence",
+      question: "A contract sets a transient flag and never clears it, and it is called twice inside one ERC-4337 bundle. What does the second call see?",
+      options: [
+        "A cleared flag, since each UserOperation gets fresh slots",
+        "An error, because TSTORE is not allowed inside bundles",
+        "The flag still set, since the bundle is one transaction",
+        "The value left by the previous block's last transaction",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "You need a transient lock's value while debugging a failed transaction. Where in Geth's tracing output does it appear?",
+      options: [
+        "In the opcode trace, on the stack of TLOAD and TSTORE steps",
+        "In the prestateTracer diff, under the contract's storage",
+        "In the callTracer, in the storage field of each call frame",
+        "In eth_getProof at that block, with the slot as a key",
+      ],
+      answer: 0,
+    },
+  ],
+
+  "gas-refunds": [
+    {
+      kind: "consequence",
+      question: "Under Pectra's calldata floor, what happens to a transaction that carries a large payload but does little execution?",
+      options: [
+        "Its calldata is refunded down to 4 gas per token afterwards",
+        "Its refund cap rises to a half of gas used to offset it",
+        "Its gasUsed exceeds what the EVM consumed, and it pays that",
+        "It is priced like blob data and moved to the blob market",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "Since London, what caps the refund a transaction can receive?",
+      options: [
+        "One half of the gas used before the refund is applied",
+        "A flat 4800 gas per transaction, however many are cleared",
+        "One fifth of the gas used before the refund is applied",
+        "The counter alone, which has had no ceiling since London",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "scenario",
+      question: "A keeper job that clears storage shows gasUsed 96,000 on its last receipt. You send the next run with a 96,000 gas limit. What happens?",
+      options: [
+        "It runs out of gas before any refund is applied",
+        "It succeeds, since the receipt shows what a run needs",
+        "It succeeds and is refunded a further fifth of 96,000",
+        "The pool rejects it as below the intrinsic gas cost",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "cause",
+      question: "Why does eth_estimateGas search over several runs instead of returning the gas that one run consumed?",
+      options: [
+        "A single run consumes a varying amount depending on cache state",
+        "Providers need several runs to price it in compute units",
+        "Refunds make a first run consume more than any repeat of it",
+        "Headroom such as the 64th kept at each call is never consumed",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "How does the receipt's gasUsed relate to the gas a transaction needed available while it executed?",
+      options: [
+        "It is the peak requirement, since clients record the maximum",
+        "It is the post-refund figure and can sit well below the need",
+        "It always equals the gas limit minus the stipend returned",
+        "It is higher, because refunds are added back after execution",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "scenario",
+      question: "A contract forwards all its remaining gas to a callee that needs 100,000. Roughly how much must the caller hold at that call?",
+      options: [
+        "About 125,000, since a fifth is held back for refunds",
+        "Exactly 100,000, since forwarding passes on all of it",
+        "About 102,300, since the 2300 stipend is added on top",
+        "About 101,600, since one 64th of the rest is kept back",
+      ],
+      answer: 3,
+    },
+  ],
+
+  "execution-requests": [
+    {
+      kind: "contrast",
+      question: "How do deposit requests differ from withdrawal requests in where the execution layer obtains them?",
+      options: [
+        "Deposits come from a system call, withdrawals from contract logs",
+        "Both are read from logs of one shared request system contract",
+        "Both are supplied by the consensus client in payload attributes",
+        "Deposits come from contract logs, withdrawals from a system call",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "scenario",
+      question: "An indexer wants every consolidation request processed in a given block. Where does it find the authoritative list?",
+      options: [
+        "In the requests field of the eth_getBlockByNumber result",
+        "In the beacon block body's execution_requests field",
+        "In the receipt of the block's final system transaction",
+        "In the logs the consolidation contract emits that block",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "detail",
+      question: "What does requestsHash hold for a block that carries no requests at all?",
+      options: [
+        "The SHA-256 of the empty string, 0xe3b0c442…b855",
+        "The zero hash 0x000…000, marking the field unused",
+        "The Keccak-256 of the empty RLP list, as for uncles",
+        "The hash of the parent block's requests, carried over",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "consequence",
+      question: "A staker's transaction to the withdrawal request contract succeeds with status 0x1, but the source address does not match the validator's credentials. What follows?",
+      options: [
+        "The end-of-block system call reverts it and refunds the fee",
+        "The consensus layer exits the validator anyway after a delay",
+        "The consensus layer ignores it, and the fee is not returned",
+        "The fee comes back to the sender in the next withdrawal sweep",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "cause",
+      question: "Why can a withdrawal request submitted in block N reach the consensus layer only in a later block?",
+      options: [
+        "Requests wait for finality before the system call reads them",
+        "The system contract releases at most 16 requests per block",
+        "The deposit contract has to process its own logs in block N",
+        "Consensus clients read the request contract once per epoch",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "detail",
+      question: "Before submitting a withdrawal request you want the fee the contract currently charges. Which call returns it?",
+      options: [
+        "eth_estimateGas on the request with its value set to zero",
+        "eth_feeHistory with the contract address as a filter",
+        "eth_getStorageAt on the contract's fee slot at pending",
+        "eth_call to the request contract with empty input data",
+      ],
+      answer: 3,
+    },
+  ],
+
+  "proxy-contract": [
+    {
+      kind: "scenario",
+      question: "You call a proxy's balanceOf with eth_call at a block from two years ago. Whose code runs?",
+      options: [
+        "The implementation the proxy points to at the current head",
+        "The implementation stored in the proxy's slot at that block",
+        "The proxy's own forwarding code, with no logic executed",
+        "Whichever implementation was first deployed for that proxy",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "contrast",
+      question: "How does an EIP-1167 clone differ from an EIP-1967 upgradeable proxy?",
+      options: [
+        "Its target is embedded in its code and can never change",
+        "It uses CALL instead of DELEGATECALL, so it keeps no state",
+        "It stores its target in the beacon slot instead of code",
+        "It can be upgraded only by the account that deployed it",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "detail",
+      question: "What does eth_getStorageAt at the EIP-1967 implementation slot return for USDC's FiatTokenProxy?",
+      options: [
+        "The address of the FiatToken implementation now in use",
+        "The admin address, since the proxy predates split slots",
+        "Zero, because that proxy uses the older ZeppelinOS slot",
+        "An error, because the protocol reserves that slot number",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "consequence",
+      question: "An indexer decodes a proxy's events with the ABI fetched today. What goes wrong for blocks before an upgrade that renamed an event?",
+      options: [
+        "The node rewrites old logs to match the new event signature",
+        "eth_getLogs refuses any query that spans the upgrade block",
+        "Nothing, because topics are fixed by the proxy's address",
+        "The old logs fail to match or decode under the new ABI",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "scenario",
+      question: "A call trace of one ordinary call to an upgradeable proxy shows two frames. What is the second frame?",
+      options: [
+        "A STATICCALL from the proxy that reads the admin slot",
+        "A CALL from the implementation back into the proxy",
+        "A DELEGATECALL from the proxy to the implementation",
+        "A CREATE that deploys the implementation on demand",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "cause",
+      question: "Why does upgrading a UUPS proxy to an implementation that lacks the upgrade function freeze it?",
+      options: [
+        "In UUPS the upgrade code lives in the implementation itself",
+        "The proxy deletes its admin slot whenever it is upgraded",
+        "The EIP-1967 slot becomes read-only after the first write",
+        "Beacons pointing at it stop answering implementation calls",
+      ],
+      answer: 0,
+    },
+  ],
+
+  "transaction-lifecycle": [
+    {
+      kind: "detail",
+      question: "What does a successful eth_sendRawTransaction response establish?",
+      options: [
+        "That the transaction reached every public pool",
+        "That one node's pool accepted the signed bytes",
+        "That the transaction will execute without reverting",
+        "That a builder has queued it for the next block",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "consequence",
+      question: "A payments service keys each payment on its transaction hash and bumps the fee on stuck ones. What goes wrong?",
+      options: [
+        "The bump reuses the hash, so the pool rejects it as known",
+        "The node refuses to replace a transaction it did not sign",
+        "The bump changes the hash, so the record loses track of it",
+        "The receipt of the bump is filed under the original hash",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "scenario",
+      question: "Asking the same node, your transaction at nonce 12 has no receipt and eth_getTransactionCount at latest for the sender returns 13. What do you conclude?",
+      options: [
+        "Yours is included, and its receipt is still being indexed",
+        "Yours is still pending and will be mined as nonce 13 next",
+        "The node dropped it, so rebroadcasting the bytes will work",
+        "Another transaction used nonce 12, so yours will never land",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "Both a replaced and a dropped transaction make eth_getTransactionByHash return null. What separates them?",
+      options: [
+        "Replaced means another hash took the nonce; dropped leaves it open",
+        "Replaced returns an error code, while dropped returns plain null",
+        "Dropped means another hash took the nonce; replaced leaves it open",
+        "Only a replaced transaction shows up in newPendingTransactions",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "scenario",
+      question: "A receipt you recorded at block N now returns null, and N is above the finalized block. What most likely happened?",
+      options: [
+        "The node pruned the receipt because it is not final yet",
+        "A reorg removed the block, and the transaction may return",
+        "The transaction was replaced after it had been included",
+        "The receipt moved to the transaction index of block N+1",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "cause",
+      question: "Why is a transaction that your node dropped not the same as a cancelled one?",
+      options: [
+        "Dropped transactions wait in a separate pool for a day",
+        "Nodes rebroadcast every dropped transaction after they restart",
+        "Its fee is refunded only once a cancel has been mined",
+        "It stays valid until its nonce is used, so a copy can land",
+      ],
+      answer: 3,
+    },
+  ],
+
+  "system-contracts": [
+    {
+      kind: "scenario",
+      question: "An indexer that mirrors storage from per-transaction state diffs sees slots of the EIP-2935 history contract change every block with no transaction touching them. What explains it?",
+      options: [
+        "A hidden type 0x7e deposit transaction updates it at index zero",
+        "The client replays the BLOCKHASH opcode into storage after each block",
+        "A system call writes the parent hash there before the transactions run",
+        "Validators submit a signed update that block traces filter out",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "What input does a successful read from the EIP-4788 beacon roots contract take?",
+      options: [
+        "The 32-byte timestamp of the execution block that carried the root",
+        "The 32-byte slot number of the beacon block you want the root of",
+        "The 32-byte execution block number whose parent root you want",
+        "The 32-byte beacon block root whose presence you want to confirm",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "contrast",
+      question: "How does the per-block write to L1Block on an OP Stack chain differ from the per-block write to the L1 beacon roots contract?",
+      options: [
+        "It runs after the last transaction instead of before the first",
+        "It is a precompile call that leaves nothing behind in storage",
+        "It is skipped in blocks that contain no user transactions at all",
+        "It is a deposit transaction that has its own hash and receipt",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "consequence",
+      question: "A developer simulates a read of the beacon roots contract with eth_call and sets from to the system address. What comes back?",
+      options: [
+        "A revert, because a system call needs its 30 million gas limit",
+        "Empty data, because the contract takes its write path instead",
+        "An error, because nodes refuse calls from that sender address",
+        "The root, together with the storage writes the call would make",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "cause",
+      question: "Why can the EIP-2935 contract return hashes from 8191 blocks back while the BLOCKHASH opcode stops at 256?",
+      options: [
+        "The opcode reads the beacon roots buffer, which is pruned sooner",
+        "The contract proves old hashes from headers sent in its calldata",
+        "The opcode window shrank when EIP-2935 moved the hashes to state",
+        "The contract keeps the hashes in state and the opcode was unchanged",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "What lets eth_getProof prove values held by a system contract, which it cannot do for a precompile?",
+      options: [
+        "A system contract's outputs are copied into the receipts trie",
+        "A system contract is bytecode whose storage sits in the state",
+        "A system contract is re-signed by the system address each block",
+        "A system contract answers only calls made inside a transaction",
       ],
       answer: 1,
     },

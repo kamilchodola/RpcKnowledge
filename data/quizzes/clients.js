@@ -152,9 +152,9 @@ export const quizzes = {
     },
     {
       kind: "contrast",
-      question: "What distinguishes Nethermind's full pruning from its in-memory pruning?",
+      question: "On a Nethermind node with a patricia database, what distinguishes full pruning from in-memory pruning?",
       options: [
-        "It rewrites the state database to drop nodes unreachable from the root",
+        "It copies the state reachable from the root into a fresh database",
         "It keeps recent trie nodes in a cache and writes only the survivors",
         "It deletes bodies and receipts older than the ancient barriers",
         "It must stop the node, unlike in-memory pruning",
@@ -163,12 +163,12 @@ export const quizzes = {
     },
     {
       kind: "detail",
-      question: "Nethermind serves more than one style of tracing API. Which ones does it implement?",
+      question: "A Nethermind 1.39 node with a half-path patricia database is upgraded in place to 2.0. Which state backend does it run afterwards?",
       options: [
-        "Geth-style debug_ tracers and Parity-style trace_ methods",
-        "Geth-style debug_ tracers and the Otterscan ots_ search API",
-        "Parity-style trace_ methods and Erigon's erigon_ helper API",
-        "Parity-style trace_ methods alone, without debug_",
+        "Patricia, since an existing database is detected and kept",
+        "Flat, converted in place by a migration on its first start",
+        "Flat, after the full resync that the upgrade forces",
+        "Paprika, the store that replaced the half-path trie",
       ],
       answer: 0,
     },
@@ -185,12 +185,12 @@ export const quizzes = {
     },
     {
       kind: "consequence",
-      question: "An operator starts Nethermind full pruning on a disk that is nearly full. What happens?",
+      question: "A fresh Nethermind 2.0 node on the default backend is configured with Pruning.Mode=Hybrid and a full-pruning trigger. What happens when the trigger is reached?",
       options: [
-        "It aborts, because it needs headroom for a copy of the state",
-        "It halts chain following for hours until the rewrite completes",
-        "It deletes old history instead, since state cannot shrink in place",
-        "It falls back to in-memory pruning",
+        "Nothing is pruned, and admin_prune reports pruning as disabled",
+        "The state is copied into a fresh database and the old one dropped",
+        "Block processing halts until the rewritten database is ready",
+        "Flat history older than the retention window is reclaimed",
       ],
       answer: 0,
     },
@@ -242,12 +242,12 @@ export const quizzes = {
     },
     {
       kind: "consequence",
-      question: "What happens when you query an Erigon node whose staged sync is still short of the head?",
+      question: "An Erigon node runs with the default --prune.mode=full. What happens to eth_call against a block from six months ago?",
       options: [
-        "Answers stay incomplete until the pipeline reaches the head",
-        "It forwards queries to devp2p peers meanwhile",
-        "It answers from Caplin's beacon state until execution catches up",
-        "It serves complete answers up to the last block it has executed",
+        "It fails, since full keeps about 36 days of state history",
+        "It succeeds, since full keeps a year of state history",
+        "It succeeds, since flat change sets cover every block",
+        "It fails, since Erigon serves state only at the head block",
       ],
       answer: 0,
     },
@@ -301,7 +301,7 @@ export const quizzes = {
       kind: "contrast",
       question: "When syncing from scratch, what does Reth's approach have in common with Erigon's?",
       options: [
-        "A staged pipeline that runs each stage over the whole range",
+        "A staged pipeline rather than block-by-block import",
         "A recent state snapshot fetched from peers, then trie healing",
         "A consensus client that ships in the same binary as execution",
         "Block-by-block import, driven by each engine_newPayload call",
@@ -1049,7 +1049,7 @@ export const quizzes = {
       kind: "consequence",
       question: "An application wants the blob data of a block from a month ago. What does it find?",
       options: [
-        "Normally nothing: beacon nodes drop sidecars after 4096 epochs, about 18 days",
+        "Normally nothing: beacon nodes drop blob data after 4096 epochs, about 18 days",
         "The execution client serves it, keeping blobs after the beacon node drops them",
         "The beacon node serves it, since 4096 epochs is about three months",
         "The receipts trie serves it, since receipts keep every blob's contents",
@@ -1137,12 +1137,12 @@ export const quizzes = {
     },
     {
       kind: "detail",
-      question: "Which execution clients keep state as flat values keyed by address and slot, computing trie nodes only when a root is needed?",
+      question: "A new Nethermind 2.0 node syncs with default settings. How does it keep state on disk?",
       options: [
-        "Erigon and Reth",
-        "Geth and Nethermind",
-        "Geth and Reth",
-        "Nethermind and Erigon",
+        "As flat account and slot records, like Erigon and Reth",
+        "As a half-path trie keyed by each node's path prefix",
+        "As a hash-keyed trie that keeps every node version",
+        "As Bonsai-style trie logs that record each block's diff",
       ],
       answer: 0,
     },
@@ -1156,6 +1156,420 @@ export const quizzes = {
         "The node refuses to start unless state shares one disk with its history",
       ],
       answer: 0,
+    },
+  ],
+
+  "validator-node": [
+    {
+      kind: "scenario",
+      question: "A validator's execution client falls behind and the beacon node reports is_optimistic as true. What does the validator do meanwhile?",
+      options: [
+        "It keeps attesting to the optimistic head, since attestations need no payload",
+        "It must not propose or attest, so duties are missed without slashing",
+        "It proposes through MEV-Boost, since the builder supplies a full payload",
+        "It is slashed for each missed duty until the execution client catches up",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "cause",
+      question: "Why can heavy public RPC traffic on a validator's execution client cost head votes?",
+      options: [
+        "It delays engine_newPayload, so import misses the attestation deadline",
+        "RPC responses share the Engine API port and crowd out fork choice calls",
+        "Public calls lock the validator's keys while the node answers them",
+        "The beacon node pauses attestations whenever its execution client is busy",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "contrast",
+      question: "What separates a validator node from a validator client?",
+      options: [
+        "The node holds the keys; the client only relays duties from beacon nodes",
+        "The node is the beacon chain role; the client is the execution software",
+        "The node runs MEV-Boost; the client runs the execution and beacon pair",
+        "The node is the whole deployment; the client is the process that signs",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "detail",
+      question: "How many execution clients can one beacon node drive through the Engine API?",
+      options: [
+        "Two, one for building payloads and one for validating them",
+        "Any number, since each one receives the same forkchoice calls",
+        "One, because the Engine API has a single fork-choice caller",
+        "Several, as long as each has its own JWT secret configured",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "consequence",
+      question: "At a validator's proposal slot every relay in MEV-Boost is unreachable, while the execution client is healthy. What follows?",
+      options: [
+        "The beacon node proposes a locally built payload with less value",
+        "The slot is missed, because blinded blocks need a relay to publish",
+        "The validator is penalised as if the execution client were offline",
+        "The beacon node waits for the relay until the attestation deadline",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "scenario",
+      question: "For redundancy, a staker runs a second complete node with the same keys as a hot standby. What is the risk?",
+      options: [
+        "The second beacon node fights the first over the fork choice",
+        "The relays reject bids from two nodes with one fee recipient",
+        "The standby's JWT secret invalidates the primary's Engine API",
+        "Both can sign for the same slot, and that is a slashable offence",
+      ],
+      answer: 3,
+    },
+  ],
+
+  "remote-signer": [
+    {
+      kind: "scenario",
+      question: "Two validator clients use two Web3Signer instances that share one slashing-protection database, and both ask for a signature on different blocks for the same slot. What happens?",
+      options: [
+        "Both are signed, because each signer checks only its own clients",
+        "Neither is signed until an operator resolves the conflict by hand",
+        "One request is signed and the conflicting one is refused",
+        "Both are signed, and the database logs the second as a warning",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "cause",
+      question: "Why does slashing protection belong in the remote signer rather than only in each validator client?",
+      options: [
+        "Validator clients cannot store slashing data once their keys are remote",
+        "The keymanager API forbids validator clients from keeping such records",
+        "Signers verify signatures on-chain, which validator clients do not",
+        "The signer is the one place that sees every signature for its keys",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "How does Clef differ from Web3Signer or Dirk?",
+      options: [
+        "It signs execution-layer transactions, not validator BLS messages",
+        "It signs validator messages but keeps no slashing-protection records",
+        "It is a threshold signer that splits validator keys across machines",
+        "It is Geth's built-in keymanager API for importing validator keys",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "detail",
+      question: "Which keymanager API path registers public keys whose signing a validator client delegates to a signer URL?",
+      options: [
+        "/eth/v1/keystores",
+        "/eth/v1/remotekeys",
+        "/api/v1/eth2/sign",
+        "/eth/v1/validator/duties",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "consequence",
+      question: "A failover script starts a standby validator client against a second signer with its own database whenever the primary looks slow. What can follow?",
+      options: [
+        "The second signer imports the first's records automatically",
+        "The standby waits for doppelganger checks, which make it safe",
+        "The primary's signer revokes the key when the standby appears",
+        "Both clients sign the same duties, and the key gets slashed",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "scenario",
+      question: "A validator key is moving from one signer to another. What has to move with it?",
+      options: [
+        "Its fee recipient, since each signature commits to the recipient",
+        "Its EIP-3076 slashing-protection export, taken after the last signature",
+        "Its deposit data, which the new signer needs to compute the domain",
+        "Its keystore password only, because signers keep no other records",
+      ],
+      answer: 1,
+    },
+  ],
+
+  "helios": [
+    {
+      kind: "scenario",
+      question: "A dapp reads logs through Helios from a provider that silently omits some matching logs. What does Helios detect?",
+      options: [
+        "The gap, because it rebuilds the logs bloom for every block in the range",
+        "The gap, because it compares each block's receipts with the range",
+        "Nothing, because Helios forwards eth_getLogs without any checks",
+        "Nothing, as it proves returned logs exist, not that none are missing",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "cause",
+      question: "Why does Helios call eth_createAccessList before running an eth_call?",
+      options: [
+        "To have the provider run the call and return a verifiable result",
+        "To learn which accounts and slots to prove before executing locally",
+        "To obtain a gas estimate that it then checks against the header",
+        "To receive a signed commitment from the provider about the result",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "contrast",
+      question: "How does Helios's root of trust on OP Stack chains differ from the one it uses on Ethereum?",
+      options: [
+        "It follows L1 finality of each output root, not unsafe L2 blocks",
+        "It uses the same sync committee, since OP chains share Ethereum's validators",
+        "It accepts blocks signed by the sequencer's key, not sync committee votes",
+        "It needs a settled fault proof for each block before serving any reads",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "What does Helios return for eth_maxPriorityFeePerGas?",
+      options: [
+        "A fixed 1 gwei tip",
+        "The provider's estimate",
+        "A median of recent tips",
+        "The verified base fee",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "consequence",
+      question: "Helios is routinely bootstrapped with load-external-fallback instead of a checkpoint the operator chose. What follows?",
+      options: [
+        "It becomes immune to stale checkpoints, since the list stays fresh",
+        "The chain it follows is chosen by the endpoints on that community list",
+        "It checks each listed endpoint's checkpoint against the genesis root",
+        "It refuses to start unless the checkpoint is under two weeks old",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "scenario",
+      question: "A team binds Helios to 0.0.0.0 so that other services can query it. What are those services relying on?",
+      options: [
+        "Their own verification, since Helios attaches proofs to its answers",
+        "Sync committee signatures, which Helios forwards with each reply",
+        "Nothing extra, because remote callers get the same guarantee",
+        "The honesty of whoever operates that Helios process",
+      ],
+      answer: 3,
+    },
+  ],
+
+  "client-extensions": [
+    {
+      kind: "scenario",
+      question: "An ExEx on a pruned Reth node never emits FinishedHeight. What does the operator see?",
+      options: [
+        "Pruning holds back and the disk keeps growing",
+        "The node stops sending the ExEx new notifications",
+        "Reth restarts the ExEx from genesis after each block",
+        "The ExEx is unloaded after a timeout of one epoch",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "cause",
+      question: "Why does Geth's documentation ask live tracers to stay minimal?",
+      options: [
+        "They run in a separate process with a small memory allowance",
+        "Their output is capped at one JSONL file for each processed block",
+        "They run synchronously inside block processing and slow it down",
+        "Their hooks fire once per block, so heavy work gets dropped",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "contrast",
+      question: "How does Reth's ExEx differ from Geth's live tracing in how reorgs reach the extension?",
+      options: [
+        "Geth sends ChainReorged notices, while Reth only replays the new branch",
+        "Reth sends reverted and committed segments; Geth leaves unwinding to you",
+        "Both hide reorgs by delivering only blocks that are already finalized",
+        "Reth drops reorged blocks silently, while Geth marks them as removed",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "detail",
+      question: "How are Nethermind plugins loaded?",
+      options: [
+        "As WebAssembly modules fetched through the JSON-RPC server",
+        "As Rust crates compiled together with the node builder",
+        "As scripts registered at runtime through the admin_ JSON-RPC namespace",
+        "As .NET assemblies read from the plugins directory at start-up",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "consequence",
+      question: "A plugin writes each block's state diff synchronously to a slow remote database on a node that feeds a validator. What follows?",
+      options: [
+        "The client buffers the writes in memory, so block processing is unaffected",
+        "The consensus client switches over to another execution client",
+        "Block import slows, newPayload answers late, and attestations suffer",
+        "The plugin is disabled automatically once it misses its first block",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "scenario",
+      question: "After a crash, an extension resumes from the block number it last wrote, without its hash. What can go wrong?",
+      options: [
+        "A reorg may have replaced that block, so the resume point is stale",
+        "Block numbers are reassigned at each restart, so the number is invalid",
+        "The node refuses to replay blocks older than its current head",
+        "Nothing, since a block number always identifies exactly one block",
+      ],
+      answer: 0,
+    },
+  ],
+
+  "slashing-protection": [
+    {
+      kind: "scenario",
+      question: "An operator moves keys to a new client by copying only the keystores, then starts it right after stopping the old one. What risk remains?",
+      options: [
+        "The keystores cannot decrypt without the interchange file",
+        "The beacon node rejects keys that lack a protection record",
+        "The new client has no record of the duties already signed",
+        "The new client refuses every duty until an epoch has passed",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "Which field in an EIP-3076 file stops a history from one network being imported into a signer for another?",
+      options: [
+        "genesis_validators_root in the metadata",
+        "interchange_format_version in the metadata",
+        "signing_root on each signed attestation",
+        "pubkey on each entry of the data array",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "cause",
+      question: "Why does an EIP-3076 import set low watermarks instead of only adding the messages listed?",
+      options: [
+        "The format can store only one message per key",
+        "The file may omit messages, so older ones are refused",
+        "The watermarks let the client delete old keystores",
+        "The watermarks speed signing by skipping lookups",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "contrast",
+      question: "How does a complete slashing protection database differ from a minimal one?",
+      options: [
+        "It keeps the highest slot and epochs per key and no more",
+        "It stores the signatures themselves, not slots or epochs",
+        "It is shared by every validator client on the same host",
+        "It keeps every message and refuses just real conflicts",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "consequence",
+      question: "Two validator clients run one key on different machines, each with its own healthy protection database. What follows?",
+      options: [
+        "Each database approves its own copy, so conflicts go unchecked",
+        "The databases synchronise, and the second client stays silent",
+        "The beacon node spots the duplicate and drops one signature",
+        "Each database refuses the duty, so the key only misses rewards",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "scenario",
+      question: "After importing a history whose last attestation had source 478211 and target 478212, a client is asked to sign source 478210 and target 478213. What does it do?",
+      options: [
+        "Signs it, since its target is newer than any recorded",
+        "Signs it, since its source is not below the watermark",
+        "Refuses it, since a target may advance only one epoch",
+        "Refuses it, since it surrounds the recorded attestation",
+      ],
+      answer: 3,
+    },
+  ],
+
+  "hive": [
+    {
+      kind: "scenario",
+      question: "A client passes every rpc-compat test on the public hive instance, yet an indexer using a provider that runs it hits block-range errors. Why did hive not catch this?",
+      options: [
+        "Hive skips eth_getLogs because log answers differ between clients",
+        "Hive uses a tiny chain, with no provider limits or retention in play",
+        "Hive ran the tests against a different client than the provider's",
+        "Hive checks responses only for blocks that are already finalized",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "detail",
+      question: "How does rpc-compat judge the response to a test that is not marked speconly?",
+      options: [
+        "It checks only that the response validates against the schema",
+        "It compares the response with the answer most clients returned",
+        "It compares the response as JSON with the exact expected answer",
+        "It checks that the response arrived within the test's time limit",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "contrast",
+      question: "What distinguishes hive from a Kurtosis devnet as a way to test a client?",
+      options: [
+        "Hive checks one behaviour at a time against a known expected answer",
+        "Hive runs a live network with real consensus across many clients",
+        "Hive measures latency and throughput while Kurtosis checks shapes",
+        "Hive needs a public testnet while Kurtosis builds a private one",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "cause",
+      question: "Why does hive wait for TCP port 8545 to open before a simulator starts talking to a client?",
+      options: [
+        "The port carries the Engine API's JWT handshake for every test",
+        "The port is where each client uploads version.txt for results",
+        "The port is the controller's own API, which clients must reach",
+        "The open port is how hive decides that the client has started",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "detail",
+      question: "Which builds do the public hive results mostly test for each client?",
+      options: [
+        "The latest tagged release each team has published",
+        "Development builds from each team's main line",
+        "Whatever build most mainnet validators run today",
+        "A build pinned once per fork by the hive maintainers",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "consequence",
+      question: "A wrong expected response is committed to one execution-apis test file. What does the next public rpc-compat run show?",
+      options: [
+        "The test is skipped until a maintainer marks the fixture valid",
+        "The test fails only for the client the fixture was taken from",
+        "The test passes, since rpc-compat ignores values it cannot check",
+        "The test fails for every client that answers it correctly",
+      ],
+      answer: 3,
     },
   ],
 };

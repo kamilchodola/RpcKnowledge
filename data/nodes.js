@@ -52,7 +52,7 @@ export const topics = [
       {
         heading: "What it adds",
         paragraphs: [
-          "A normal [[full-node|full node]] is optimized for following the current chain. An archive node keeps additional state versions, indexes, or trie material needed to answer questions such as an account balance, contract storage slot, or [[eth-call|eth_call]] at an old block. This is useful to explorers, auditors, researchers, and [[indexer|indexers]] that need historical state rather than only transaction history.",
+          "A normal [[full-node|full node]] is optimized for following the current chain. An archive node keeps additional state versions, indexes, or trie material needed to answer questions such as an account balance, contract storage slot, or [[eth-call|eth_call]] at an old block. This is useful to [[rpc-workloads|explorers, auditors, researchers]], and [[indexer|indexers]] that need historical state rather than only transaction history.",
           "Archive is a storage policy, not a separate consensus role. The same [[execution-client|execution client]] still validates execution and the same [[consensus-client|consensus client]] still tracks proof-of-stake. The extra data can be held in different formats: some clients retain trie nodes, others use flat historical tables or immutable files, and the query cost depends on that implementation.",
         ],
       },
@@ -77,7 +77,7 @@ export const topics = [
       "Putting unbounded archive scans on the same resources that import and validate the head.",
       "Changing pruning or state-storage settings without a documented migration or resync plan.",
     ],
-    related: ["full-node", "pruned-node", "client-storage", "history-expiry", "eth-call", "eth-get-proof", "block-header", "rpc-provider", "rpc-gateway", "finality"],
+    related: ["full-node", "pruned-node", "client-storage", "history-expiry", "eth-call", "eth-get-proof", "block-header", "rpc-provider", "rpc-gateway", "finality", "partial-archive", "database-snapshot", "erc-4626"],
     sources: [
       { title: "Ethereum: Archive nodes", url: "https://ethereum.org/developers/docs/nodes-and-clients/archive-nodes" },
       { title: "Geth: Archive mode", url: "https://geth.ethereum.org/docs/fundamentals/archive" },
@@ -101,14 +101,14 @@ export const topics = [
       {
         heading: "What RPC changes",
         paragraphs: [
-          "Current-state methods such as balance, code, storage, and [[eth-call|eth_call]] usually work when the block tag is recent. A request against an old block may fail with a missing trie node, a block-not-found response, or a client-specific error; another client may regenerate the state and answer it. Old transaction receipts and logs can have different retention rules from old account state, so test them independently.",
+          "Current-state methods such as balance, code, storage, and [[eth-call|eth_call]] usually work when the block tag is recent. A request against an old block may fail with a missing trie node, a block-not-found response, or a client-specific error; another client may regenerate the state and answer it. Old transaction receipts and logs can have [[receipt-retention|different retention rules]] from old account state, so test them independently.",
           "A pruned node should not be assumed to generate old [[eth-get-proof|proofs]]. Proof construction requires the relevant account and storage path, while reading a value may require less information. If an application must verify a value offline, capture the [[block-header|header]], proof response, and verification result while the required data is available.",
         ],
       },
       {
         heading: "Choosing a pruning policy",
         paragraphs: [
-          "Choose retention from actual workloads: recent dapp reads, transaction submission, log scanning, traces, historical analytics, or proof generation. Keep an explicit [[indexer|indexer]] for decoded application history instead of expecting the node’s database to be a reporting store. If the indexer later needs to replay an old call, route that job to an archive-capable pool and make the dependency visible.",
+          "Choose retention from [[rpc-workloads|actual workloads]]: recent dapp reads, transaction submission, log scanning, traces, [[chain-analytics|historical analytics]], or proof generation. Keep an explicit [[indexer|indexer]] for decoded application history instead of expecting the node’s database to be a reporting store. If the indexer later needs to replay an old call, route that job to an archive-capable pool and make the dependency visible.",
           "Document the client version, sync mode, pruning mode, and restoration path. A switch that only affects future writes may not restore already deleted state; some changes require a rebuild. Monitor free space and pruning progress alongside execution and consensus sync so a successful RPC health check does not conceal a node that cannot keep up.",
         ],
       },
@@ -119,7 +119,7 @@ export const topics = [
       "Assuming a client can reconstruct every deleted trie node on demand.",
       "Testing only `latest` and discovering after deployment that archive-dependent workloads fail.",
     ],
-    related: ["full-node", "archive-node", "client-storage", "sync-modes", "eth-call", "eth-get-proof", "state-root", "indexer", "execution-client"],
+    related: ["full-node", "archive-node", "client-storage", "sync-modes", "eth-call", "eth-get-proof", "state-root", "indexer", "execution-client", "partial-archive"],
     sources: [
       { title: "ethereum.org: Nodes and clients", url: "https://ethereum.org/developers/docs/nodes-and-clients/" },
       { title: "Geth: Archive mode and state history", url: "https://geth.ethereum.org/docs/fundamentals/archive" },
@@ -129,14 +129,14 @@ export const topics = [
     id: "light-client",
     title: "Light client",
     category: "nodes",
-    aliases: ["light node", "header client", "mobile client", "Helios"],
+    aliases: ["light node", "header client", "mobile client"],
     summary: "A light client verifies selected Ethereum data from compact headers and proofs instead of storing and executing the entire chain locally.",
     sections: [
       {
         heading: "Small local state, explicit verification",
         paragraphs: [
           "A light client avoids downloading the full execution and consensus databases. It tracks enough authenticated header or consensus information to request a value from a remote source and check that value against a committed root. This differs from an ordinary [[rpc-provider|provider]] call: a provider returns a JSON response, while a light client’s protocol includes the information needed to reject a response that does not match its trusted view.",
-          "Execution and consensus light-client designs have different moving parts. Consensus light clients follow Beacon headers and sync committee signatures; execution data may require a [[state-proof|state proof]] and a trusted execution commitment. The client therefore needs a trust anchor such as a weak-subjectivity checkpoint or an authenticated header chain rather than blindly accepting the newest block a server advertises.",
+          "Execution and consensus light-client designs have different moving parts. Consensus light clients follow Beacon headers and sync committee signatures; execution data may require a [[state-proof|state proof]] and a trusted execution commitment, which is how [[helios|Helios]] combines the two to verify `eth_` answers from an untrusted provider. The client therefore needs a trust anchor such as a weak-subjectivity checkpoint or an authenticated header chain rather than blindly accepting the newest block a server advertises.",
         ],
       },
       {
@@ -160,10 +160,10 @@ export const topics = [
       "Skipping weak-subjectivity or checkpoint management because headers are cryptographically signed.",
       "Using a light client as a validator or archive index without the required data and duties.",
     ],
-    related: ["full-node", "trusted-header", "consensus-proof", "state-proof", "rpc-provider", "consensus-client", "beacon-node", "json-rpc", "indexer"],
+    related: ["full-node", "trusted-header", "consensus-proof", "state-proof", "rpc-provider", "consensus-client", "beacon-node", "json-rpc", "indexer", "light-client-update", "helios"],
     sources: [
-      { title: "ethereum.org: Light clients", url: "https://ethereum.org/developers/docs/networking-layer/light-clients/" },
-      { title: "Consensus light-client specifications", url: "https://github.com/ethereum/consensus-specs/tree/dev/specs/altair/light-client" },
+      { title: "ethereum.org: Light clients", url: "https://ethereum.org/developers/docs/nodes-and-clients/light-clients/" },
+      { title: "Consensus light-client specifications", url: "https://github.com/ethereum/consensus-specs/tree/master/specs/altair/light-client" },
     ],
   },
   {
@@ -191,7 +191,7 @@ export const topics = [
         heading: "Bootstrap choices",
         paragraphs: [
           "Choose snap sync when quick time-to-head and a normal current-state workload matter. Choose a full or archive-oriented path when the operator needs to validate or preserve deeper history locally, subject to the client’s supported modes. A trusted checkpoint or snapshot distribution can reduce initial work, but verify the source, chain ID, and resulting commitments before treating it as a local node.",
-          "Measure snapshot download, state healing, peer availability, disk throughput, and time to finality. If a node repeatedly stalls, compare its sync phase with [[peer-to-peer|peer]] health and [[node-hardware|hardware]] capacity. Restoring a database snapshot can be faster than syncing again, but it should be part of a tested recovery plan rather than an unexamined shortcut.",
+          "Measure snapshot download, state healing, peer availability, disk throughput, and time to finality. If a node repeatedly stalls, compare its sync phase with [[peer-to-peer|peer]] health and [[node-hardware|hardware]] capacity. [[database-snapshot|Restoring a database snapshot]] can be faster than syncing again, but it should be part of a tested recovery plan rather than an unexamined shortcut.",
         ],
       },
     ],
@@ -325,7 +325,7 @@ export const topics = [
       "Dropping block hashes from derived records and keeping only heights.",
       "Hiding expired-data fallbacks behind a provider URL without documenting provenance and verification.",
     ],
-    related: ["archive-node", "pruned-node", "client-storage", "light-client", "indexer", "eth-call", "eth-get-proof", "block-header", "endpoint-capabilities", "historical-data"],
+    related: ["archive-node", "pruned-node", "client-storage", "light-client", "indexer", "eth-call", "eth-get-proof", "block-header", "endpoint-capabilities", "historical-data", "era-files"],
     sources: [
       { title: "EIP-4444: Bound historical data in execution clients", url: "https://eips.ethereum.org/EIPS/eip-4444" },
       { title: "ethereum.org: Archive nodes", url: "https://ethereum.org/developers/docs/nodes-and-clients/archive-nodes" },
@@ -341,7 +341,7 @@ export const topics = [
       {
         heading: "Bootstrap strategies",
         paragraphs: [
-          "An execution client can replay a long history, download and verify a state snapshot through [[snap-sync|snap sync]], or restore a documented database checkpoint before catching up. Consensus clients have their own checkpoint or range-sync strategies. The names and flags vary across [[geth|Geth]], [[nethermind|Nethermind]], [[erigon|Erigon]], [[reth|Reth]], and [[besu|Besu]], so an application should describe the outcome and retention policy rather than rely on one universal command-line vocabulary.",
+          "An execution client can replay a long history, download and verify a state snapshot through [[snap-sync|snap sync]], or [[database-snapshot|restore a documented database checkpoint]] before catching up. Consensus clients have their own checkpoint or range-sync strategies. The names and flags vary across [[geth|Geth]], [[nethermind|Nethermind]], [[erigon|Erigon]], [[reth|Reth]], and [[besu|Besu]], so an application should describe the outcome and retention policy rather than rely on one universal command-line vocabulary.",
           "Every strategy still needs validation. Headers, blocks, state commitments, and consensus checkpoints must be checked against protocol rules and the intended chain. A faster bootstrap changes when a node becomes useful; it does not turn an unverified database into canonical truth. Record the trusted checkpoint or snapshot provenance in the recovery runbook.",
         ],
       },
@@ -366,7 +366,7 @@ export const topics = [
       "Assuming a fast initial sync produces archive history.",
       "Restoring a snapshot without verifying chain identity, commitments, and workload-specific method support.",
     ],
-    related: ["snap-sync", "full-node", "archive-node", "pruned-node", "execution-client", "consensus-client", "endpoint-capabilities", "node-hardware", "health-check", "self-hosting"],
+    related: ["snap-sync", "full-node", "archive-node", "pruned-node", "execution-client", "consensus-client", "endpoint-capabilities", "node-hardware", "health-check", "self-hosting", "database-snapshot"],
     sources: [
       { title: "Geth: Sync modes", url: "https://geth.ethereum.org/docs/fundamentals/sync-modes" },
       { title: "Ethereum: Run a node", url: "https://ethereum.org/developers/docs/nodes-and-clients/run-a-node/" },
@@ -390,7 +390,7 @@ export const topics = [
         heading: "Sizing a node for RPC",
         paragraphs: [
           "Start from retention and query requirements. A pruned [[full-node|full node]] needs less disk than an [[archive-node|archive node]], but both need headroom for growth, compaction, temporary sync files, logs, and backups. An [[indexer|indexer]] or trace workload often needs its own storage and database. If applications expect high concurrency, add read replicas or a [[rpc-gateway|gateway]] rather than assuming one larger disk fixes every queue.",
-          "Memory affects caching, trie access, database compaction, and concurrent calls. Network capacity must cover peer sync and RPC responses at the same time. Use realistic request mixes and block ranges in load tests; a benchmark that sends only `eth_chainId` says little about a production log scanner or historical simulator.",
+          "Memory affects caching, trie access, database compaction, and concurrent calls. Network capacity must cover peer sync and RPC responses at the same time. Use realistic request mixes and block ranges in [[rpc-benchmarking|load tests]]; a benchmark that sends only `eth_chainId` says little about a production log scanner or historical simulator.",
         ],
       },
       {
@@ -431,7 +431,7 @@ export const topics = [
         heading: "What the node can answer afterwards",
         paragraphs: [
           "Checkpoint sync covers the consensus side only. The paired [[execution-client|execution client]] still has to fetch state and history itself, usually through [[snap-sync|snap sync]], so [[eth-syncing|eth_syncing]] keeps returning a progress object well after the beacon node calls itself synced. Until then `engine_newPayload` answers `SYNCING` and the node cannot serve [[eth-call|eth_call]] or balances at the head.",
-          "The beacon node also holds no blocks below its anchor until backfill finishes, so Beacon API requests for earlier slots return `404` on an otherwise healthy node. Blob sidecars are unrecoverable beyond the 4096-epoch (about 18 days) retention window. Once both clients are caught up, the `safe` and `finalized` [[block-tag|block tags]] behave normally, because the consensus client finally has real checkpoints to push over the [[engine-api|Engine API]].",
+          "The beacon node also holds no blocks below its anchor until backfill finishes, so Beacon API requests for earlier slots return `404` on an otherwise healthy node. Blob data is unrecoverable from peers beyond the 4096-epoch (about 18 days) retention window. Once both clients are caught up, the `safe` and `finalized` [[block-tag|block tags]] behave normally, because the consensus client finally has real checkpoints to push over the [[engine-api|Engine API]].",
         ],
       },
       {
@@ -555,19 +555,19 @@ export const topics = [
     title: "Consensus networking (libp2p)",
     category: "nodes",
     aliases: ["gossipsub", "beacon p2p", "attestation subnets", "req/resp", "port 9000"],
-    summary: "[[consensus-client|Consensus clients]] network over libp2p: gossipsub topics push [[beacon-block|beacon blocks]], [[attestation|attestations]] and blob sidecars within the slot, while a request/response protocol pulls historical blocks, both on port 9000 by default.",
+    summary: "[[consensus-client|Consensus clients]] network over libp2p: gossipsub topics push [[beacon-block|beacon blocks]], [[attestation|attestations]] and blob data, as data column sidecars since Fulu, within the slot, while a request/response protocol pulls historical blocks, both on port 9000 by default.",
     sections: [
       {
         heading: "Push for the slot, pull for history",
         paragraphs: [
           "Gossipsub handles everything that must cross the network inside a 12-second slot. A [[beacon-node|beacon node]] subscribes to a set of topics, validates each message before forwarding it, and propagates to a mesh of peers. Messages are [[ssz|SSZ]]-encoded and snappy-compressed, and topic names embed the current fork digest, so a node on the wrong side of a [[hardfork|network upgrade]] silently stops hearing its neighbours.",
-          "Synchronizing history uses a separate request/response protocol rather than gossip: `Status` on connect, then `BeaconBlocksByRange`, `BeaconBlocksByRoot` and `BlobSidecarsByRange` to fill gaps. That is the path a node takes after [[checkpoint-sync|checkpoint sync]] when it backfills, and the path used to catch up after downtime.",
+          "Synchronizing history uses a separate request/response protocol rather than gossip: `Status` on connect, then `BeaconBlocksByRange`, `BeaconBlocksByRoot` and, since Fulu, `DataColumnSidecarsByRange` in place of `BlobSidecarsByRange` to fill gaps. That is the path a node takes after [[checkpoint-sync|checkpoint sync]] when it backfills, and the path used to catch up after downtime.",
         ],
       },
       {
         heading: "Topics, subnets and scoring",
         paragraphs: [
-          "The global topics carry beacon blocks, aggregated attestations, [[sync-committee|sync committee]] contributions, voluntary exits and slashings. Individual attestations travel on 64 `beacon_attestation_{subnet_id}` subnets, and blob sidecars have their own subnets, so a node only carries the traffic relevant to the committees it serves. A [[validator-client|validator client]]’s beacon node must join the right subnet before its committee’s slot, which is why the ENR advertises subscriptions.",
+          "The global topics carry beacon blocks, aggregated attestations, [[sync-committee|sync committee]] contributions, voluntary exits and slashings. Individual attestations travel on 64 `beacon_attestation_{subnet_id}` subnets, and since Fulu data column sidecars have 128 `data_column_sidecar_{subnet_id}` subnets of their own, so a node only carries the traffic relevant to the committees it serves and the columns it custodies. A [[validator-client|validator client]]’s beacon node must join the right subnet before its committee’s slot, which is why the ENR advertises subscriptions.",
           "Gossipsub scores peers on message validity, timeliness and duplication, and prunes low scorers out of the mesh. A node with a bad clock forwards attestations that arrive outside their acceptance window, loses score, loses peers, and falls behind without any single error appearing in its logs.",
         ],
       },
@@ -575,7 +575,7 @@ export const topics = [
         heading: "Why an RPC caller should care",
         paragraphs: [
           "This network is where `safe` and `finalized` come from. Attestations gossiped here accumulate into the justified and finalized checkpoints the consensus client pushes to the [[execution-client|execution client]] on each `engine_forkchoiceUpdated` over the [[engine-api|Engine API]]. If the consensus side loses its peers, the execution client stops receiving blocks too, since it only learns of new ones through the consensus client: [[eth-block-number|eth_blockNumber]] keeps answering, but with a head that no longer moves, and the `finalized` [[block-tag|block tag]] stops with it.",
-          "Blob data lives here too and nowhere else. A [[blob|blob transaction]] appears in execution RPC with its versioned hashes, but the blob contents are sidecars carried on this network and served from the [[beacon-api|Beacon API]] for 4096 epochs, about 18 days. After that not even an [[archive-node|archive node]] on the execution side brings them back.",
+          "Blob data lives here too and nowhere else. A [[blob|blob transaction]] appears in execution RPC with its versioned hashes, but the blob contents travel on this network, as data columns since Fulu, and are served from the [[beacon-api|Beacon API]] for 4096 epochs, about 18 days. After that not even an [[archive-node|archive node]] on the execution side brings them back; only a [[blob-archive|blob archive]] does.",
         ],
       },
     ],
@@ -587,7 +587,8 @@ export const topics = [
     ],
     related: ["peer-to-peer", "discovery", "devp2p", "beacon-node", "consensus-client", "attestation", "beacon-block", "blob", "ssz", "beacon-api"],
     sources: [
-      { title: "Consensus specs: phase 0 p2p interface", url: "https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/p2p-interface.md" },
+      { title: "Consensus specs: phase 0 p2p interface", url: "https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/p2p-interface.md" },
+      { title: "Consensus specs: Fulu p2p interface", url: "https://github.com/ethereum/consensus-specs/blob/master/specs/fulu/p2p-interface.md" },
       { title: "ethereum.org: Networking layer", url: "https://ethereum.org/developers/docs/networking-layer/" },
     ],
   },
@@ -615,7 +616,7 @@ export const topics = [
       {
         heading: "Where it fits for an application",
         paragraphs: [
-          "Portal is the answer to a question [[eip|EIP-4444]] creates: if ordinary [[execution-client|execution clients]] stop serving pre-Merge bodies and receipts, an old [[eth-get-logs|eth_getLogs]] range or a decade-old block has to come from somewhere. The alternatives are era1 archive files, an [[indexer|indexer]] with its own copy, or a provider that kept the data, each with a different trust and availability story.",
+          "Portal is the answer to a question [[eip|EIP-4444]] creates: if ordinary [[execution-client|execution clients]] stop serving pre-Merge bodies and receipts, an old [[eth-get-logs|eth_getLogs]] range or a decade-old block has to come from somewhere. The alternatives are [[era-files|era1 archive files]], an [[indexer|indexer]] with its own copy, or a provider that kept the data, each with a different trust and availability story.",
           "Treat it as one retrieval source among several rather than a drop-in node. Pair it with a [[light-client|light client]] when the consensus view must also be verified, record provenance next to the data you pulled, and keep the [[block-hash|block hash]] with every derived record so a later reader can tell which chain the row came from.",
         ],
       },
@@ -626,11 +627,229 @@ export const topics = [
       "Assuming a fixed set of supported methods instead of probing the specific client release you deployed.",
       "Storing data pulled from a portal client without recording its provenance and the block hash it belongs to.",
     ],
-    related: ["history-expiry", "light-client", "archive-node", "historical-data", "discovery", "peer-to-peer", "full-node", "indexer", "endpoint-capabilities", "eth-get-logs"],
+    related: ["history-expiry", "light-client", "archive-node", "historical-data", "discovery", "peer-to-peer", "full-node", "indexer", "endpoint-capabilities", "eth-get-logs", "era-files"],
     sources: [
       { title: "Portal Network specifications", url: "https://github.com/ethereum/portal-network-specs" },
       { title: "Trin, a Portal Network client", url: "https://github.com/ethereum/trin" },
       { title: "EIP-4444: Bound historical data in execution clients", url: "https://eips.ethereum.org/EIPS/eip-4444" },
+    ],
+  },
+  {
+    id: "receipt-retention",
+    title: "Receipt retention",
+    category: "nodes",
+    aliases: ["receipt pruning", "receipts log filter", "--prune.receipts", "Receipt.StoreReceipts", "persist receipts", "pruned history unavailable", "error 4444"],
+    summary: "Receipt retention is how much of the chain's [[transaction-receipt|receipt]] history a node keeps — every block, a recent window, chosen contracts, or none, with re-execution to rebuild the rest — decided separately from how much [[state|state]] it keeps.",
+    sections: [
+      {
+        heading: "A separate decision from state",
+        paragraphs: [
+          "A receipt is the output of executing one transaction, and only part of it is consensus data: the type, the status, `cumulativeGasUsed`, the logs bloom and the logs, which the header commits to through `receiptsRoot`. Clients store the receipt list per block beside the bodies, in append-only history such as [[geth|Geth]]'s freezer and [[reth|Reth]]'s static files, and it is a large share of that history: the mainnet inspection in Geth's archive documentation shows about 255 GiB of receipts next to 658 GiB of bodies.",
+          "Because receipts are derived, a node can keep them for every block, for a recent window, for chosen contracts, or not at all, and the choice is independent of state pruning. A [[full-node|full node]] holding 128 blocks of state can hold receipts back to genesis, and an [[archive-node|archive node]] can hold none. [[eth-get-logs|eth_getLogs]], [[eth-get-transaction-receipt|eth_getTransactionReceipt]] and [[eth-get-block-receipts|eth_getBlockReceipts]] read receipts; [[eth-call|eth_call]] never does. The hash-to-block transaction index is a third retention setting: Geth's `--history.transactions` and Nethermind's `Receipt.TxLookupLimit` both default to 2,350,000 blocks.",
+        ],
+      },
+      {
+        heading: "What each client lets you choose",
+        paragraphs: [
+          "Reth treats receipts as a prune segment: `--prune.receipts.distance`, `--prune.receipts.before`, `--prune.receipts.pre-merge` or `--prune.receipts.full`. Its `--full` profile keeps the last 10,064 blocks and `--minimal` keeps 64. The receipts log filter, `--prune.receiptslogfilter` or `[prune.segments.receipts_log_filter]` in `reth.toml`, keeps only receipts that contain logs from listed addresses, each with its own `distance` or `before`, and prunes every other receipt older than 10,064 blocks.",
+          "[[nethermind|Nethermind]] writes receipts while `Receipt.StoreReceipts` is on, the default, but a fresh sync downloads them only down to `Sync.AncientReceiptsBarrier`, which 2.0 sets to block 24,600,000 on mainnet; `0` fetches everything. `History.Pruning` set to `Rolling` or `UseAncientBarriers` removes stored ones. Geth keeps receipts with bodies, and a node synced with `--history.chain postmerge`, or pruned offline with `geth prune-history`, holds no pre-Merge bodies or receipts; see [[history-expiry|history expiry]].",
+          "[[erigon|Erigon]] 3 goes furthest: since v3.6 a fresh datadir persists no receipts and re-derives them on demand from state history. `--prune.include-receipts` adds a receipt cache that follows the state-history window unless `--prune.receipts.distance=keep-all` is set, and the choice is fixed when the datadir is created.",
+        ],
+      },
+      {
+        heading: "Rebuilding a receipt means re-executing its block",
+        paragraphs: [
+          "A dropped receipt can be regenerated only by executing its block again, and execution needs the state as of the block's parent. Regeneration is therefore available exactly where state history is: Erigon's re-derivation works inside its state-history window, 262,144 blocks in the default full mode, and Nethermind's `Receipt.DeriveFromState`, meant for archive nodes, skips receipt writes and re-executes the block over its parent state when a query misses its cache. A node that pruned receipts and also prunes state cannot get them back by changing a flag; they have to come from a resync, from [[era-files|era files]], or from another node.",
+          "Rebuilt receipts are checkable, which is what makes the trade safe. Nethermind serves a derived receipt only when the rebuilt list reproduces the header's `receiptsRoot`, and the same test lets a node accept receipts from an untrusted source. The cost is execution: every miss is a whole block of EVM work, so an endpoint that derives receipts needs [[rate-limits|rate limits]] on its receipt and log methods.",
+        ],
+      },
+      {
+        heading: "What callers see when receipts are gone",
+        paragraphs: [
+          "The [[execution-apis|execution-apis specification]] defines error `4444`, ‘Pruned history unavailable’, for block, receipt and log methods, and Geth, Reth and Nethermind return it for blocks below their retention boundary; Reth's message names the earliest block it still has. [[eth-get-transaction-receipt|eth_getTransactionReceipt]] is the awkward case: Geth, for one, looks the hash up in the transaction index first, and a hash the index no longer covers returns `null`, the same answer as a transaction that was never mined.",
+          "On a Reth node with a receipts log filter, logs from the kept contracts stay queryable, while `eth_getBlockReceipts` has no complete list to return for older blocks. For a log range that straddles the boundary, Nethermind documents an error rather than fewer logs; not every client promises that. Find the lowest block that returns receipts, as [[endpoint-capabilities|endpoint capabilities]] describes, before pointing an [[indexer|indexer]] at the node.",
+        ],
+      },
+    ],
+    example: {
+      title: "Receipt retention, client by client",
+      language: "bash",
+      code: "# Reth: receipts only for USDC from block 17,000,000; everything else ~10k blocks\nreth node --prune.receiptslogfilter 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48:before:17000000\n\n# Nethermind 2.0: download receipts and bodies back to genesis on a fresh sync\nnethermind --config mainnet --Sync.AncientReceiptsBarrier 0 --Sync.AncientBodiesBarrier 0\n\n# Erigon 3: keep every block and cache receipts for all of them\nerigon --prune.mode=blocks --prune.include-receipts --prune.receipts.distance=keep-all\n\n# what a caller gets below the boundary (Geth)\n# {\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":4444,\"message\":\"pruned history unavailable\"}}",
+      note: "None of these settings can bring back receipts a node has already dropped; they decide what it keeps from now on or what a fresh sync fetches.",
+    },
+    pitfalls: [
+      "Reading `null` from `eth_getTransactionReceipt` for an old hash as ‘never mined’ when the node's transaction index or receipts no longer reach that block.",
+      "Keeping receipts for one contract with a log filter, then pointing an indexer for a different contract at the same node; those receipts are already gone.",
+      "Expecting re-derived receipts outside the state-history window, where the parent state needed to re-execute the block no longer exists.",
+      "Syncing a fresh Nethermind 2.0 mainnet node for an indexer without noticing that its default ancient barrier skips receipts below block 24,600,000.",
+    ],
+    related: ["transaction-receipt", "eth-get-transaction-receipt", "eth-get-block-receipts", "eth-get-logs", "history-expiry", "pruned-node", "archive-node", "era-files", "partial-archive", "endpoint-capabilities", "eth-capabilities"],
+    sources: [
+      { title: "Execution APIs: transaction methods and error 4444", url: "https://github.com/ethereum/execution-apis/blob/main/src/eth/transaction.yaml" },
+      { title: "Reth: pruning and node modes", url: "https://reth.rs/run/storage/pruning/" },
+      { title: "Nethermind: history pruning", url: "https://docs.nethermind.io/fundamentals/history-pruning" },
+      { title: "Erigon: pruning modes", url: "https://docs.erigon.tech/fundamentals/pruning-modes" },
+    ],
+  },
+  {
+    id: "partial-archive",
+    title: "Partial archive",
+    category: "nodes",
+    aliases: ["windowed archive", "rolling state history", "since-block archive", "address-slice archive", "history.state", "FlatDb.HistoryRetention", "prune.account-history"],
+    summary: "A partial archive keeps historical [[state|state]] for only part of the chain — a rolling window of recent blocks, everything from a chosen block onward, or a chosen set of contracts — so old-block [[eth-call|eth_call]] works inside that slice and fails outside it.",
+    sections: [
+      {
+        heading: "Three shapes between pruned and archive",
+        paragraphs: [
+          "Between a [[pruned-node|pruned node]], which keeps about 128 blocks of state on [[geth|Geth]], and a full [[archive-node|archive node]] lies a range of policies. A rolling window keeps state history for the last N blocks and reclaims older history as the head moves. A since-block archive keeps everything from block B onward and never prunes it. A contract slice keeps deep history for listed addresses on top of a small general window. All three are retention rules over the change sets or reverse diffs the [[client-storage|storage engine]] already writes, not a different kind of node.",
+          "The controls differ per client. Geth's path-based archive, from v1.16, indexes state history under `--gcmode archive` and keeps `--history.state` blocks of it, where `0` means the whole chain; the index takes around 30 hours to build on mainnet and nothing historical is served until it finishes. [[reth|Reth]] prunes account and storage history separately with `--prune.account-history.distance` or `.before` and the matching `--prune.storage-history` flags. [[erigon|Erigon]] 3 picks a preset with `--prune.mode` and moves the state window with `--prune.distance`. [[nethermind|Nethermind]] 2.0 offers all three shapes on its flat database: `FlatDb.HistoryRetention` set to `Rolling` with `HistoryRetentionBlocks`, or `SinceBlock` with `HistoryRetentionSinceBlock`, plus `FlatDb.HistorySliceAddresses`; of the four, it alone documents a per-contract state slice, while Reth's per-address control covers receipts only.",
+        ],
+      },
+      {
+        heading: "History a node never captured is gone",
+        paragraphs: [
+          "A slice is a policy for what the node records as it executes; it cannot reach back. Widening a window or lowering a floor does not return blocks that were already pruned or never executed: Geth's documentation says pruned state history cannot be recovered, Reth calls pruning destructive, and Nethermind's flat history is forward-only, with no backfill below the point where it was enabled. A node that [[snap-sync|snap-synced]] holds state history only from its pivot. Older history has to come from a resync from genesis under the new policy, a [[database-snapshot|database snapshot]] of a node that kept it, or another endpoint.",
+          "Changing the shape often means a new database as well. Nethermind refuses to switch an unwindowed flat history to `Rolling` or `SinceBlock` in place, and Erigon asks for `chaindata` to be deleted before the prune mode changes. Set the floor with replay in mind: tracing a block re-executes it over its parent's state, so a node that must trace from block B needs history from B minus one, a point Nethermind's archive documentation makes explicitly.",
+        ],
+      },
+      {
+        heading: "A contract slice must cover what the contract touches",
+        paragraphs: [
+          "A historical eth_call runs code, and code reads whatever it reaches: the implementation behind a [[proxy-contract|proxy]] as it was at that block, the tokens it calls `balanceOf` on, the oracle it prices against, the pool or factory it routes through. Each has its own storage. On a slice node a read outside the slice fails closed — Nethermind returns a pruned-history error rather than answering from live state — so the call dies mid-execution, and whether it does depends on the code path and inputs, not only on the address that was called.",
+          "A useful slice is therefore the closure of everything the queries can touch, including every implementation a proxy pointed at during the retained range, since upgrades change which one executes. Nethermind also keeps bodies and receipts for any block in which a sliced address appears, so logs and transactions follow. Historical [[eth-get-proof|eth_getProof]] is a separate promise: Geth 1.17 needs `--history.trienode` for it, and Nethermind serves historical proofs only from unwindowed history, so neither a window nor a slice provides them.",
+        ],
+      },
+      {
+        heading: "Finding the edges",
+        paragraphs: [
+          "A node that serves [[eth-capabilities|eth_capabilities]], added to the [[json-rpc|JSON-RPC]] specification in June 2026, reports the oldest block its state covers and, for a rolling window, the window's length, though it has no field for a per-contract slice, and the error for out-of-range state differs between clients and, in Nethermind's own tracker, between methods. Where the method is missing, find the floor by binary search on [[eth-get-balance|eth_getBalance]]; either way, test each sliced contract with a representative call, and record the result as [[endpoint-capabilities|endpoint capabilities]] describes. A rolling floor rises with every block, so a boundary probed yesterday is already wrong; leave margin, and let the [[rpc-gateway|gateway]] route by block height to a node whose slice covers the request.",
+        ],
+      },
+    ],
+    example: {
+      title: "The same idea in three clients",
+      language: "bash",
+      code: "# Geth (path scheme): index state history and keep the last 1,000,000 blocks of it\ngeth --gcmode archive --history.state 1000000\n\n# Reth: account and storage history for the last 100,000 blocks\nreth node --prune.account-history.distance 100000 --prune.storage-history.distance 100000\n\n# Nethermind 2.0, fresh database only: a 500,000-block window plus deep history\n# for listed contracts (list each proxy together with its implementations)\nnethermind --config mainnet_archive \\\n  --FlatDb.HistoryRetention Rolling \\\n  --FlatDb.HistoryRetentionBlocks 500000 \\\n  --FlatDb.HistorySliceAddresses 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,0x<implementation>",
+      note: "Every one of these starts recording from where the node begins executing; none of them backfills history below that point.",
+    },
+    pitfalls: [
+      "Raising `--history.state` or a rolling window on a running node and expecting the blocks it already pruned to come back.",
+      "Slicing only the contract an application calls, and forgetting its proxy implementation, the tokens it reads and the oracle it consults.",
+      "Setting a since-block floor at the first block that must be traced, when replaying that block needs its parent's state.",
+      "Treating a probed window boundary as fixed; a rolling floor moves up with every block.",
+      "Expecting historical `eth_getProof` on a windowed node because historical `eth_call` works there.",
+    ],
+    related: ["archive-node", "pruned-node", "client-storage", "database-snapshot", "proxy-contract", "endpoint-capabilities", "eth-call", "eth-get-proof", "receipt-retention", "nethermind", "eth-capabilities"],
+    sources: [
+      { title: "Geth: archive mode", url: "https://geth.ethereum.org/docs/fundamentals/archive" },
+      { title: "Nethermind: archive nodes", url: "https://docs.nethermind.io/fundamentals/archive-nodes" },
+      { title: "Reth: pruning and node modes", url: "https://reth.rs/run/storage/pruning/" },
+      { title: "Erigon: pruning modes", url: "https://docs.erigon.tech/fundamentals/pruning-modes" },
+    ],
+  },
+  {
+    id: "database-snapshot",
+    title: "Database snapshot",
+    category: "nodes",
+    aliases: ["node snapshot", "datadir snapshot", "chaindata snapshot", "reth download", "Snapshot.DownloadUrl", "restore from snapshot"],
+    summary: "A database snapshot is a published copy of another node's data directory that a new node starts from instead of syncing, inheriting the publisher's storage layout, client version and retention, and taking the publisher's word for every block it did not execute itself.",
+    sections: [
+      {
+        heading: "Starting from someone else's disk",
+        paragraphs: [
+          "Syncing an [[archive-node|archive node]] takes weeks and even [[snap-sync|snap sync]] takes hours; a snapshot replaces both with a download. The client starts from a database at block N and follows the chain from there. [[rpc-provider|Providers]] and client teams publish such copies: `reth download` fetches from snapshots.reth.rs by default, lets the operator pick components such as `--with-receipts`, `--with-state-history`, `--full` or `--archive`, and writes a `reth.toml` whose prune settings match what arrived. Nethermind's Snapshot plugin (`Snapshot.Enabled`, `Snapshot.DownloadUrl`, `Snapshot.Checksum`) downloads and extracts an archive before the database opens and does nothing if one exists. Copying a data directory between one's own nodes is the same act without a publisher.",
+          "What arrives is the database itself, so it fixes what the node can answer. Retention comes with it: a full-node snapshot holds no historical state, and no flag turns it into a [[partial-archive|partial archive]] later. So does the layout: [[nethermind|Nethermind]] 2.0 keeps an existing patricia database as patricia rather than moving it to the flat backend, and Reth's MDBX page size can be set only at creation. The version matters too: a database written by a newer release may not open in an older one, and [[erigon|Erigon]] ships commands to upgrade or downgrade its file formats. Missing receipts or a missing transaction index stay missing; see [[receipt-retention|receipt retention]].",
+        ],
+      },
+      {
+        heading: "What is checked, and what is taken on trust",
+        paragraphs: [
+          "Snap sync downloads state from untrusted peers, but every range arrives with a proof against the [[state-root|state root]] of a pivot header the consensus side vouched for, and healing completes the trie, so the node ends with state it has proven. A restored snapshot gets nothing comparable at start-up: the client trusts its own metadata. Two checks happen afterwards. Headers are hash-linked, so once fork choice shows the snapshot's head is an ancestor of the canonical head, the whole header chain is authentic. And every new block the node executes must reproduce the state root in its [[block-header|header]].",
+          "Neither check reaches far. Executing a block touches only the accounts and slots it uses and reuses the stored intermediate hashes for everything else, so a wrong value that no block touches sits under a root that still matches. Bodies and receipts are committed by `transactionsRoot` and `receiptsRoot` but are not re-checked when the database opens. Historical state, the transaction index and log indexes are committed to by nothing a header checks. A restored archive answers old [[eth-call|eth_call]] from state it never executed unless someone verifies it: `geth snapshot verify-state` recomputes the current root from the flat state, and Nethermind's `FlatDb.HistoryVerifyEveryBlock` rebuilds the root at every covered historical block and compares it with the node's headers.",
+        ],
+      },
+      {
+        heading: "Checksums and provenance",
+        paragraphs: [
+          "A checksum proves the bytes arrived intact; it proves where they came from only if it was obtained somewhere other than the file server. `reth download` checks the BLAKE3 hash and size of every extracted file against a manifest fetched from the same source, and Nethermind checks the SHA-256 in `Snapshot.Checksum`, which a shipped configuration can pin, as its OP Mainnet archive configuration does for the database those nodes start from. A publisher's signature ties a file to a key and still says nothing about the chain. Before a restored node joins a pool, compare its head and a finalized block hash with an independent node, as [[trusted-header|trusted header]] describes, and probe the methods it must serve.",
+        ],
+      },
+      {
+        heading: "Not Erigon's snapshot files",
+        paragraphs: [
+          "Erigon uses the word for something else: the immutable `.seg` segment files and indexes under `snapshots/` that hold its headers, bodies, transactions and state history as part of its normal [[client-storage|storage layout]]. A finalised segment is byte-identical on every Erigon node, so ordinary sync fetches it over BitTorrent by hash, from a preverified list Erigon downloads from its own CDN by default. The trust question is similar — by default the node downloads state-history files it did not execute, unless started with `--snap.skip-state-snapshot-download` — but the hashes are pinned by the Erigon project rather than by whoever hosts a tarball, and the files are one component of a datadir, not a copy of one.",
+        ],
+      },
+    ],
+    example: {
+      title: "Restoring, and checking what was restored",
+      language: "bash",
+      code: "# Reth: choose components; each extracted file is checked against the manifest's BLAKE3\nreth download --full\n\n# Nethermind: download and extract before the database opens, skipped if one exists\nnethermind --config mainnet \\\n  --Snapshot.Enabled true \\\n  --Snapshot.DownloadUrl https://snapshots.example/mainnet-full.zip \\\n  --Snapshot.Checksum 0x<sha-256 obtained from somewhere other than the file host>\n\n# Geth: recompute the current state root from the flat snapshot layer\ngeth snapshot verify-state <state-root>",
+      note: "The checksum only proves the transfer; the verification pass and a hash comparison with an independent node are what say the data belongs to the canonical chain.",
+    },
+    pitfalls: [
+      "Restoring a full-node snapshot and then enabling archive settings, expecting historical `eth_call` to start answering.",
+      "Accepting a checksum downloaded from the same host as the snapshot as proof of where the snapshot came from.",
+      "Restoring a database into an older client release than the one that wrote it.",
+      "Admitting a restored node to the pool without comparing its head and finalized hashes with an independent node.",
+      "Upgrading a restored Nethermind patricia database to 2.0 and expecting the flat-history archive options, which apply only to a flat database.",
+    ],
+    related: ["snap-sync", "sync-modes", "archive-node", "partial-archive", "client-storage", "trusted-header", "state-root", "erigon", "reth", "receipt-retention"],
+    sources: [
+      { title: "Reth: reth download", url: "https://reth.rs/cli/reth/download/" },
+      { title: "Nethermind: database", url: "https://docs.nethermind.io/fundamentals/database" },
+      { title: "Erigon: downloader and snapshot files", url: "https://docs.erigon.tech/fundamentals/modules/downloader" },
+      { title: "Geth: archive mode and state history", url: "https://geth.ethereum.org/docs/fundamentals/archive" },
+    ],
+  },
+  {
+    id: "era-files",
+    title: "Era files",
+    category: "nodes",
+    aliases: ["era1", "e2store", "ere", "EraE", "era archive", "import-history", "historical hashes accumulator", "EIP-7643"],
+    summary: "Era files are e2store archives of chain history in batches of 8192 blocks or slots — era1 for pre-Merge execution blocks and receipts, era for beacon blocks and states, ere for execution history on both sides of the Merge — used to move expired history outside the peer-to-peer network and verify it on arrival.",
+    sections: [
+      {
+        heading: "One container, several formats",
+        paragraphs: [
+          "e2store is a flat type-length-value file: each entry has an 8-byte header holding a 2-byte type, a 4-byte length and 2 reserved bytes, then its data, usually snappy-framed so each entry decompresses on its own, with an index at the end for random access. era1 holds pre-Merge execution history as `Version | (CompressedHeader, CompressedBody, CompressedReceipts, TotalDifficulty)* | Accumulator | BlockIndex`, at most 8192 blocks per file, which puts mainnet's pre-Merge chain in 1,897 files. It is what nodes that apply [[history-expiry|history expiry]] are pointed at to restore what they dropped, and what the community history endpoints serve over HTTP.",
+          "era files are the consensus-layer counterpart: each group holds the [[beacon-block|beacon blocks]] of one 8192-slot period, about 27 hours, and the beacon state at its end, in files named like `mainnet-00001-40cf2f3c.era`. Since [[the-merge|the Merge]] beacon blocks have carried their [[execution-payload|execution payloads]], so era files contain post-Merge execution blocks too, but not receipts or execution state. ere, the newer execution format, spans both sides of the Merge with headers, bodies, slim receipts without the bloom, optional per-block proofs, and profiles such as `noproofs` marked in the file name; the e2store format repository now marks era1 deprecated, and Nethermind calls ere EraE.",
+        ],
+      },
+      {
+        heading: "Checking a file against the canonical chain",
+        paragraphs: [
+          "A `checksums.txt` beside the files proves only that they match what that server published. The anchor for era1 is its Accumulator entry: the SSZ `hash_tree_root` of up to 8192 records of block hash and total difficulty. The roots of all pre-Merge epochs form the historical hashes accumulator, frozen at the Merge, whose root EIP-7643 gives as `0xec8e040fd6c557b41ca8ddd38f7e9d58a9281918dc92bdb72342a38fb085e701`. A reader hashes each [[block-header|header]] in the file, rebuilds the file's accumulator, compares it with the frozen entry for that epoch, then checks bodies against `transactionsRoot` and [[transaction-receipt|receipts]] against `receiptsRoot` of headers it now trusts. Nothing is executed and no proof of work is checked.",
+          "Consensus era files anchor in a recent beacon state the reader already trusts, such as one obtained by [[checkpoint-sync|checkpoint sync]]: its `historical_roots` and, from Capella on, `historical_summaries` commit to every past period, each block root in a file must match the period state's `block_roots`, and block signatures verify against that state's validator keys. ere files can carry per-header proofs against the pre-Merge accumulator or those beacon roots, the same proof types the [[portal-network|Portal Network]] uses; a file written with the `noproofs` profile, as Geth and Nethermind write them today, has to be checked against headers from somewhere else.",
+        ],
+      },
+      {
+        heading: "Importing and exporting",
+        paragraphs: [
+          "[[geth|Geth]] has `geth export-history <dir> <first> <last>` and `geth import-history <dir>`, each taking `--era.format era1` or `ere`; import works only on a node still at genesis and checks each file's SHA-256 against the `checksums.txt` in the same directory. `geth download-era --server <url>` fetches era1 files and verifies them against checksums built into the binary for mainnet and Sepolia. [[nethermind|Nethermind]] imports with `Era.ImportDirectory`, `Era.From` and `Era.To`, exports with `Era.ExportDirectory`, and offers `admin_importHistory` and `admin_exportHistory`; without `Era.TrustedAccumulatorFile` it trusts the accumulators in the import directory. Its EraE options mirror these and can fetch missing files from `EraE.RemoteBaseUrl`, checked against the server's `checksums_sha256.txt`.",
+          "[[reth|Reth]] has `reth import-era` with `--path` or `--url`, `reth export-era`, and `--era.enable` to take pre-Merge history from era1 files during sync; it reads headers and bodies and executes them, so its receipts are its own. The uses are restoring history a node pruned, seeding an [[indexer|indexer]] or a Portal node without peer-to-peer download, and cold storage for [[historical-data|historical data]] that ordinary nodes no longer keep.",
+        ],
+      },
+    ],
+    example: {
+      title: "File names, and moving history in and out",
+      language: "bash",
+      code: "# consensus history, names from the era specification\n#   mainnet-00000-4b363db9.era   genesis state, no blocks\n#   mainnet-00001-40cf2f3c.era   blocks of slots 0-8191 and the state at slot 8192\n\n# Geth: export pre-Merge history as era1, re-import on an empty node\ngeth export-history --era.format era1 /data/era1 0 15537393\ngeth import-history --era.format era1 /data/era1\n\n# Geth: fetch era1 files for the first 100 epochs from a history endpoint\ngeth download-era --server https://mainnet.era1.nimbus.team --epoch 0-99 --datadir /data/geth\n\n# Nethermind: import, anchored on an accumulator list obtained independently\nnethermind --config mainnet \\\n  --Era.ImportDirectory /data/era1 \\\n  --Era.TrustedAccumulatorFile /secure/accumulators.txt",
+      note: "The era1 file for epoch N covers blocks N×8192 to N×8192+8191; block 15,537,393, the last pre-Merge block, sits in epoch 1896, the 1,897th file.",
+    },
+    pitfalls: [
+      "Treating a `checksums.txt` served next to the files as verification; it shows only that the files match what that server published.",
+      "Importing era1 into Nethermind without `Era.TrustedAccumulatorFile`, which makes the import directory its own root of trust.",
+      "Expecting consensus era files to supply receipts; they carry beacon blocks with execution payloads, not receipts or execution state.",
+      "Running `geth download-era` for post-Merge ranges; it fetches era1 files only.",
+      "Assuming a `noproofs` ere file can be verified on its own; its headers need another source to anchor them.",
+    ],
+    related: ["history-expiry", "portal-network", "historical-data", "receipt-retention", "block-header", "beacon-block", "checkpoint-sync", "ssz", "geth", "nethermind"],
+    sources: [
+      { title: "e2store format specifications (era, era1, ere)", url: "https://github.com/eth-clients/e2store-format-specs" },
+      { title: "EIP-7643: History accumulator for pre-PoS data", url: "https://eips.ethereum.org/EIPS/eip-7643" },
+      { title: "Geth: download era files", url: "https://geth.ethereum.org/docs/fundamentals/downloadera" },
+      { title: "Nethermind: history pruning, Era1 and EraE", url: "https://docs.nethermind.io/fundamentals/history-pruning" },
     ],
   },
 ];

@@ -58,7 +58,7 @@ export const topics = [
       {
         heading: "What the header commits to",
         paragraphs: [
-          "Four fields are roots of [[merkle-patricia-trie|Merkle-Patricia tries]]. `stateRoot` commits to the entire [[state|world state]] as it exists after the block ran, which is why [[eth-get-proof|eth_getProof]] can prove a balance against it. `transactionsRoot`, `receiptsRoot`, and `withdrawalsRoot` commit to the body's lists, each built as a trie keyed by the [[rlp|RLP]]-encoded index of the item. `logsBloom` is not a root but a 2048-bit [[logs-bloom|bloom filter]] over the addresses and topics of every log in the block, and `requestsHash` (added by Pectra's EIP-7685) commits to execution-layer requests such as deposits and validator exits.",
+          "Four fields are roots of [[merkle-patricia-trie|Merkle-Patricia tries]]. `stateRoot` commits to the entire [[state|world state]] as it exists after the block ran, which is why [[eth-get-proof|eth_getProof]] can prove a balance against it. `transactionsRoot`, `receiptsRoot`, and `withdrawalsRoot` commit to the body's lists, each built as a trie keyed by the [[rlp|RLP]]-encoded index of the item. `logsBloom` is not a root but a 2048-bit [[logs-bloom|bloom filter]] over the addresses and topics of every log in the block, and `requestsHash` (added by Pectra's EIP-7685) commits to [[execution-requests|execution-layer requests]] such as deposits and validator exits.",
           "Because these are commitments, a header is enough to check body data you received from somewhere else. Change one byte of one transaction and `transactionsRoot` changes, `receiptsRoot` almost certainly changes, `stateRoot` changes, and therefore so does the block hash.",
         ],
       },
@@ -72,7 +72,7 @@ export const topics = [
       {
         heading: "Fields that changed meaning",
         paragraphs: [
-          "Three fields are proof-of-work leftovers. `difficulty` is `0x0` and `nonce` is `0x0000000000000000` in every post-[[the-merge|Merge]] block. `mixHash` was repurposed by EIP-4399 to carry `prevRandao`, the [[consensus-layer|consensus layer]]'s randomness for that slot, and most clients still expose it in JSON under the name `mixHash`; inside the [[evm|EVM]] the old `DIFFICULTY` opcode now returns that value as `PREVRANDAO`. The `miner` field is the payload's fee recipient, which for a block bought through [[mev-boost|MEV-Boost]] is usually the builder's address, with the proposer paid by a transfer at the end of the block.",
+          "Three fields are proof-of-work leftovers. `difficulty` is `0x0` and `nonce` is `0x0000000000000000` in every post-[[the-merge|Merge]] block. `mixHash` was repurposed by EIP-4399 to carry `prevRandao`, the [[consensus-layer|consensus layer]]'s randomness for that slot, and most clients still expose it in JSON under the name `mixHash`; inside the [[evm|EVM]] the old `DIFFICULTY` opcode now returns that value as `PREVRANDAO`. The `miner` field is the payload's fee recipient, which for a block bought through [[mev-boost|MEV-Boost]] is usually the builder's address, with the proposer [[validator-rewards|paid by a transfer at the end of the block]].",
           "`parentBeaconBlockRoot` (EIP-4788, Dencun) puts the parent [[beacon-block|beacon block]] root in the execution header so contracts can verify consensus data, and it is not the same thing as the parent execution [[block-hash|block hash]].",
         ],
       },
@@ -95,7 +95,7 @@ export const topics = [
       "Confusing `parentBeaconBlockRoot` with `parentHash`; the first identifies a consensus block, the second an execution block.",
       "Treating `miner` as the validator that proposed the block; with external block building it is usually the builder's fee recipient.",
     ],
-    related: ["block", "state-root", "block-hash", "logs-bloom", "eip-1559", "withdrawals", "merkle-patricia-trie", "blob", "eth-get-block-by-number", "execution-payload"],
+    related: ["block", "state-root", "block-hash", "logs-bloom", "eip-1559", "withdrawals", "merkle-patricia-trie", "blob", "eth-get-block-by-number", "execution-payload", "randao"],
     sources: [
       { title: "EIP-4399: Supplant DIFFICULTY opcode with PREVRANDAO", url: "https://eips.ethereum.org/EIPS/eip-4399" },
       { title: "EIP-4788: Beacon block root in the EVM", url: "https://eips.ethereum.org/EIPS/eip-4788" },
@@ -125,7 +125,7 @@ export const topics = [
       {
         heading: "Where it appears",
         paragraphs: [
-          "`eth_getBlockByHash` takes one, [[eth-get-logs|eth_getLogs]] accepts `blockHash` in place of a `fromBlock`/`toBlock` range (usually without the provider's range limits, since it is a single block), and every [[transaction-receipt|receipt]] and [[event-log|log]] carries the `blockHash` it came from. Inside the [[evm|EVM]], the `BLOCKHASH` opcode returns the hash of one of the 256 most recent blocks and zero beyond that window; Pectra's EIP-2935 additionally stores the last 8191 hashes in a system contract that contracts can read.",
+          "`eth_getBlockByHash` takes one, [[eth-get-logs|eth_getLogs]] accepts `blockHash` in place of a `fromBlock`/`toBlock` range (usually without the provider's range limits, since it is a single block), and every [[transaction-receipt|receipt]] and [[event-log|log]] carries the `blockHash` it came from. Inside the [[evm|EVM]], the `BLOCKHASH` opcode returns the hash of one of the 256 most recent blocks and zero beyond that window; Pectra's EIP-2935 additionally stores the last 8191 hashes in [[system-contracts|a system contract]] that contracts can read.",
           "One hash that looks similar is not the same: the [[beacon-block|beacon block]] root identifies the consensus block that wrapped this payload, and the [[beacon-api|Beacon API]] indexes by that root, not by the execution block hash. Passing one where the other is expected returns a not-found response rather than a type error.",
         ],
       },
@@ -136,7 +136,7 @@ export const topics = [
       "Expecting `BLOCKHASH` in a contract to reach arbitrarily far back; outside the 256-block window it returns zero, which naive code reads as a valid hash.",
       "Comparing hashes as strings without normalising case; clients return lowercase hex, but user input and some tools do not.",
     ],
-    related: ["block-header", "block", "keccak-256", "rlp", "reorg", "block-tag", "eth-get-block-by-number", "state-root", "beacon-block"],
+    related: ["block-header", "block", "keccak-256", "rlp", "reorg", "block-tag", "eth-get-block-by-number", "state-root", "beacon-block", "system-contracts"],
     sources: [
       { title: "ethereum.org: Blocks", url: "https://ethereum.org/developers/docs/blocks/" },
       { title: "EIP-1898: Add blockHash to defaultBlock methods", url: "https://eips.ethereum.org/EIPS/eip-1898" },
@@ -167,7 +167,7 @@ export const topics = [
       {
         heading: "From signing to receipt",
         paragraphs: [
-          "A sender builds the fields, signs the [[keccak-256|Keccak-256]] of the encoded payload with its private key, and serialises the result. The hash of that serialised form is the transaction hash, which is why changing any field, even the gas limit, produces a different transaction. The signed bytes go to a node through [[eth-send-raw-transaction|eth_sendRawTransaction]], which validates them against the pool's rules and returns the hash immediately. Inclusion is a separate event: a proposer picks the transaction, the block executes, and only then does a receipt exist.",
+          "A sender builds the fields, signs the [[keccak-256|Keccak-256]] of the encoded payload with its private key, and serialises the result. The hash of that serialised form is the transaction hash, which is why changing any field, even the gas limit, produces a different transaction. The signed bytes go to a node through [[eth-send-raw-transaction|eth_sendRawTransaction]], which validates them against the pool's rules and returns the hash immediately. [[transaction-lifecycle|Inclusion is a separate event]]: a proposer picks the transaction, the block executes, and only then does a receipt exist.",
         ],
       },
     ],
@@ -187,7 +187,7 @@ export const topics = [
     sources: [
       { title: "ethereum.org: Transactions", url: "https://ethereum.org/developers/docs/transactions/" },
       { title: "EIP-1559: Fee market change for ETH 1.0 chain", url: "https://eips.ethereum.org/EIPS/eip-1559" },
-      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/" },
     ],
   },
   {
@@ -255,7 +255,7 @@ export const topics = [
       {
         heading: "Consensus data versus derived data",
         paragraphs: [
-          "Only part of a receipt is protocol data. The consensus receipt that goes into the block's `receiptsRoot` trie holds the type, the status (or, before Byzantium, an intermediate [[state-root|state root]]), `cumulativeGasUsed`, the bloom, and the logs. Everything else in the RPC object, including `gasUsed`, `effectiveGasPrice`, `contractAddress`, `blockHash`, and `transactionIndex`, is reconstructed by the client from the block and its position in it. That is why receipts can be served only for blocks the node still has indexed, and why a [[pruned-node|node that dropped old history]] returns `null` for an old hash rather than an [[rpc-errors|error]].",
+          "Only part of a receipt is protocol data. The consensus receipt that goes into the block's `receiptsRoot` trie holds the type, the status (or, before Byzantium, an intermediate [[state-root|state root]]), `cumulativeGasUsed`, the bloom, and the logs. Everything else in the RPC object, including `gasUsed`, `effectiveGasPrice`, `contractAddress`, `blockHash`, and `transactionIndex`, is reconstructed by the client from the block and its position in it. That is why receipts can be served only for blocks the node still has indexed. A [[pruned-node|node that dropped old history]] returns `null` for a hash its transaction index no longer covers, since it cannot tell an old transaction from one that never existed, but answers a block-addressed receipt query below its cutoff, such as [[eth-get-block-receipts|eth_getBlockReceipts]], with the [[rpc-errors|error]] `4444` 'Pruned history unavailable'.",
           "Because the root commits to logs, a receipt is provable: a bridge or [[light-client|light client]] can show that a log was emitted by producing the receipt and its trie path against `receiptsRoot`; see [[receipt-proof|receipt proofs]].",
         ],
       },
@@ -272,10 +272,10 @@ export const topics = [
       "Using `cumulativeGasUsed` as the transaction's cost; it includes every transaction before it in the block.",
       "Multiplying `gas` from the transaction by `effectiveGasPrice` to compute the fee; the limit is not what was spent, `gasUsed` is.",
     ],
-    related: ["transaction", "eth-get-transaction-receipt", "event-log", "logs-bloom", "revert", "gas", "eth-get-block-receipts", "receipt-proof", "eip-1559"],
+    related: ["transaction", "eth-get-transaction-receipt", "event-log", "logs-bloom", "revert", "gas", "eth-get-block-receipts", "receipt-proof", "eip-1559", "gas-refunds", "receipt-retention"],
     sources: [
       { title: "ethereum.org: Transactions", url: "https://ethereum.org/developers/docs/transactions/" },
-      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/" },
       { title: "EIP-658: Embedding transaction status code in receipts", url: "https://eips.ethereum.org/EIPS/eip-658" },
     ],
   },
@@ -296,7 +296,7 @@ export const topics = [
         heading: "Replacement, gaps, and stuck transactions",
         paragraphs: [
           "Since the nonce fixes the slot, the way to cancel or speed up a pending transaction is to sign a different one with the same nonce and a higher fee. Pools require a real bump rather than a token one; clients commonly demand at least 10 percent more on both [[eip-1559|maxFeePerGas and maxPriorityFeePerGas]], and answer 'replacement transaction underpriced' otherwise. A cancel is the same move with an empty self-transfer as the payload.",
-          "One underpriced transaction therefore blocks every later one from the same account, which is the usual cause of a backlog that looks like a node problem. It is also why a service that sends from one address serialises its sending: two workers that both read the next nonce and both sign get one transaction included and one rejected as 'nonce too low', or worse, two transactions competing for the same slot.",
+          "One underpriced transaction therefore blocks every later one from the same account, which is the usual cause of a backlog that looks like a node problem. It is also why a [[transaction-relayer|service that sends from one address]] serialises its sending: two workers that both read the next nonce and both sign get one transaction included and one rejected as 'nonce too low', or worse, two transactions competing for the same slot.",
         ],
       },
       {
@@ -330,28 +330,28 @@ export const topics = [
       {
         heading: "What costs gas",
         paragraphs: [
-          "Every transaction pays 21000 gas of intrinsic cost before any code runs, plus 32000 more if it deploys a [[smart-contract|contract]], plus a charge for its calldata: historically 16 gas per non-zero byte and 4 per zero byte, with a floor price added by Pectra's EIP-7623 that makes data-heavy transactions cost more. Execution then charges per opcode. Arithmetic is a few gas, reading an untouched storage slot is 2100 and re-reading it 100, touching a new [[account|account]] is 2600, and writing a slot from zero to non-zero is 20000. Clearing storage earns a refund, but EIP-3529 caps total refunds at a fifth of the gas the transaction used.",
+          "Every transaction pays 21000 gas of intrinsic cost before any code runs, plus 32000 more if it deploys a [[smart-contract|contract]], plus a charge for its calldata: historically 16 gas per non-zero byte and 4 per zero byte, with a floor price added by Pectra's EIP-7623 that makes data-heavy transactions cost more. Execution then charges per opcode. Arithmetic is a few gas, reading an untouched storage slot is 2100 and re-reading it 100, touching a new [[account|account]] is 2600, and writing a slot from zero to non-zero is 20000. [[gas-refunds|Clearing storage earns a refund]], but EIP-3529 caps total refunds at a fifth of the gas the transaction used.",
           "This pricing is not a fee schedule invented per client; it is consensus. Two clients that charge different gas for the same block would compute different `gasUsed` and different [[state-root|state roots]], so gas costs change only through a [[hardfork|network upgrade]].",
         ],
       },
       {
         heading: "Limit, consumption, and running out",
         paragraphs: [
-          "The `gas` field on a transaction is a limit, not a price and not a prediction. Unused gas is returned, so setting it higher than needed costs nothing directly, but it does reserve space against the [[block-header|block gas limit]], which is voted on by validators and caps the sum of every transaction in a [[block|block]]. If execution needs more than the limit, the transaction ends with an out-of-gas failure: the whole limit is charged, all state changes are rolled back, and the [[transaction-receipt|receipt]] shows `status` `0x0` with `gasUsed` equal to the limit.",
+          "The `gas` field on a transaction is a limit, not a price and not a prediction. Unused gas is returned, so setting it higher than needed costs nothing directly, but it does reserve space against the [[block-header|block gas limit]], which is voted on by validators and caps the sum of every transaction in a [[block|block]]. Since Fusaka, EIP-7825 also caps each transaction's own limit at 16,777,216 (2^24) gas, far below the block limit: a pool rejects a transaction above it and a block that contains one is invalid, and Glamsterdam's EIP-8037 is set to narrow that cap to execution gas so that state-creation gas can exceed it. If execution needs more than the limit, the transaction ends with an out-of-gas failure: the whole limit is charged, all state changes are rolled back, and the [[transaction-receipt|receipt]] shows `status` `0x0` with `gasUsed` equal to the limit.",
           "Inside execution, a caller cannot hand all its remaining gas to a sub-call. EIP-150's rule keeps a 64th back, so a call forwards at most 63/64 of what is left. That is why deeply nested calls can run out even when the transaction still has gas, and why a contract that checks a sub-call's result can survive one.",
         ],
       },
       {
         heading: "Gas in RPC",
         paragraphs: [
-          "[[eth-estimate-gas|eth_estimateGas]] searches for the smallest limit that succeeds against current state, and [[eth-call|eth_call]] runs with a gas cap the operator sets rather than with what a sender would pay; Geth's `--rpc.gascap` defaults to 50 million, so a call that would be fine in a block can still fail on an endpoint. The fee itself is gas multiplied by a price in [[wei|wei]], which is a separate question answered by [[eip-1559|the fee market]]; the receipt reports the two halves as `gasUsed` and `effectiveGasPrice`. Blob data is metered by a second, independent unit, blob gas, with its own limit and its own price.",
+          "[[eth-estimate-gas|eth_estimateGas]] searches for the smallest limit that succeeds against current state, and [[eth-call|eth_call]] runs with a gas cap the operator sets rather than with what a sender would pay; Geth's `--rpc.gascap` defaults to 50 million, which lets a call use far more gas than any transaction may since Fusaka, while an endpoint that sets its cap lower can fail a call that would be fine in a block. The fee itself is gas multiplied by a price in [[wei|wei]], which is a separate question answered by [[eip-1559|the fee market]]; the receipt reports the two halves as `gasUsed` and `effectiveGasPrice`. Blob data is metered by a second, independent unit, blob gas, with its own limit and its own price.",
         ],
       },
     ],
     pitfalls: [
       "Copying `gas` from an old transaction; the same call can cost more after an upgrade repriced an opcode or after storage changed from zero to non-zero.",
       "Treating an out-of-gas failure as free; the full limit is charged even though nothing was applied.",
-      "Setting a limit above the block gas limit, which no proposer can include no matter what fee is offered.",
+      "Setting a limit above 16,777,216, which EIP-7825 has made invalid since Fusaka, so every pool rejects it no matter what fee is offered.",
       "Assuming `eth_call` succeeding means a transaction will; the call ran under the node's gas cap, not under the sender's limit.",
     ],
     related: ["eip-1559", "evm", "transaction", "eth-estimate-gas", "transaction-receipt", "access-list", "wei", "block-header", "revert"],
@@ -359,6 +359,7 @@ export const topics = [
       { title: "ethereum.org: Gas and fees", url: "https://ethereum.org/developers/docs/gas/" },
       { title: "EIP-2929: Gas cost increases for state access opcodes", url: "https://eips.ethereum.org/EIPS/eip-2929" },
       { title: "EIP-3529: Reduction in refunds", url: "https://eips.ethereum.org/EIPS/eip-3529" },
+      { title: "EIP-7825: Transaction gas limit cap", url: "https://eips.ethereum.org/EIPS/eip-7825" },
     ],
   },
   {
@@ -406,7 +407,7 @@ export const topics = [
     sources: [
       { title: "EIP-1559: Fee market change for ETH 1.0 chain", url: "https://eips.ethereum.org/EIPS/eip-1559" },
       { title: "ethereum.org: Gas and fees", url: "https://ethereum.org/developers/docs/gas/" },
-      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/" },
     ],
   },
   {
@@ -426,7 +427,7 @@ export const topics = [
       {
         heading: "Building and sending one",
         paragraphs: [
-          "[[eth-create-access-list|eth_createAccessList]] executes the call and reports which addresses and slots it touched, along with the `gasUsed` that results from including the list. Clients leave out entries that are already warm by rule, such as the sender, the recipient, and the precompiles. The field rides on every [[transaction-types|typed transaction]] from type `0x1` onwards, so a normal EIP-1559 transaction can carry one; type `0x1` exists mainly because access lists were introduced before dynamic fees.",
+          "[[eth-create-access-list|eth_createAccessList]] executes the call and reports which addresses and slots it touched, along with the `gasUsed` that results from including the list. Clients leave out entries that are already warm by rule, such as the sender, the recipient, and the [[precompiles|precompiles]]. The field rides on every [[transaction-types|typed transaction]] from type `0x1` onwards, so a normal EIP-1559 transaction can carry one; type `0x1` exists mainly because access lists were introduced before dynamic fees.",
           "In practice the gas saving is small and the list costs calldata bytes of its own, so applications use it selectively: contracts that jump across many cold accounts, [[rollup|rollup]] traffic where predictability matters, and transactions built by simulators that already know the touched set. The list is also a scheduling hint, since a client that reads it knows which state a transaction will need before it runs.",
         ],
       },
@@ -447,7 +448,7 @@ export const topics = [
     sources: [
       { title: "EIP-2930: Optional access lists", url: "https://eips.ethereum.org/EIPS/eip-2930" },
       { title: "EIP-2929: Gas cost increases for state access opcodes", url: "https://eips.ethereum.org/EIPS/eip-2929" },
-      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/" },
     ],
   },
   {
@@ -489,7 +490,7 @@ export const topics = [
     sources: [
       { title: "ethereum.org: Accounts", url: "https://ethereum.org/developers/docs/accounts/" },
       { title: "EIP-1186: RPC-Method to get Merkle Proofs", url: "https://eips.ethereum.org/EIPS/eip-1186" },
-      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/" },
     ],
   },
   {
@@ -503,7 +504,7 @@ export const topics = [
         heading: "Where addresses come from",
         paragraphs: [
           "An externally owned account's address is the low 20 bytes of the Keccak-256 hash of its uncompressed public key, with the leading `0x04` tag removed first. Nothing registers it, so every one of the 2^160 addresses is valid and can receive ether before anyone holds its key.",
-          "A contract deployed with `CREATE` gets `keccak256(rlp([sender, nonce]))` truncated to 20 bytes, which is why a deployer's nth contract has a predictable address. `CREATE2` instead uses `keccak256(0xff ++ sender ++ salt ++ keccak256(initCode))`, so the address depends on the code rather than on ordering. That is what makes counterfactual deployment possible: an application can compute a wallet's address, let users fund it, and deploy the [[smart-contract|contract]] there later.",
+          "A contract deployed with `CREATE` gets `keccak256(rlp([sender, nonce]))` truncated to 20 bytes, which is why a deployer's nth contract has a predictable address. `CREATE2` instead uses `keccak256(0xff ++ sender ++ salt ++ keccak256(initCode))`, so the address depends on the code rather than on ordering. That is what makes [[erc-6492|counterfactual deployment]] possible: an application can compute a wallet's address, let users fund it, and deploy the [[smart-contract|contract]] there later.",
         ],
       },
       {
@@ -544,14 +545,14 @@ export const topics = [
       {
         heading: "The machine",
         paragraphs: [
-          "The EVM has a stack of at most 1024 words, each 256 bits wide, plus three places to put data. Memory is a byte array that lasts for one call and costs more as it grows. [[contract-storage|Storage]] is a persistent map from 256-bit keys to 256-bit values that belongs to the [[smart-contract|contract]] and survives between transactions. Calldata is the read-only input the caller supplied. Transient storage, added by EIP-1153 in Dencun, behaves like storage but is discarded when the [[transaction|transaction]] ends.",
+          "The EVM has a stack of at most 1024 words, each 256 bits wide, plus three places to put data. Memory is a byte array that lasts for one call and costs more as it grows. [[contract-storage|Storage]] is a persistent map from 256-bit keys to 256-bit values that belongs to the [[smart-contract|contract]] and survives between transactions. Calldata is the read-only input the caller supplied. [[transient-storage|Transient storage]], added by EIP-1153 in Dencun, behaves like storage but is discarded when the [[transaction|transaction]] ends.",
           "Execution is deterministic by construction. There is no clock, no file system, and no network access; the only outside information is the block context (number, timestamp, `PREVRANDAO`, base fee), the calldata, and the state itself. That is what lets thousands of machines replay the same [[block|block]] and agree on the resulting [[state-root|state root]].",
         ],
       },
       {
         heading: "Calls, frames, and failure",
         paragraphs: [
-          "A contract reaches another contract with a message call. `CALL` runs the callee's code in a new frame with its own stack, memory, and storage context. `DELEGATECALL` runs the callee's code but keeps the caller's storage, [[address|address]], and value, which is exactly what makes proxy contracts and upgradeable systems possible. `STATICCALL` forbids state changes, so a view function cannot quietly write. Frames nest up to 1024 deep, and a caller can forward at most 63/64 of its remaining gas.",
+          "A contract reaches another contract with a message call. `CALL` runs the callee's code in a new frame with its own stack, memory, and storage context. `DELEGATECALL` runs the callee's code but keeps the caller's storage, [[address|address]], and value, which is exactly what makes [[proxy-contract|proxy contracts]] and upgradeable systems possible. `STATICCALL` forbids state changes, so a view function cannot quietly write. Frames nest up to 1024 deep, and a caller can forward at most 63/64 of its remaining gas.",
           "A frame ends in one of three ways: it returns data, it [[revert|reverts]] and hands back revert data while undoing its own changes, or it runs out of gas and consumes everything it was given. A revert in an inner frame does not have to fail the transaction; the caller sees a failure flag and may carry on, which is why a [[transaction-receipt|receipt]] can show `status` `0x1` for a transaction that contains failed calls.",
         ],
       },
@@ -575,7 +576,7 @@ export const topics = [
       "Expecting internal calls in a receipt; only a trace shows them, because nothing about them is protocol data.",
       "Treating `PREVRANDAO` as private randomness; the proposer sees it before building the block.",
     ],
-    related: ["gas", "smart-contract", "eth-call", "contract-storage", "revert", "state", "execution-trace", "debug-api", "state-override", "eth-estimate-gas"],
+    related: ["gas", "smart-contract", "eth-call", "contract-storage", "revert", "state", "execution-trace", "debug-api", "state-override", "eth-estimate-gas", "randao", "precompiles"],
     sources: [
       { title: "ethereum.org: Ethereum Virtual Machine", url: "https://ethereum.org/developers/docs/evm/" },
       { title: "ethereum.org: Opcodes", url: "https://ethereum.org/developers/docs/evm/opcodes/" },
@@ -593,7 +594,7 @@ export const topics = [
         heading: "How code gets on chain",
         paragraphs: [
           "A deployment is an ordinary transaction with `to` set to `null` and the init code in `input`. The [[evm|EVM]] runs that init code, the constructor writes whatever initial [[contract-storage|storage]] it wants, and what the init code returns is the runtime bytecode that is actually stored. The two differ, which is why the bytes you sent are not the bytes [[eth-get-code|eth_getCode]] gives back. The new [[address|address]] is derived from the sender and its [[nonce|nonce]], or from the salt when `CREATE2` is used, and the [[transaction-receipt|receipt]] reports it in `contractAddress`.",
-          "Stored code is immutable. Systems that need upgrades put a proxy at the stable address which `DELEGATECALL`s an implementation address kept in a fixed storage slot, so the storage stays with the proxy while the logic can be swapped. `SELFDESTRUCT` no longer removes code either: since Dencun's EIP-6780 it only clears an account created in the same transaction, and otherwise just sweeps the balance.",
+          "Stored code is immutable. Systems that need upgrades put a [[proxy-contract|proxy]] at the stable address which `DELEGATECALL`s an implementation address kept in a fixed storage slot, so the storage stays with the proxy while the logic can be swapped. `SELFDESTRUCT` no longer removes code either: since Dencun's EIP-6780 it only clears an account created in the same transaction, and otherwise just sweeps the balance.",
         ],
       },
       {
@@ -640,7 +641,7 @@ export const topics = [
       {
         heading: "Mappings, arrays, and strings",
         paragraphs: [
-          "A mapping's declared slot `p` holds nothing. The value for key `k` lives at `keccak256(pad32(k) ++ pad32(p))`, both operands padded to 32 bytes, and a nested mapping applies the rule again with the inner slot as the new `p`. A dynamic array keeps its length in slot `p` and its elements from `keccak256(pad32(p))` onwards, one after another. A `string` or `bytes` value of at most 31 bytes sits inline in its slot with twice its length in the last byte; longer values keep twice the length plus one there and the data at `keccak256(pad32(p))`.",
+          "A mapping's declared slot `p` holds nothing. In Solidity the value for key `k` lives at `keccak256(pad32(k) ++ pad32(p))`, both operands padded to 32 bytes, while Vyper hashes the slot first, as [[storage-slot-discovery|storage slot discovery]] shows; a nested mapping applies the rule again with the inner slot as the new `p`. A dynamic array keeps its length in slot `p` and its elements from `keccak256(pad32(p))` onwards, one after another. A `string` or `bytes` value of at most 31 bytes sits inline in its slot with twice its length in the last byte; longer values keep twice the length plus one there and the data at `keccak256(pad32(p))`.",
           "Because these positions come from [[keccak-256|Keccak-256]], storage is scattered rather than contiguous, which is also why iterating a mapping is impossible on chain and why an [[indexer|indexer]] exists.",
         ],
       },
@@ -648,23 +649,23 @@ export const topics = [
         heading: "Reading storage over RPC",
         paragraphs: [
           "[[eth-get-storage-at|eth_getStorageAt]] takes an [[address|address]], a slot number, and a [[block-tag|block parameter]] and returns exactly 32 bytes, zero-padded, with no type information. It ignores visibility, so a `private` variable is readable by anyone; privacy on a public chain is a property of the data you put there, not of the keyword. [[eth-get-proof|eth_getProof]] returns the same values with a [[storage-proof|storage proof]] against the account's `storageHash`, which is how a value can be verified rather than trusted.",
-          "Two things stay invisible: transient storage written with `TSTORE`, which never persists, and values a contract keeps only in memory during a call. For those, run the getter with [[eth-call|eth_call]] instead.",
+          "Two things stay invisible: [[transient-storage|transient storage]] written with `TSTORE`, which never persists, and values a contract keeps only in memory during a call. For those, run the getter with [[eth-call|eth_call]] instead.",
         ],
       },
     ],
     example: {
       title: "Reading an ERC-20 balance straight from storage",
       language: "text",
-      code: "// contract Token {\n//     uint256 totalSupply;                      // slot 0\n//     mapping(address => uint256) balanceOf;    // slot 1\n// }\n\nslot = keccak256( pad32(holder) ++ pad32(1) )\n     = keccak256( 000…000d8dA6BF26964aF9D7eEd9e03E53415D37aA96045\n                  0000000000000000000000000000000000000000000000000000000000000001 )\n     = 0x3a4f…91c2\n\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getStorageAt\",\"params\":[\"0xA0b8…eB48\",\"0x3a4f…91c2\",\"latest\"]}\n// result\n\"0x00000000000000000000000000000000000000000000000000000000000f4240\"   // 1000000",
-      note: "The key comes first and the slot number second; swapping them yields a valid-looking slot that is always zero.",
+      code: "// contract Token {\n//     uint256 totalSupply;                      // slot 0\n//     mapping(address => uint256) balanceOf;    // slot 1\n// }\n\nslot = keccak256( pad32(holder) ++ pad32(1) )\n     = keccak256( 000…000d8dA6BF26964aF9D7eEd9e03E53415D37aA96045\n                  0000000000000000000000000000000000000000000000000000000000000001 )\n     = 0xb931be0b…9003beb2\n\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getStorageAt\",\"params\":[\"0x<Token>\",\"0xb931be0b…9003beb2\",\"latest\"]}\n// result\n\"0x00000000000000000000000000000000000000000000000000000000000f4240\"   // 1000000",
+      note: "In Solidity the key comes first and the slot number second; swapping them yields a valid-looking slot that is always zero. `0x<Token>` stands for the token's address: USDC, for one, keeps its balances at slot 9, not 1.",
     },
     pitfalls: [
-      "Hashing the slot number before the key when computing a mapping position; the order is key then slot, and the wrong order silently returns zeros.",
+      "Hashing the slot number before the key when computing a Solidity mapping position; the order there is key then slot, the reverse of Vyper's, and the wrong order silently returns zeros.",
       "Reading a packed slot and using the whole 32 bytes as one number instead of extracting the field's byte range.",
       "Assuming slot numbers survive a contract upgrade; adding a variable to the middle of a declaration list shifts everything after it.",
       "Believing `private` hides a value from RPC; the keyword only stops other contracts from reading it.",
     ],
-    related: ["eth-get-storage-at", "smart-contract", "keccak-256", "state", "storage-proof", "eth-get-proof", "evm", "account", "abi"],
+    related: ["eth-get-storage-at", "smart-contract", "keccak-256", "state", "storage-proof", "eth-get-proof", "evm", "account", "abi", "transient-storage", "storage-slot-discovery"],
     sources: [
       { title: "Solidity: Layout of state variables in storage", url: "https://docs.soliditylang.org/en/latest/internals/layout_in_storage.html" },
       { title: "ethereum.org: eth_getStorageAt", url: "https://ethereum.org/developers/docs/apis/json-rpc/#eth_getstorageat" },
@@ -784,7 +785,7 @@ export const topics = [
       {
         heading: "Where it matters for RPC",
         paragraphs: [
-          "A log query over a block range is, in the naive implementation, a per-block bloom check followed by a receipt read on the candidates. That is why a narrow filter over a wide range can still be slow, and why [[rpc-provider|providers]] cap ranges and charge per block scanned. Clients now build their own log indexes and largely bypass the header bloom for serving queries, and proposals to drop it from the header in favour of a better structure have been discussed without shipping.",
+          "A log query over a block range is, in the naive implementation, a per-block bloom check followed by a receipt read on the candidates. That is why a narrow filter over a wide range can still be slow, and why [[rpc-provider|providers]] cap ranges and charge per block scanned. [[geth|Geth]], [[erigon|Erigon]], and, when it is enabled, [[nethermind|Nethermind]] build their own [[log-index|log indexes]] and bypass the header bloom for the ranges those cover, which on Geth is a recent window by default, while [[reth|Reth]] still scans header blooms; proposals to drop the bloom from the header in favour of a better structure have been discussed without shipping.",
           "For an [[indexer|indexer]], checking the bloom client-side before requesting receipts is rarely worth it, since fetching the header already costs a round trip. Filtering by `blockHash` or by narrow ranges usually beats it.",
         ],
       },
@@ -795,7 +796,7 @@ export const topics = [
       "Assuming a bloom miss on one node means the event does not exist; it only covers the block you checked.",
       "Reading `logsBloom` from a receipt as if it covered the block; the receipt's bloom covers that transaction's logs only.",
     ],
-    related: ["event-log", "eth-get-logs", "block-header", "transaction-receipt", "keccak-256", "event-signature", "indexer", "address"],
+    related: ["event-log", "eth-get-logs", "block-header", "transaction-receipt", "keccak-256", "event-signature", "indexer", "address", "log-index"],
     sources: [
       { title: "ethereum.org: Logs and bloom filters", url: "https://ethereum.org/developers/docs/apis/json-rpc/#eth_getlogs" },
       { title: "ethereum/execution-apis", url: "https://github.com/ethereum/execution-apis" },
@@ -876,7 +877,7 @@ export const topics = [
       "Assuming a decoded item's type; RLP returns bytes, and reading a 20-byte string as a number is a silent bug.",
       "Confusing RLP with the ABI encoding; both produce opaque hex strings, but nothing in calldata is RLP.",
     ],
-    related: ["keccak-256", "transaction-types", "block-header", "merkle-patricia-trie", "ssz", "eth-send-raw-transaction", "debug-api", "abi", "eth-get-proof"],
+    related: ["keccak-256", "transaction-types", "block-header", "merkle-patricia-trie", "ssz", "eth-send-raw-transaction", "debug-api", "abi", "eth-get-proof", "hex-prefix-encoding"],
     sources: [
       { title: "ethereum.org: RLP serialization", url: "https://ethereum.org/developers/docs/data-structures-and-encoding/rlp/" },
       { title: "EIP-2718: Typed Transaction Envelope", url: "https://eips.ethereum.org/EIPS/eip-2718" },
@@ -887,7 +888,7 @@ export const topics = [
     id: "ssz",
     title: "SSZ encoding",
     category: "protocol",
-    aliases: ["SimpleSerialize", "hash tree root", "Merkleization", "generalized index", "octet-stream"],
+    aliases: ["SimpleSerialize", "hash tree root", "Merkleization", "octet-stream"],
     summary: "SSZ, SimpleSerialize, is the [[consensus-layer|consensus layer]]'s encoding: a schema-driven layout of fixed and variable parts, paired with Merkleization into a hash tree root so that any single field of a large object can be proved.",
     sections: [
       {
@@ -899,7 +900,7 @@ export const topics = [
       {
         heading: "Merkleization and hash tree roots",
         paragraphs: [
-          "The part that matters for verification is the hash tree root. An object is chunked into 32-byte leaves, padded up to a power of two, and hashed pairwise with SHA-256 until a single root remains, with lists mixing in their length. Because the tree shape follows the type, every field has a fixed position expressed as a generalized index, and a proof for that field is the sibling hashes along its path.",
+          "The part that matters for verification is the hash tree root. An object is chunked into 32-byte leaves, padded up to a power of two, and hashed pairwise with SHA-256 until a single root remains, with lists mixing in their length. Because the tree shape follows the type, every field has a fixed position expressed as a [[generalized-index|generalized index]], and a proof for that field is the sibling hashes along its path.",
           "This is what makes consensus data provable in a way execution data is not: a [[light-client|light client]] can verify one field of a beacon state against a root it trusts. The `parentBeaconBlockRoot` in an execution [[block-header|header]] is exactly such a root, which is why EIP-4788 lets contracts reach consensus data at all, and why [[consensus-proof|consensus proofs]] can walk from a [[beacon-block|beacon block]] down to the [[execution-payload|execution payload]] header.",
         ],
       },
@@ -916,7 +917,7 @@ export const topics = [
       "Treating a beacon block root as an execution [[block-hash|block hash]]; they identify different objects and are computed differently.",
       "Requesting large states as JSON out of habit, when the SSZ representation is a fraction of the size.",
     ],
-    related: ["consensus-layer", "beacon-api", "rlp", "beacon-block", "consensus-proof", "light-client", "keccak-256", "inclusion-proof", "block-header"],
+    related: ["consensus-layer", "beacon-api", "rlp", "beacon-block", "consensus-proof", "light-client", "keccak-256", "inclusion-proof", "block-header", "generalized-index"],
     sources: [
       { title: "ethereum/consensus-specs", url: "https://github.com/ethereum/consensus-specs" },
       { title: "Beacon APIs specification", url: "https://ethereum.github.io/beacon-APIs/" },
@@ -947,7 +948,7 @@ export const topics = [
         heading: "Signatures and RPC",
         paragraphs: [
           "The private key never reaches the node. A wallet or signing service produces the bytes and the node only sees them inside [[eth-send-raw-transaction|eth_sendRawTransaction]], which is why a public endpoint is a delivery mechanism rather than a custodian. The exception is [[eth-send-transaction|eth_sendTransaction]], where the node signs with a key it holds, and that is exactly why public nodes disable it.",
-          "The same curve underpins off-chain [[signing-methods|message signing]] such as EIP-191 personal messages and [[eip-712|EIP-712]] typed data, verified in contracts through the `ECRECOVER` precompile, and [[eip-7702|EIP-7702]] authorizations, which are signatures over a small tuple rather than over a transaction. Same cryptography, different payload, and the payload prefix is what keeps one from being replayed as the other.",
+          "The same curve underpins off-chain [[signing-methods|message signing]] such as EIP-191 personal messages and [[eip-712|EIP-712]] typed data, verified in contracts through the `ECRECOVER` [[precompiles|precompile]], and [[eip-7702|EIP-7702]] authorizations, which are signatures over a small tuple rather than over a transaction. Same cryptography, different payload, and the payload prefix is what keeps one from being replayed as the other.",
         ],
       },
     ],
@@ -957,7 +958,7 @@ export const topics = [
       "Signing a message that could be decoded as a transaction payload; prefixes and EIP-712 domains exist to keep those spaces apart.",
       "Assuming a valid signature means a valid transaction; nonce, balance, and fee checks are separate and come after.",
     ],
-    related: ["transaction", "address", "keccak-256", "chain-id", "eth-send-raw-transaction", "signing-methods", "eip-712", "eip-7702", "account"],
+    related: ["transaction", "address", "keccak-256", "chain-id", "eth-send-raw-transaction", "signing-methods", "eip-712", "eip-7702", "account", "bls-signature"],
     sources: [
       { title: "EIP-155: Simple replay attack protection", url: "https://eips.ethereum.org/EIPS/eip-155" },
       { title: "EIP-2: Homestead hard-fork changes", url: "https://eips.ethereum.org/EIPS/eip-2" },
@@ -1014,7 +1015,7 @@ export const topics = [
     id: "abi",
     title: "Contract ABI",
     category: "protocol",
-    aliases: ["selector", "4byte", "encodeFunctionData", "calldata encoding", "application binary interface"],
+    aliases: ["selector", "encodeFunctionData", "calldata encoding", "application binary interface"],
     summary: "The ABI, or application binary interface, is the convention that turns a function call into calldata: a four-byte selector taken from the [[keccak-256|Keccak-256]] hash of the signature, followed by arguments in 32-byte words, with the same rules used to decode results and [[event-log|events]].",
     sections: [
       {
@@ -1033,7 +1034,7 @@ export const topics = [
       {
         heading: "What the ABI is not",
         paragraphs: [
-          "The ABI JSON file that tools consume is compiler output, not chain data. Nothing on chain records a contract's function list, so there is no RPC method that returns it; an application ships the ABI, or fetches it from a [[block-explorer|block explorer]] that verified the source. Public selector directories exist for the reverse direction, mapping four bytes back to a likely signature.",
+          "The ABI JSON file that tools consume is compiler output, not chain data. Nothing on chain records a contract's function list, so there is no RPC method that returns it; an application ships the ABI, or fetches it from a [[block-explorer|block explorer]] that verified the source. Public [[signature-directory|selector directories]] exist for the reverse direction, mapping four bytes back to a likely signature.",
           "Four bytes is also small enough to collide, deliberately or by accident. A selector identifies a call only as far as the contract's own dispatch table is concerned, so treating a selector as proof of which function ran is a mistake, especially through a proxy where the [[smart-contract|implementation]] decides what it means.",
         ],
       },
@@ -1050,11 +1051,11 @@ export const topics = [
       "Decoding a result with the wrong ABI; the bytes decode into plausible nonsense rather than failing.",
       "Assuming a four-byte selector identifies a function globally; collisions exist and a proxy can route it anywhere.",
     ],
-    related: ["eth-call", "smart-contract", "keccak-256", "event-signature", "revert", "client-libraries", "event-log", "address", "block-explorer"],
+    related: ["eth-call", "smart-contract", "keccak-256", "event-signature", "revert", "client-libraries", "event-log", "address", "block-explorer", "signature-directory"],
     sources: [
       { title: "Solidity: Contract ABI specification", url: "https://docs.soliditylang.org/en/latest/abi-spec.html" },
       { title: "ethereum.org: Smart contracts", url: "https://ethereum.org/developers/docs/smart-contracts/" },
-      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/" },
     ],
   },
   {
@@ -1099,7 +1100,7 @@ export const topics = [
       "Hardcoding error code `3`; clients and providers disagree, and `data` is the field that actually matters.",
       "Showing a user the raw selector of a custom error; without the ABI it is meaningless, and with it the message is usually specific.",
     ],
-    related: ["eth-call", "evm", "transaction-receipt", "rpc-errors", "abi", "eth-estimate-gas", "gas", "debug-api", "execution-trace", "smart-contract"],
+    related: ["eth-call", "evm", "transaction-receipt", "rpc-errors", "abi", "eth-estimate-gas", "gas", "debug-api", "execution-trace", "smart-contract", "ccip-read", "quoter-contract"],
     sources: [
       { title: "Solidity: Error handling", url: "https://docs.soliditylang.org/en/latest/control-structures.html#error-handling-assert-require-revert-and-exceptions" },
       { title: "EIP-140: REVERT instruction", url: "https://eips.ethereum.org/EIPS/eip-140" },
@@ -1117,14 +1118,14 @@ export const topics = [
         heading: "Admission, replacement, eviction",
         paragraphs: [
           "When [[eth-send-raw-transaction|eth_sendRawTransaction]] hands a node a transaction, the pool checks it before accepting: the signature must recover, the [[chain-id|chain id]] must match, the nonce must not be below the account's current value, the balance must cover `value` plus `gas` times the fee cap, the fee must clear the pool's minimum, and the encoded size must be under the client's limit, which for Geth is 128 KB. Failures come back immediately as [[rpc-errors|errors]] with recognisable messages: 'nonce too low', 'insufficient funds for gas * price + value', 'replacement transaction underpriced'.",
-          "A pool is finite. When it fills, the cheapest transactions are dropped, which is why a transaction can vanish from a node without ever being mined, and why resubmitting is a normal part of sending. Replacing a pending transaction means reusing its nonce with a fee raised by the client's required margin, commonly ten percent on both [[eip-1559|fee fields]].",
+          "A pool is finite. When it fills, the cheapest transactions are dropped, which is why [[transaction-lifecycle|a transaction can vanish from a node]] without ever being mined, and why resubmitting is a normal part of sending. Replacing a pending transaction means reusing its nonce with a fee raised by the client's required margin, commonly ten percent on both [[eip-1559|fee fields]].",
         ],
       },
       {
         heading: "One pool per node, not a network object",
         paragraphs: [
           "Nodes announce transaction hashes to their peers over [[devp2p|devp2p]] and peers pull the ones they do not have, so pools converge but never match. Two nodes differ on which transactions they hold, in what order they arrived, and what they have evicted; a [[blob|blob transaction]] is not even broadcast in full, only announced and fetched on demand because of its sidecar. There is therefore no such thing as the mempool, only pools, and 'it is not in the mempool' is a statement about one node.",
-          "A growing share of transactions skips public pools entirely. Users and searchers send directly to builders through [[private-rpc|private transaction endpoints]] to avoid being front-run, and those transactions appear for the first time in a block; see [[mev|MEV]]. Anything that measures demand or detects activity by watching pending transactions sees only the public remainder.",
+          "A growing share of transactions skips public pools entirely. Users and [[searcher|searchers]] send directly to builders through [[private-rpc|private transaction endpoints]] to avoid being front-run, and those transactions appear for the first time in a block; see [[mev|MEV]]. Anything that measures demand or [[security-monitoring|detects activity]] by watching pending transactions sees only the public remainder.",
         ],
       },
       {
@@ -1140,7 +1141,7 @@ export const topics = [
       "Assuming a pending transaction will eventually be mined; it can be evicted when the pool fills or when its fee cap falls below the base fee.",
       "Reading `newPendingTransactions` as an ordered queue of what the next block contains; the proposer's ordering is decided elsewhere.",
     ],
-    related: ["transaction", "nonce", "eth-send-raw-transaction", "txpool-api", "eip-1559", "block-tag", "private-rpc", "devp2p", "mev", "eth-subscribe"],
+    related: ["transaction", "nonce", "eth-send-raw-transaction", "txpool-api", "eip-1559", "block-tag", "private-rpc", "devp2p", "mev", "eth-subscribe", "erc-7562", "mempool-streaming"],
     sources: [
       { title: "ethereum.org: Transactions", url: "https://ethereum.org/developers/docs/transactions/" },
       { title: "Geth: txpool API", url: "https://geth.ethereum.org/docs/interacting-with-geth/rpc/ns-txpool" },
@@ -1170,8 +1171,8 @@ export const topics = [
       {
         heading: "Consequences for RPC consumers",
         paragraphs: [
-          "Because a withdrawal is not a transaction, it produces no receipt, no [[event-log|log]], and no entry in a trace. The recipient's balance simply differs between block N-1 and block N. Anything that reconstructs balances by summing transactions, most obviously an [[indexer|indexer]] or an exchange's accounting, silently drifts on any address that receives withdrawals unless it reads the `withdrawals` array from every block. [[eth-get-balance|eth_getBalance]] always reports the truth, so comparing a computed balance against it is a good invariant to check.",
-          "Withdrawals also mean an address can gain ETH while no transaction touches it, which breaks the assumption that a balance change implies chain activity for that address. Pectra's EIP-7002 added a way for an execution-layer request to trigger an exit or partial withdrawal, but the payout still arrives through this same sweep.",
+          "Because a withdrawal is not a transaction, it produces no receipt, no [[event-log|log]], and no entry in a trace. The recipient's balance simply differs between block N-1 and block N. Anything that reconstructs balances by summing transactions, most obviously an [[indexer|indexer]] or an [[accounting-reconciliation|exchange's accounting]], silently drifts on any address that receives withdrawals unless it reads the `withdrawals` array from every block. [[eth-get-balance|eth_getBalance]] always reports the truth, so comparing a computed balance against it is a good invariant to check.",
+          "Withdrawals also mean an address can gain ETH while no transaction touches it, which breaks the assumption that a balance change implies chain activity for that address. Pectra's EIP-7002 added a way for an [[execution-requests|execution-layer request]] to trigger an exit or partial withdrawal, but the payout still arrives through this same sweep.",
         ],
       },
     ],
@@ -1181,7 +1182,7 @@ export const topics = [
       "Assuming withdrawals appear in traces or receipts, which is how balance reconciliation quietly goes wrong.",
       "Expecting withdrawal fields on pre-Shapella blocks; both `withdrawals` and `withdrawalsRoot` are absent there.",
     ],
-    related: ["block", "block-header", "validator", "consensus-layer", "eth-get-balance", "execution-payload", "indexer", "address", "eth-get-block-by-number"],
+    related: ["block", "block-header", "validator", "consensus-layer", "eth-get-balance", "execution-payload", "indexer", "address", "eth-get-block-by-number", "validator-rewards", "execution-requests", "accounting-reconciliation"],
     sources: [
       { title: "EIP-4895: Beacon chain push withdrawals as operations", url: "https://eips.ethereum.org/EIPS/eip-4895" },
       { title: "ethereum.org: Staking withdrawals", url: "https://ethereum.org/staking/withdrawals/" },
@@ -1222,7 +1223,7 @@ export const topics = [
       "Assuming a devnet's fork schedule matches mainnet, which hides upgrade-dependent bugs until deployment.",
       "Changing a chain config on a running node and expecting a restart to fix it; the node forks off at the first differing rule.",
     ],
-    related: ["chain-id", "hardfork", "block", "state-root", "testnets", "local-devnet", "execution-client", "block-tag", "health-check", "block-hash"],
+    related: ["chain-id", "hardfork", "block", "state-root", "testnets", "local-devnet", "execution-client", "block-tag", "health-check", "block-hash", "ephemery", "permissioned-network"],
     sources: [
       { title: "ethereum.org: Network upgrades", url: "https://ethereum.org/history/" },
       { title: "Geth: Private networks", url: "https://geth.ethereum.org/docs/fundamentals/private-network" },
@@ -1263,11 +1264,403 @@ export const topics = [
       "Assuming the account that signed an authorization also paid for the transaction; a sponsor commonly sends it.",
       "Expecting an invalid authorization to fail the transaction; it is skipped, and the rest of the transaction still executes.",
     ],
-    related: ["account", "smart-contract", "eth-get-code", "transaction-types", "erc-4337", "nonce", "evm", "address", "eth-call", "hardfork"],
+    related: ["account", "smart-contract", "eth-get-code", "transaction-types", "erc-4337", "nonce", "evm", "address", "eth-call", "hardfork", "onchain-agents"],
     sources: [
       { title: "EIP-7702: Set Code for EOAs", url: "https://eips.ethereum.org/EIPS/eip-7702" },
       { title: "ethereum.org: Account abstraction", url: "https://ethereum.org/roadmap/account-abstraction/" },
       { title: "EIP-4337: Account Abstraction Using Alt Mempool", url: "https://eips.ethereum.org/EIPS/eip-4337" },
+    ],
+  },
+  {
+    id: "precompiles",
+    title: "Precompiled contracts",
+    category: "protocol",
+    aliases: ["precompile", "precompiled contract", "ecrecover", "0x01", "P256VERIFY", "EIP-2537", "RIP-7212", "movePrecompileToAddress"],
+    summary: "Precompiled contracts are functions built into every [[execution-client|execution client]] at fixed low [[address|addresses]], such as `ecrecover` at `0x01` and the BLS12-381 operations at `0x0b` to `0x11`, which contracts call like any other contract but which run as native code priced by a formula rather than as [[evm|EVM]] bytecode.",
+    sections: [
+      {
+        heading: "What lives at the low addresses",
+        paragraphs: [
+          "A precompile is an address where the client, instead of loading bytecode, runs a native function. A contract reaches one with an ordinary `CALL` or `STATICCALL`, passes input as calldata, and reads the output as return data, so from the caller's side it looks like any [[smart-contract|contract]]. Precompiles exist for cryptography that would be ruinously expensive in opcodes. The original set runs from `0x01` to `0x09`: `ecrecover`, `sha256`, `ripemd160`, the identity copy at `0x04`, `modexp`, the three alt_bn128 (bn254) operations that zk verifiers use, and `blake2f`. Dencun added the KZG point evaluation at `0x0a` for [[blob|blobs]].",
+          "Pectra's EIP-2537 added seven BLS12-381 precompiles at `0x0b` to `0x11`: G1 and G2 addition, G1 and G2 multi-scalar multiplication, a pairing check, and two map-to-curve functions, which let a contract verify [[bls-signature|BLS signatures]] of the kind the consensus layer uses. Fusaka's EIP-7951 then put `P256VERIFY`, secp256r1 verification for passkeys and secure enclaves, at `0x100`, which makes eighteen on mainnet. The set is a property of the block: a call to `0x0b` at a pre-Pectra block reaches an empty account and returns `0x`.",
+        ],
+      },
+      {
+        heading: "Priced by formula, failing by convention",
+        paragraphs: [
+          "Each precompile charges [[gas|gas]] from its input rather than per instruction: `ecrecover` a flat 3000, `sha256` 60 plus 12 per 32-byte word, identity 15 plus 3 per word, the bn254 pairing 45000 plus 34000 per pair, point evaluation 50000, `P256VERIFY` 6900. The formulas are consensus rules and change only at network upgrades: Fusaka's EIP-7883 roughly tripled `modexp` and raised its minimum to 500 gas, and EIP-7823 capped each of its length fields at 1024 bytes, so calldata that ran before the upgrade can fail after it.",
+          "Failure has two shapes. Most precompiles treat bad input, such as a point off the curve or a wrong length, as an exceptional halt: the call consumes all the gas forwarded to it and the caller sees a failed call. `ecrecover` and `P256VERIFY` instead succeed with empty output when a signature does not verify, and Solidity's `ecrecover` turns that empty output into `address(0)`. Code that compares a recovered signer against a stored owner that was never set therefore accepts garbage signatures.",
+        ],
+      },
+      {
+        heading: "What RPC callers see",
+        paragraphs: [
+          "Precompiles hold no code in [[state|state]], so [[eth-get-code|eth_getCode]] returns `0x` for all of them and a has-code check classifies them as empty accounts. [[eth-call|eth_call]] to one works like a call to any contract and is a quick way to hash or recover a signer on the node. EIP-2929 puts every precompile in the warm set when a [[transaction|transaction]] starts, so a first call pays 100 gas of access rather than 2600, and listing one in an [[access-list|access list]] spends 2400 gas for nothing. [[eip-7702|EIP-7702]] delegation to a precompile address runs empty code, not the precompile.",
+          "Simulation can move them. [[eth-simulate|eth_simulateV1]] defines a `movePrecompileToAddress` field in its [[state-override|state overrides]]: the native function is relocated before any `code` override applies, so you can install code at `0x01` that returns a chosen signer while the real `ecrecover` answers at the new address. Geth accepts the field on `eth_call` too. In [[execution-trace|traces]], Geth's `callTracer` records calls to precompiles as frames while Parity-style [[trace-api|trace_]] output omits them, so [[internal-transaction|internal-call]] counts differ between the two.",
+        ],
+      },
+      {
+        heading: "Rollups add their own",
+        paragraphs: [
+          "Rollups keep the Ethereum set and add native functions of their own. Arbitrum calls its system contracts precompiles, `ArbSys` at `0x64`, `ArbGasInfo` at `0x6c` and others in that range, and adds `NodeInterface` at `0xc8`, which is not on chain at all and is reachable only through RPC calls such as `eth_call`, never from a contract. OP Stack chains added RIP-7212's `P256VERIFY` at the same `0x100` in their Fjord upgrade, and RIP-7212 prices it at 3450 gas against L1's 6900, while their system contracts are [[predeploys|predeploys]], ordinary bytecode that `eth_getCode` does return. A local fork running a plain Ethereum EVM has none of a rollup's extras, so calls that work on the real chain fail there; see [[l2-rpc|L2 RPC differences]].",
+        ],
+      },
+    ],
+    example: {
+      title: "Precompiles over RPC: no code, but callable",
+      language: "json",
+      code: "// no code in state\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getCode\",\"params\":[\"0x0000000000000000000000000000000000000001\",\"latest\"]}\n{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"0x\"}\n\n// sha256 of empty input, computed by the node\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"eth_call\",\"params\":[{\"to\":\"0x0000000000000000000000000000000000000002\",\"input\":\"0x\"},\"latest\"]}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":\"0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"}\n\n// ecrecover with v = 29, which is not a valid recovery id (128 bytes: hash, v, r, s)\n{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"eth_call\",\"params\":[{\"to\":\"0x0000000000000000000000000000000000000001\",\"input\":\"0x9c22ff5f…a1b0 000…001d 8f2a…41c9 1d77…0b3e\"},\"latest\"]}\n{\"jsonrpc\":\"2.0\",\"id\":3,\"result\":\"0x\"}",
+      note: "The third answer is a successful call, not a revert: `ecrecover` reports a bad signature with empty output, which Solidity reads as `address(0)`. Spaces in that input are only for readability.",
+    },
+    pitfalls: [
+      "Treating an empty result from `ecrecover` or `P256VERIFY` as a revert; it is a successful call whose output means the signature did not verify.",
+      "Adding precompile addresses to an access list, which costs 2400 gas each for accounts that are warm anyway.",
+      "Assuming a contract that calls `0x100` works on every chain; where no precompile exists the call succeeds with empty output, which reads as a failed verification.",
+      "Calling a precompile at a historical block and expecting today's set; precompiles added by a later fork are empty accounts before it.",
+      "Replaying pre-Fusaka `modexp` calldata with its old gas limit, when both its price and its input bounds changed at the upgrade.",
+    ],
+    related: ["evm", "gas", "ecdsa-signature", "access-list", "eth-call", "eth-simulate", "state-override", "bls-signature", "l2-rpc", "predeploys"],
+    sources: [
+      { title: "EIP-2537: Precompile for BLS12-381 curve operations", url: "https://eips.ethereum.org/EIPS/eip-2537" },
+      { title: "EIP-7951: Precompile for secp256r1 curve support", url: "https://eips.ethereum.org/EIPS/eip-7951" },
+      { title: "execution-specs: Osaka precompiled contracts", url: "https://github.com/ethereum/execution-specs/tree/master/src/ethereum/forks/osaka/vm/precompiled_contracts" },
+      { title: "Arbitrum: precompiles reference", url: "https://docs.arbitrum.io/build-decentralized-apps/precompiles/reference" },
+    ],
+  },
+  {
+    id: "transient-storage",
+    title: "Transient storage (EIP-1153)",
+    category: "protocol",
+    aliases: ["EIP-1153", "TSTORE", "TLOAD", "transient keyword", "transient reentrancy guard", "flash accounting"],
+    summary: "Transient storage is a per-contract key-value store added by EIP-1153 in Dencun, written with `TSTORE` and read with `TLOAD`, that behaves like [[contract-storage|storage]] for the length of one [[transaction|transaction]] and is then discarded, so it never reaches the [[state|state]] trie or any RPC read.",
+    sections: [
+      {
+        heading: "Storage that lasts one transaction",
+        paragraphs: [
+          "EIP-1153 gave each contract a second map of 2^256 slots beside its storage, reached with two opcodes: `TLOAD` (`0x5c`) and `TSTORE` (`0x5d`), each a flat 100 [[gas|gas]] with no cold or warm distinction and no refunds. Values persist across every call into that contract for the rest of the transaction, so a contract can set a flag in one frame and read it in a re-entrant frame. When the transaction ends everything is dropped, and the next transaction starts with every slot at zero.",
+          "In every other respect it follows storage. A frame that [[revert|reverts]] undoes its transient writes along with its storage writes, `TSTORE` inside a `STATICCALL` fails as a state write would, and under `DELEGATECALL` the slots belong to the calling contract, which lets a [[proxy-contract|proxy]] and its implementation share them. Solidity reaches it through inline assembly and, since 0.8.28, through `transient` state variables of value types, whose slot numbering is independent of ordinary storage.",
+        ],
+      },
+      {
+        heading: "What it is used for",
+        paragraphs: [
+          "The first use is the reentrancy lock. Written to ordinary storage, a lock that goes from 0 to 1 and back to 0 in one transaction is charged over 22,000 gas while it runs and recovers 19,900 of it only as a [[gas-refunds|refund]] at the end, subject to the refund cap; one `TLOAD` and two `TSTORE`s cost 300. OpenZeppelin's `ReentrancyGuardTransient` and Solidity's own documented lock pattern both use it for exactly this.",
+          "The second is accounting that must balance before a call returns. Uniswap v4's `PoolManager` records each caller's per-currency deltas in transient storage during an `unlock` callback and reverts with `CurrencyNotSettled` unless every delta is back to zero when `unlock` finishes, so a multi-hop swap settles tokens once instead of at every hop. Smaller uses include passing context from a router to the code it calls without widening a function signature, and approvals that must not outlive the transaction.",
+        ],
+      },
+      {
+        heading: "Invisible to state reads and proofs",
+        paragraphs: [
+          "Transient values are never written to the trie, so nothing that reads state can see them. [[eth-get-storage-at|eth_getStorageAt]] returns the persistent slot even when a `transient` variable has the same slot number, and [[eth-get-proof|eth_getProof]] cannot prove a transient value because no [[state-root|state root]] commits to one; a [[storage-proof|storage proof]] for that slot number proves the persistent value. Once the transaction is over, re-executing it is the only way to learn what a transient slot held.",
+          "Simulation starts clean each time. Every [[eth-call|eth_call]] runs as its own transaction, so a lock or delta set by one call is gone for the next, and [[state-override|state overrides]] have no field for transient slots. Inside [[eth-simulate|eth_simulateV1]] each call in a simulated block is a separate transaction as well, so transient values reset between calls in the same block, exactly as they do between transactions in a real one.",
+        ],
+      },
+      {
+        heading: "Traces and batches",
+        paragraphs: [
+          "Because transient writes produce no state diff, most [[execution-trace|execution traces]] omit them. Geth's `prestateTracer` and the per-step `storage` map of its opcode logger are built from `SLOAD` and `SSTORE` only, and call-level tracers show no storage at all. Transient activity appears only in the opcode trace from [[debug-api|debug_traceTransaction]], as `TLOAD` and `TSTORE` steps with the key and value on the stack.",
+          "Lasting the whole transaction also means that everything packed into one transaction shares it: several calls through [[multicall|Multicall]], several [[erc-4337|UserOperations]] in one bundle, or a batch run by an [[eip-7702|EIP-7702]] delegated account all see each other's transient slots. A contract that sets a transient flag and forgets to clear it leaks that flag into the next operation of the batch.",
+        ],
+      },
+    ],
+    example: {
+      title: "A transient lock beside ordinary storage",
+      language: "solidity",
+      code: "contract Vault {\n    uint256 public total;        // storage slot 0\n    bool transient locked;       // transient slot 0, a separate map\n\n    modifier nonReentrant() {\n        require(!locked, \"reentrant\");   // TLOAD 0x0          100 gas\n        locked = true;                   // TSTORE 0x0 0x1     100 gas\n        _;\n        locked = false;                  // TSTORE 0x0 0x0     100 gas\n    }\n}\n\n// eth_getStorageAt(vault, 0x0, block) returns total; locked is never visible over RPC",
+      note: "Both variables sit at slot 0 of their own map, so moving a variable to `transient` shifts the storage slots of everything declared after it.",
+    },
+    pitfalls: [
+      "Expecting `eth_getStorageAt` or `eth_getProof` to return a transient value; both read the trie, which never contains it.",
+      "Leaving a transient flag set at the end of a call, which leaks into later calls of the same transaction, such as the next operation in a bundle.",
+      "Assuming a transient lock survives between two `eth_call` requests or between two calls of an `eth_simulateV1` block; each starts from zero.",
+      "Deploying a contract that uses `TSTORE` on a chain that has not activated EIP-1153, where `0x5c` and `0x5d` are invalid opcodes and every call fails.",
+      "Debugging transient state from a prestate diff, which omits it; only the opcode trace shows `TLOAD` and `TSTORE`.",
+    ],
+    related: ["contract-storage", "evm", "eth-get-storage-at", "eth-simulate", "eth-call", "gas-refunds", "debug-api", "state-override", "proxy-contract", "erc-4337"],
+    sources: [
+      { title: "EIP-1153: Transient storage opcodes", url: "https://eips.ethereum.org/EIPS/eip-1153" },
+      { title: "Solidity: contracts, transient storage", url: "https://docs.soliditylang.org/en/latest/contracts.html" },
+      { title: "Uniswap v4-core", url: "https://github.com/Uniswap/v4-core" },
+    ],
+  },
+  {
+    id: "gas-refunds",
+    title: "Gas refunds and the 63/64 rule",
+    category: "protocol",
+    aliases: ["gas refund", "EIP-3529", "refund cap", "SSTORE refund", "63/64 rule", "EIP-150", "calldata floor", "EIP-7623"],
+    summary: "Gas refunds return part of the [[gas|gas]] a [[transaction|transaction]] spent, mainly for clearing storage, but only after execution ends and capped at a fifth of the gas used, which together with EIP-150's 63/64 rule is why a transaction needs a higher limit than the `gasUsed` its [[transaction-receipt|receipt]] reports.",
+    sections: [
+      {
+        heading: "What is refunded, and when",
+        paragraphs: [
+          "During execution the [[evm|EVM]] keeps a refund counter. `SSTORE` adds 4800 to it when it clears a slot that was non-zero at the start of the transaction, and more when it restores a slot to the value it started with: 19,900 when that original value was zero, 2800 when it was not. Later writes can subtract again, for example when a slot cleared earlier in the transaction is set non-zero. [[eip-7702|EIP-7702]] adds 12,500 per authorization whose account already existed, since the intrinsic charge assumed a new one. Nothing is paid back while the transaction runs; every opcode is charged in full.",
+          "At the end the client takes the gas used so far, caps the counter at one fifth of it, and subtracts the result. The one-fifth cap is EIP-3529 from London, which also cut the clearing refund from 15,000 to 4800 and removed the `SELFDESTRUCT` refund; before it the cap was one half, and GasToken filled storage when gas was cheap and cleared it when gas was dear. The reduced figure is what the sender pays for, what the receipt shows as `gasUsed`, and what counts toward the [[block-header|block's]] `gasUsed`, so a header understates the work its transactions did.",
+        ],
+      },
+      {
+        heading: "Why the limit must exceed the receipt",
+        paragraphs: [
+          "Because refunds arrive after the last instruction, the transaction must be able to afford every instruction first. A job that consumes 120,000 gas and clears seven slots earns a counter of 33,600, is capped at 24,000, and reports `gasUsed` of 96,000; sent again with a limit of 96,000 it runs out of gas long before any refund exists. For anything that clears [[contract-storage|storage]], the receipt of one run is a lower bound on what the next run needs, never an upper one.",
+          "EIP-150's 63/64 rule adds headroom on top. A `CALL` forwards at most all but one 64th of the gas the caller has left, so a callee that needs 100,000 gas is reachable only if the caller holds about 101,600 at that moment, and the retained 64th is usually never spent. Each level of nesting compounds the reserve, and contracts that check `gasleft()` before acting, as [[transaction-relayer|relayers]] and the [[erc-4337|ERC-4337]] EntryPoint do, demand margins their own execution never consumes.",
+        ],
+      },
+      {
+        heading: "How estimation copes",
+        paragraphs: [
+          "[[eth-estimate-gas|eth_estimateGas]] cannot read the needed limit off one run, because neither `gasUsed` nor the peak consumption shows retained 64ths or explicit `gasleft()` checks, so clients search. [[geth|Geth]] runs the call once at the highest allowed limit and answers `gas required exceeds allowance` if even that runs out, tries 64/63 of the peak consumption as a first guess, then binary-searches between the failing and succeeding limits and stops once the bracket is within 1.5 percent. The answer is a limit, deliberately above the eventual `gasUsed`, and valid for one state only.",
+          "[[eth-simulate|eth_simulateV1]] reports both sides for each call: `gasUsed` after refunds and, in the current specification, `maxUsedGas`, the consumption before refunds. The second is the floor for a limit, and still short of one wherever a call forwards gas, so a simulator that sets limits from it adds the 64ths back itself.",
+        ],
+      },
+      {
+        heading: "The calldata floor",
+        paragraphs: [
+          "Pectra's EIP-7623 moves `gasUsed` the other way for data-heavy transactions. Calldata is counted in tokens, one per zero byte and four per non-zero byte, and a transaction is charged the larger of 21,000 plus 4 gas per token plus its execution and creation gas, with refunds already subtracted, or 21,000 plus 10 gas per token. A large payload with little execution therefore reports a `gasUsed` above what the EVM consumed and pays for the difference, its limit must be at least the floor or the transaction is invalid, and no refund can pull it below the floor.",
+        ],
+      },
+    ],
+    example: {
+      title: "One job, three different gas numbers",
+      language: "text",
+      code: "job: clears 7 storage slots; one nested CALL needs 100,000 gas\n\ngas consumed before refund           120,000\nrefund counter      7 x 4,800     =   33,600\ncap                 120,000 / 5   =   24,000\nreceipt gasUsed     120,000 - 24,000 = 96,000\n\nlimit that succeeds  120,000 + 100,000/63  ~ 121,588   (the 64th kept back at the CALL)\neth_estimateGas      ~ 121,600, up to 1.5 percent more on Geth\n\nresent with gas = 96,000  -> out of gas: status 0x0, gasUsed 96,000, no refund",
+      note: "The receipt reports the smallest of the three numbers, and it is the one a naive resend copies.",
+    },
+    pitfalls: [
+      "Setting a gas limit from a previous receipt's `gasUsed` for a transaction that clears storage, which runs out before the refund is applied.",
+      "Expecting a refund larger than a fifth of the gas used; since London the rest of the counter is simply lost.",
+      "Reading a block's `gasUsed` as a measure of executed work, when every transaction in it has already had its refund subtracted.",
+      "Sending an estimate unchanged to a contract that checks `gasleft()`, where a small state change moves the required headroom past it.",
+      "Assuming `gasUsed` never exceeds what execution consumed; under the calldata floor a data-heavy transaction pays for more.",
+    ],
+    related: ["gas", "eth-estimate-gas", "transaction-receipt", "contract-storage", "evm", "eth-simulate", "transient-storage", "eip-7702", "erc-4337", "block-header"],
+    sources: [
+      { title: "EIP-3529: Reduction in refunds", url: "https://eips.ethereum.org/EIPS/eip-3529" },
+      { title: "EIP-150: Gas cost changes for IO-heavy operations", url: "https://eips.ethereum.org/EIPS/eip-150" },
+      { title: "EIP-7623: Increase calldata cost", url: "https://eips.ethereum.org/EIPS/eip-7623" },
+      { title: "Geth: gas estimator source", url: "https://github.com/ethereum/go-ethereum/blob/master/eth/gasestimator/gasestimator.go" },
+    ],
+  },
+  {
+    id: "execution-requests",
+    title: "Execution-layer requests (EIP-7685)",
+    category: "protocol",
+    aliases: ["EIP-7685", "requestsHash", "executionRequests", "EIP-6110", "EIP-7002", "EIP-7251", "deposit requests", "consolidation requests"],
+    summary: "Execution-layer requests are the messages, defined by EIP-7685 and live since Pectra, that an execution [[block|block]] hands to the [[consensus-layer|consensus layer]]: validator deposits, withdrawal and exit requests, and consolidations, committed to by the header's `requestsHash` and carried to the consensus client over the [[engine-api|Engine API]].",
+    sections: [
+      {
+        heading: "Three kinds of request",
+        paragraphs: [
+          "Some staking operations start as a contract call on the execution layer and must take effect in the beacon state. EIP-7685 gives them one envelope: a request is a type byte followed by opaque data. Type `0x00` is a deposit (EIP-6110), 192 bytes of public key, withdrawal credentials, amount, signature, and index, taken from the `DepositEvent` [[event-log|logs]] of the deposit contract at `0x00000000219ab540356cBB839Cbe05303d7705Fa` in the order they were emitted. It replaced the old eth1-data voting, in which the consensus layer followed the deposit contract many hours behind the head.",
+          "Type `0x01` is a withdrawal request (EIP-7002), 76 bytes of source address, validator public key, and amount, where an amount of zero asks for a full exit; it lets the address in a [[validator|validator]]'s withdrawal credentials trigger an exit or partial withdrawal without the signing key. Type `0x02` is a consolidation request (EIP-7251), 116 bytes of source address and two public keys, which merges one validator into another or, with source equal to target, switches its credentials to `0x02` compounding. Both are requested by calling [[system-contracts|system contracts]] at `0x00000961Ef480Eb55e80D19ad83579A64c007002` and `0x0000BBdDc7CE488642fb579F8B00f3a590007251`, which charge a fee that rises with demand. Glamsterdam's EIP-8282 adds two more for the builders of [[enshrined-pbs|enshrined PBS]], type `0x03` builder deposits and type `0x04` builder exits, each from its own system contract; they are live only on Sepolia, where Glamsterdam activated on 6 October 2026, and not yet on Hoodi or mainnet.",
+        ],
+      },
+      {
+        heading: "How a block produces them",
+        paragraphs: [
+          "Deposits are parsed from the block's receipts after its transactions run. The other two come from system calls: after the last transaction the client calls each system contract from `0xfffffffffffffffffffffffffffffffffffffffe`, with its own gas allowance outside the block limit, and the contract returns up to 16 withdrawal requests or 2 consolidation requests from its queue. A request submitted in one block can therefore be dequeued in a later one, and the log a contract emits on accepting it is not proof of dequeue.",
+          "The [[block-header|header]] commits to the result. `requestsHash` is the SHA-256 of the concatenated SHA-256 hashes of each non-empty type's bytes, in ascending type order, and a block with no requests carries the SHA-256 of the empty string, `0xe3b0c442…b855`. Over the Engine API the list travels beside the payload: `engine_getPayloadV4`, and since Osaka `engine_getPayloadV5`, returns `executionRequests`, and `engine_newPayloadV4` takes it as its fourth parameter, one byte string per non-empty type, which the execution client must reproduce by executing the block before it answers `VALID`; see [[engine-payload|Engine API methods]].",
+        ],
+      },
+      {
+        heading: "Reading them over RPC",
+        paragraphs: [
+          "The JSON-RPC block object has `requestsHash` and nothing more: [[eth-get-block-by-number|eth_getBlockByNumber]] returns no requests list, and a system call leaves no receipt because it is not a [[transaction|transaction]]. Deposits are the easy case, since the requests are exactly the deposit contract's `DepositEvent` logs and [[eth-get-logs|eth_getLogs]] finds them. Withdrawal and consolidation requests are visible on the execution side only as the submitting transaction and the topic-less `LOG0` each system contract emits when it accepts one, which an address-only log filter finds.",
+          "The authoritative list is in the [[beacon-block|beacon block]]: the [[beacon-endpoints|Beacon API]] block route returns `body.execution_requests` with `deposits`, `withdrawals`, and `consolidations`, which is what an [[indexer|indexer]] of staking activity should read. The fee is readable from the execution side: an [[eth-call|eth_call]] to either system contract with empty input returns the current fee as a 32-byte word.",
+        ],
+      },
+      {
+        heading: "What the execution layer does not check",
+        paragraphs: [
+          "Acceptance by a system contract is not acceptance by the consensus layer. The withdrawal contract checks only the fee and the input length; the consensus layer then silently ignores a request whose source address does not match the validator's credentials, whose validator is inactive or already exiting, or which asks for a partial withdrawal without compounding credentials. The receipt says `status` `0x1` and the fee is gone either way, and overpaid fees are not refunded. Confirming the effect means reading the validator on the [[beacon-api|Beacon API]], and any payout still arrives later as an ordinary [[withdrawals|withdrawal]].",
+        ],
+      },
+    ],
+    example: {
+      title: "Where each request comes from, and what the header commits to",
+      language: "text",
+      code: "type  kind           size each   source in the execution block\n0x00  deposit        192 bytes   DepositEvent logs of 0x00000000219ab540356cBB839Cbe05303d7705Fa\n0x01  withdrawal      76 bytes   end-of-block call to 0x00000961Ef480Eb55e80D19ad83579A64c007002\n0x02  consolidation  116 bytes   end-of-block call to 0x0000BBdDc7CE488642fb579F8B00f3a590007251\n\n// a block with two deposits and nothing else\nexecutionRequests = [ 0x00 ++ deposit1 ++ deposit2 ]     // 385 bytes; empty types are left out\nrequestsHash      = sha256( sha256(0x00 ++ deposit1 ++ deposit2) )\n\n// a block with no requests\nrequestsHash      = sha256(<empty>) = 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      note: "The hash is SHA-256, as on the consensus side, not Keccak-256; one byte out of place in the list changes `requestsHash` and therefore the block hash.",
+    },
+    pitfalls: [
+      "Looking for a requests array in an execution block; only `requestsHash` is there, and the list lives in the beacon block.",
+      "Treating a successful transaction to the withdrawal request contract as a scheduled exit; the consensus layer can discard it without any execution-side trace.",
+      "Assuming a request takes effect in the block that submitted it; the queues release at most 16 withdrawal and 2 consolidation requests per block.",
+      "Paying exactly the fee read one block earlier, which reverts if the fee rises before inclusion, while any overpayment is kept.",
+      "Recomputing `requestsHash` with Keccak-256; the commitment uses SHA-256.",
+    ],
+    related: ["block-header", "withdrawals", "engine-payload", "validator", "beacon-block", "beacon-endpoints", "execution-payload", "consensus-layer", "event-log", "hardfork", "system-contracts"],
+    sources: [
+      { title: "EIP-7685: General purpose execution layer requests", url: "https://eips.ethereum.org/EIPS/eip-7685" },
+      { title: "EIP-6110: Supply validator deposits on chain", url: "https://eips.ethereum.org/EIPS/eip-6110" },
+      { title: "EIP-7002: Execution layer triggerable withdrawals", url: "https://eips.ethereum.org/EIPS/eip-7002" },
+      { title: "EIP-7251: Increase the MAX_EFFECTIVE_BALANCE", url: "https://eips.ethereum.org/EIPS/eip-7251" },
+    ],
+  },
+  {
+    id: "proxy-contract",
+    title: "Proxy contracts",
+    category: "protocol",
+    aliases: ["upgradeable proxy", "EIP-1967", "UUPS", "transparent proxy", "beacon proxy", "EIP-1167", "minimal proxy", "diamond"],
+    summary: "A proxy contract is a small [[smart-contract|contract]] that forwards every call with `DELEGATECALL` to an implementation address it keeps in [[contract-storage|storage]], so its [[address|address]], balance, and storage stay fixed while the code that runs can be replaced.",
+    sections: [
+      {
+        heading: "Delegation and the standard slots",
+        paragraphs: [
+          "A proxy's fallback function copies the calldata, `DELEGATECALL`s the implementation, and returns or reverts with whatever came back. `DELEGATECALL` runs the implementation's code in the proxy's context, so `msg.sender`, `msg.value`, storage writes, and emitted [[event-log|events]] all belong to the proxy; the implementation is code whose own storage does not matter. Upgrading means writing a new address into one slot.",
+          "EIP-1967 standardised that slot so tools can find it without the source. The implementation lives at `0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc`, which is `keccak256('eip1967.proxy.implementation') - 1`, the admin at `0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103`, and a beacon proxy's beacon at `0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50`. Changes emit `Upgraded(address indexed implementation)`, topic `0xbc7cd75a…2d3b`, plus `AdminChanged` and `BeaconUpgraded`. Older proxies predate the standard: USDC's `FiatTokenProxy` keeps its implementation at `keccak256('org.zeppelinos.proxy.implementation')`, `0x7050c9e0…f8c3`, and reads as zero at the EIP-1967 slot.",
+        ],
+      },
+      {
+        heading: "Patterns",
+        paragraphs: [
+          "A transparent proxy holds the upgrade function itself and routes by caller: the admin reaches only the upgrade path and everyone else is always forwarded, so a selector shared by proxy and implementation cannot trap a user. A UUPS proxy, from ERC-1822, puts the upgrade function in the implementation, which keeps the proxy smaller but means an upgrade to an implementation without that function freezes the proxy for good; OpenZeppelin's UUPS still stores the address in the EIP-1967 slot. A beacon proxy stores the address of a beacon whose `implementation()` answers for many proxies, so one upgrade moves all of them.",
+          "Two relatives are often lumped in. An EIP-1167 minimal proxy, or clone, is 45 bytes of runtime code with the target embedded in it, `363d3d373d3d3d363d73`, the address, then `5af43d82803e903d91602b57fd5bf3`; it delegates like a proxy, cannot be upgraded, and [[eth-get-code|eth_getCode]] alone reveals its target. A diamond (EIP-2535) routes each four-byte selector to its own facet, emits `DiamondCut` on changes, and answers `facetAddress(bytes4)`, so there is no single implementation slot to read.",
+        ],
+      },
+      {
+        heading: "Historical reads follow the implementation",
+        paragraphs: [
+          "[[eth-call|eth_call]] at block N executes whatever implementation the slot held after block N. The same calldata can return different values, different [[revert|revert]] reasons, or nothing at all at different heights, and the [[abi|ABI]] that decodes today's answer may not decode last year's, because upgrades add, remove, and rename functions and events. To know which code answered, read the slot with [[eth-get-storage-at|eth_getStorageAt]] at the same block, then fetch that implementation's code and ABI; `Upgraded` logs from [[eth-get-logs|eth_getLogs]] give the timeline for proxies that emit them.",
+          "History kept for a chosen set of contracts has to follow the same chain. A [[partial-archive|partial archive]] scoped to a proxy's address cannot replay a past call unless it also holds the code of whichever implementation was set and the state of everything that code calls, and the set of implementations grows with each upgrade. An [[indexer|indexer]] decoding the proxy's events has the problem in miniature: [[event-signature|event signatures]] can change at an upgrade, so the decoder must switch ABI at the `Upgraded` block.",
+        ],
+      },
+      {
+        heading: "What tooling sees",
+        paragraphs: [
+          "[[block-explorer|Block explorers]] check the standard slots and the clone pattern and offer read as proxy, which applies the implementation's ABI to the proxy's address; verified source at the proxy address describes only the forwarding code. In [[execution-trace|traces]] one call to a proxy is two frames, a `CALL` to the proxy and a `DELEGATECALL` from it to the implementation, so [[internal-transaction|internal-call]] tooling that ignores `DELEGATECALL` misses where the logic ran. An [[eth-create-access-list|eth_createAccessList]] result for a proxied call includes the implementation slot, because every forwarded call reads it.",
+        ],
+      },
+    ],
+    example: {
+      title: "Which implementation answered, then and now",
+      language: "json",
+      code: "// the implementation slot at an old block\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getStorageAt\",\"params\":[\"0x5f3b…e2a1\",\"0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc\",\"0x12d4f1c\"]}\n{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"0x0000000000000000000000004351a2c8…9f1c\"}\n\n// the same slot at the head\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"eth_getStorageAt\",\"params\":[\"0x5f3b…e2a1\",\"0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc\",\"latest\"]}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":\"0x000000000000000000000000b7d2e019…07aa\"}\n\n// every upgrade since deployment\n{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"eth_getLogs\",\"params\":[{\n  \"address\": \"0x5f3b…e2a1\",\n  \"fromBlock\": \"0x10a2c40\",\n  \"toBlock\": \"latest\",\n  \"topics\": [\"0xbc7cd75a20ee27fd9adebab32041f755214dbc6bffa90cc0225b39da2e5c2d3b\"]\n}]}\n// one log per upgrade: topics[1] is the new implementation, blockNumber is when it took effect",
+      note: "An `eth_call` at `0x12d4f1c` ran the `0x4351…9f1c` code, so decoding its answer needs that implementation's ABI, not the current one.",
+    },
+    pitfalls: [
+      "Decoding historical calls or logs with the ABI of today's implementation, across upgrades that changed functions or events.",
+      "Reading only the EIP-1967 implementation slot; pre-standard proxies such as USDC's use other slots, and diamonds and clones use none.",
+      "Treating verified source at the proxy address as the contract's logic; it is the forwarding code, and the behaviour lives at the implementation.",
+      "Expecting the implementation's storage to hold the proxy's state; under `DELEGATECALL` every write lands in the proxy.",
+      "Keeping history for a proxy's address alone, which cannot replay past calls without the implementation and the contracts it calls.",
+    ],
+    related: ["smart-contract", "evm", "contract-storage", "eth-get-storage-at", "eth-call", "eth-get-code", "abi", "block-explorer", "partial-archive", "event-signature", "security-monitoring"],
+    sources: [
+      { title: "EIP-1967: Proxy storage slots", url: "https://eips.ethereum.org/EIPS/eip-1967" },
+      { title: "EIP-1167: Minimal proxy contract", url: "https://eips.ethereum.org/EIPS/eip-1167" },
+      { title: "EIP-2535: Diamonds, multi-facet proxy", url: "https://eips.ethereum.org/EIPS/eip-2535" },
+      { title: "OpenZeppelin Contracts: proxies", url: "https://docs.openzeppelin.com/contracts/5.x/api/proxy" },
+    ],
+  },
+  {
+    id: "transaction-lifecycle",
+    title: "Transaction lifecycle",
+    category: "protocol",
+    aliases: ["stuck transaction", "dropped transaction", "replaced transaction", "transaction status", "rebroadcast", "speed up transaction", "cancel transaction"],
+    summary: "A transaction's lifecycle is the sequence of states it passes through after [[eth-send-raw-transaction|eth_sendRawTransaction]], pending or queued in pools, then replaced, dropped, or included, possibly reorged out, and finally finalized, and no single RPC method reports which state it is in.",
+    sections: [
+      {
+        heading: "Accepted by one node",
+        paragraphs: [
+          "The hash returned by `eth_sendRawTransaction` is the Keccak-256 of the bytes you sent, and a successful response means one thing: one node's [[mempool|pool]] accepted them. The node then gossips the transaction to peers, each applying its own admission rules, so it may reach most of the network or, from a node with no peers or a provider backend that never forwards, none of it. Behind a load balancer, the backend that accepted it may not be the one that answers your next query.",
+          "Inside a pool the transaction is pending if its [[nonce|nonce]] is the sender's next one or follows other pending transactions without a gap, and queued if a lower nonce is missing. Pending does not mean includable: a `maxFeePerGas` below the current [[eip-1559|base fee]] keeps it waiting until the base fee falls. A queued one waits for the gap to be filled, and [[geth|Geth]] evicts queued transactions after `--txpool.lifetime`, three hours by default.",
+        ],
+      },
+      {
+        heading: "Replaced, dropped, or included",
+        paragraphs: [
+          "Three things end the wait. Replaced: another transaction from the same sender with the same nonce and a high enough fee takes its place, ten percent more on both fee fields by Geth's default and one hundred percent for blob transactions, and pools that saw the replacement forget the old hash. Dropped: the pool evicted it for space or age, or the node restarted, and Geth keeps a disk journal only for transactions submitted through its own RPC. Included: a block contains it and a [[transaction-receipt|receipt]] exists.",
+          "Only inclusion is observable directly. No method reports replaced or dropped, and [[eth-subscribe|eth_subscribe]] with `newPendingTransactions` announces arrivals but never departures, so both must be inferred. A dropped transaction is not cancelled either: it stays valid until its nonce is used, and anyone holding the signed bytes, including a peer that kept it, can get it mined days later. The only real cancellation is another transaction that consumes the nonce.",
+        ],
+      },
+      {
+        heading: "Telling the states apart",
+        paragraphs: [
+          "Three calls against one node distinguish the cases. [[eth-get-transaction-by-hash|eth_getTransactionByHash]] returns the object with `blockNumber` null while the node holds it in its pool, a block number once included, and `null` once the node has forgotten it. [[eth-get-transaction-receipt|eth_getTransactionReceipt]] stays `null` until inclusion. [[eth-get-transaction-count|eth_getTransactionCount]] resolves the ambiguous `null`: if the count at `latest` has passed your nonce but your hash has no receipt, a different transaction used the nonce and yours can never be included; if both `latest` and `pending` still equal your nonce, this node dropped it and it needs rebroadcasting.",
+          "Finding the transaction that did take the nonce has no standard method. [[otterscan|Otterscan]]'s `ots_getTransactionBySenderAndNonce`, served by Erigon and [[reth|Reth]], and Reth's `eth_getTransactionBySenderAndNonce` answer it directly; elsewhere it means scanning the sender's recent blocks or asking an [[indexer|indexer]].",
+        ],
+      },
+      {
+        heading: "After inclusion",
+        paragraphs: [
+          "Inclusion is provisional. A [[reorg|reorg]] can remove the block: the receipt goes back to `null`, nodes that followed the reorg return the transaction to their pools, and it normally lands again under a different `blockHash`, unless the winning branch already used its nonce. It is settled once its block is at or below the `finalized` [[block-tag|tag]] and the receipt's `blockHash` still matches the canonical block at that height; `safe` is the cheaper intermediate. See [[confirmations|confirmations]].",
+          "A sender that must not lose or duplicate a payment therefore keys records on sender and nonce rather than hash, since every speed-up and cancel changes the hash; keeps the signed raw bytes to rebroadcast after a restart or a [[failover|failover]] to a provider whose pool never saw them; and treats [[retries|retries]] of identical bytes as safe, since they answer `already known`. Transactions sent through [[private-rpc|private RPC]] never enter public pools, and [[erc-4337|ERC-4337]] UserOperations run the same course one level up, in a bundler's pool with their own hash and receipt.",
+        ],
+      },
+    ],
+    example: {
+      title: "What the three calls return in each state (n is your nonce)",
+      language: "text",
+      code: "state              getTransactionByHash       getTransactionReceipt      getTransactionCount(sender)\npending            object, blockNumber null   null                       latest = n, pending > n\nqueued             object, blockNumber null   null                       pending < n (a lower nonce is missing)\ndropped            null                       null                       latest = n, pending = n\nreplaced, mined    null                       null, for good             latest > n\nincluded           object, blockNumber set    status 0x1 or 0x0          latest > n\nreorged out        null, or pending again     null again                 latest can fall back to n\nfinalized          blockNumber <= finalized   same blockHash as before   latest > n",
+      note: "Ask one node and read the rows together; a `null` from a second backend that has not seen the transaction looks exactly like the dropped row.",
+    },
+    pitfalls: [
+      "Treating the hash from `eth_sendRawTransaction` as proof the network has the transaction; it means one node's pool accepted it.",
+      "Declaring a transaction lost because a different backend than the one that accepted it returns `null` for its hash.",
+      "Assuming a dropped transaction is dead; it stays valid until its nonce is consumed, and a lingering copy can still be mined.",
+      "Keying a payment record on the transaction hash, which changes with every fee bump or cancel.",
+      "Counting a receipt as final without re-checking its `blockHash` later; a reorg can move or remove it.",
+    ],
+    related: ["eth-send-raw-transaction", "mempool", "nonce", "eth-get-transaction-receipt", "eth-get-transaction-by-hash", "eth-get-transaction-count", "reorg", "confirmations", "retries", "erc-4337", "transaction-relayer"],
+    sources: [
+      { title: "Geth: command-line options (txpool)", url: "https://geth.ethereum.org/docs/fundamentals/command-line-options" },
+      { title: "ethereum.org: Transactions", url: "https://ethereum.org/developers/docs/transactions/" },
+      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/" },
+    ],
+  },
+  {
+    id: "system-contracts",
+    title: "System contracts",
+    category: "protocol",
+    aliases: ["system call", "SYSTEM_ADDRESS", "beacon roots contract", "history storage contract", "EIP-4788", "EIP-2935", "request predeploy"],
+    summary: "A system contract is an ordinary contract at a fixed [[address|address]] that every [[execution-client|execution client]] calls by itself at the start or end of each [[block|block]], from `0xfffffffffffffffffffffffffffffffffffffffe` and outside any [[transaction|transaction]], to keep protocol data such as recent block hashes in [[state|state]] or to queue staking requests, so its storage changes every block although no transaction touches it.",
+    sections: [
+      {
+        heading: "Calls that nobody signs",
+        paragraphs: [
+          "Contracts sometimes need data that no transaction produces, such as recent block hashes or the root of the parent [[beacon-block|beacon block]], a hash from which any consensus-layer fact can be proven, and staking contracts need a way to ask the [[consensus-layer|consensus layer]] to act. Ethereum keeps these in ordinary contracts at fixed addresses, and every client makes a system call to each in every block: a call from `SYSTEM_ADDRESS`, with its own 30,000,000 [[gas|gas]] outside the block's limit and no fee.",
+          "Four run today. Before the first transaction the client writes the header's `parentBeaconBlockRoot` into the EIP-4788 beacon roots contract at `0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02`, live since the Dencun [[hardfork|upgrade]], and the parent block's [[block-hash|hash]] into the EIP-2935 history contract at `0x0000F90827F1C53a10cb7A02335B175320002935`, live since Pectra. After the last transaction it calls the EIP-7002 withdrawal request contract at `0x00000961Ef480Eb55e80D19ad83579A64c007002` and the EIP-7251 consolidation request contract at `0x0000BBdDc7CE488642fb579F8B00f3a590007251`. Each returns the [[execution-requests|requests]] it releases from its queue (validator exits, partial withdrawals or merges), at most 16 withdrawals or 2 consolidations per block.",
+          "Each contract branches on its caller: the system address makes it write, while anyone else can read the beacon roots and history contracts, or queue a request, paid for with a fee, at a request contract. A missing history or beacon roots contract fails silently, but a missing request contract makes the block invalid. All four were deployed by pre-signed transactions with no chain id, so any chain can replay them to the same addresses. Glamsterdam, the next upgrade, already live on Sepolia, adds two more for the builders of [[enshrined-pbs|enshrined PBS]] (EIP-8282).",
+        ],
+      },
+      {
+        heading: "Two ring buffers",
+        paragraphs: [
+          "A ring buffer is a fixed set of slots overwritten in rotation. The history contract has 8191: at the start of block N it writes the hash of block N-1 into slot `(N-1) % 8191`, so block 26,297,843 finds its parent's hash in slot `0x127c`. A reader sends the block number as bare 32-byte calldata, with no [[abi|ABI]] selector, and gets the hash of any of the previous 8191 blocks, about 27 hours. The `BLOCKHASH` opcode still reaches only 256 blocks.",
+          "The beacon roots contract is keyed by timestamp. For a block with timestamp `t` it stores `t` in slot `t % 8191` and the root in slot `t % 8191 + 8191`, so it too spans about 27 hours. A read takes a 32-byte timestamp and reverts unless it matches the stored one, so the caller passes the timestamp of the block whose header carried the root. Against that root, a staking pool's or [[bridge|bridge]]'s contract can check an [[ssz|SSZ]] [[consensus-proof|consensus proof]], of a validator's balance, say.",
+        ],
+      },
+      {
+        heading: "What RPC shows and what it hides",
+        paragraphs: [
+          "Reading is ordinary: an [[eth-call|eth_call]] to either contract, or an [[eth-get-storage-at|eth_getStorageAt]] on the computed slot, at any block whose state the node still holds. Empty input to a request contract returns its current fee in [[wei|wei]], 1 wei for the withdrawal contract in the example. One trap: with `from` set to the system address, an eth_call takes the write path, and the beacon roots contract returns `0x` instead of a root.",
+          "A system call has no hash, no [[transaction-receipt|receipt]] and no nonce change, and the block's `transactions` and `gasUsed` leave it out. [[geth|Geth]]'s `debug_traceBlockByNumber`, built per transaction, runs the start-of-block calls untraced and skips the end-of-block ones. An [[indexer|indexer]] that rebuilds storage from per-transaction state diffs sees these slots change with no cause. Glamsterdam's block-level access lists (EIP-7928), which record every account and slot a block touches, do include these writes, at index 0 before the transactions and n+1 after them.",
+        ],
+      },
+      {
+        heading: "Not an L2 predeploy, not a precompile",
+        paragraphs: [
+          "An L2 [[predeploys|predeploy]] can look the same: OP Stack's `L1Block` at `0x4200000000000000000000000000000000000015`, which holds data about the latest L1 block, is also rewritten every block. Its writer, though, is a real transaction: a type `0x7e` deposit at index 0, with a hash and a receipt, listed by [[eth-get-block-by-number|eth_getBlockByNumber]] like any other.",
+          "A [[precompiles|precompile]] is native code at a low address with nothing stored, while a system contract is bytecode whose slots live in the state trie, so [[eth-get-code|eth_getCode]] returns its code and [[eth-get-proof|eth_getProof]] proves its slots. This is why EIP-2935 exists: with recent hashes in state, a [[stateless-ethereum|stateless client]] receives them inside the block's [[witness|witness]] instead of keeping the chain itself.",
+        ],
+      },
+    ],
+    example: {
+      title: "The system contracts at mainnet block 26,297,843 (0x19145f3)",
+      language: "json",
+      code: "// block 0x19145f3: timestamp 0x6ae321d7, parentHash 0xa0dad995…aad5, parentBeaconBlockRoot 0x0edb1341…013c\n\n// EIP-2935 read: the calldata is the parent's number, 0x19145f2, as 32 bytes, with no selector\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_call\",\"params\":[{\"to\":\"0x0000F90827F1C53a10cb7A02335B175320002935\",\n  \"data\":\"0x00000000000000000000000000000000000000000000000000000000019145f2\"},\"0x19145f3\"]}\n{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"0xa0dad995fefad559486fae7bd402ce2c25de98ad9df9bbb2e19c1f4292c0aad5\"}\n\n// the same hash read raw: slot 0x19145f2 % 8191 = 4732 = 0x127c\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"eth_getStorageAt\",\"params\":[\"0x0000F90827F1C53a10cb7A02335B175320002935\",\"0x127c\",\"0x19145f3\"]}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":\"0xa0dad995fefad559486fae7bd402ce2c25de98ad9df9bbb2e19c1f4292c0aad5\"}\n\n// EIP-4788 read: the root stored under this block’s own timestamp (slots 0x190a and 0x3909)\n{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"eth_call\",\"params\":[{\"to\":\"0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02\",\n  \"data\":\"0x000000000000000000000000000000000000000000000000000000006ae321d7\"},\"0x19145f3\"]}\n{\"jsonrpc\":\"2.0\",\"id\":3,\"result\":\"0x0edb134149d183bd0281ac2f82713d11a790adc14a0dec7f50abadd126bf013c\"}\n\n// EIP-7002: empty input returns the current fee, 1 wei\n{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"eth_call\",\"params\":[{\"to\":\"0x00000961Ef480Eb55e80D19ad83579A64c007002\",\"data\":\"0x\"},\"0x19145f3\"]}\n{\"jsonrpc\":\"2.0\",\"id\":4,\"result\":\"0x0000000000000000000000000000000000000000000000000000000000000001\"}\n\n// out of range: block 0x1910000 is 17,907 blocks back, beyond the 8191-block window\n{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"eth_call\",\"params\":[{\"to\":\"0x0000F90827F1C53a10cb7A02335B175320002935\",\n  \"data\":\"0x0000000000000000000000000000000000000000000000000000000001910000\"},\"0x19145f3\"]}\n{\"jsonrpc\":\"2.0\",\"id\":5,\"error\":{\"code\":3,\"message\":\"execution reverted\",\"data\":\"0x\"}}\n\n// the trap: from = SYSTEM_ADDRESS takes the write path, so nothing is returned\n{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"eth_call\",\"params\":[{\"from\":\"0xfffffffffffffffffffffffffffffffffffffffe\",\"to\":\"0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02\",\n  \"data\":\"0x000000000000000000000000000000000000000000000000000000006ae321d7\"},\"0x19145f3\"]}\n{\"jsonrpc\":\"2.0\",\"id\":6,\"result\":\"0x\"}",
+      note: "Both reads of the history contract return the block's own `parentHash`, and the beacon roots read returns its `parentBeaconBlockRoot`; none of these writes appears among the block's 106 transactions or in its `gasUsed`.",
+    },
+    pitfalls: [
+      "Sending an ABI-encoded call with a function selector, which makes the input longer than 32 bytes, so the contract reverts.",
+      "Computing a beacon roots timestamp from genesis and the slot number, which reverts for a slot with no block, since no execution block carries that timestamp.",
+      "Asking the history contract for the current block, or one more than 8191 blocks back; both revert.",
+    ],
+    related: ["execution-requests", "predeploys", "block-hash", "beacon-block", "consensus-proof", "eth-get-storage-at", "withdrawals", "precompiles", "witness", "hardfork"],
+    sources: [
+      { title: "EIP-4788: Beacon block root in the EVM", url: "https://eips.ethereum.org/EIPS/eip-4788" },
+      { title: "EIP-2935: Serve historical block hashes from state", url: "https://eips.ethereum.org/EIPS/eip-2935" },
+      { title: "EIP-7002: Execution layer triggerable withdrawals", url: "https://eips.ethereum.org/EIPS/eip-7002" },
+      { title: "EIP-8282: Builder Execution Requests", url: "https://eips.ethereum.org/EIPS/eip-8282" },
     ],
   },
 ];

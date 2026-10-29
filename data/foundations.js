@@ -13,7 +13,7 @@ export const topics = [
         heading: "The four interfaces",
         paragraphs: [
           "The execution JSON-RPC is what most people mean by an Ethereum RPC endpoint. Its methods are grouped into [[namespaces|namespaces]] such as `eth_`, `net_`, and `web3_`, with optional `debug_` and `trace_` extensions, and they read [[block|blocks]], accounts, and [[event-log|logs]], simulate calls with [[eth-call|eth_call]], and accept signed transactions for broadcast. An [[execution-client|execution client]] serves it over [[http-transport|HTTP]], [[websocket-transport|WebSocket]], or a local [[ipc-transport|socket]].",
-          "The other three are narrower. The [[engine-api|Engine API]] is private plumbing, by default on port 8551 and authenticated with a shared JWT secret, over which the [[consensus-client|consensus client]] hands [[execution-payload|execution payloads]] to the execution client and names the head, safe, and finalized blocks. The [[beacon-api|Beacon API]] is a REST interface on the consensus side covering slots, validators, [[finality|finality]] checkpoints, and blob sidecars. The [[eip-1193|EIP-1193 provider]] is the JavaScript object a browser wallet exposes to a page, which calls `window.ethereum.request` and lets the wallet decide which node answers.",
+          "The other three are narrower. The [[engine-api|Engine API]] is private plumbing, by default on port 8551 and authenticated with a shared JWT secret, over which the [[consensus-client|consensus client]] hands [[execution-payload|execution payloads]] to the execution client and names the head, safe, and finalized blocks. The [[beacon-api|Beacon API]] is a REST interface on the consensus side covering slots, validators, [[finality|finality]] checkpoints, and blobs. The [[eip-1193|EIP-1193 provider]] is the JavaScript object a browser wallet exposes to a page, which calls `window.ethereum.request` and lets the wallet decide which node answers.",
         ],
       },
       {
@@ -106,7 +106,7 @@ export const topics = [
       {
         heading: "Standard, de facto, and client-specific",
         paragraphs: [
-          "Only part of what an endpoint offers is specified. The [[execution-apis|execution-apis]] repository defines `eth_`, `net_`, `web3_`, and the [[engine-api|Engine API]] as OpenRPC schemas. Everything else is convention: `debug_` follows [[geth|Geth]]'s shape, the [[trace-api|trace_ namespace]] follows Parity's and is implemented by [[nethermind|Nethermind]], [[erigon|Erigon]], and [[reth|Reth]], [[txpool-api|txpool_]] and [[admin-api|admin_]] differ per client, and `personal_` is deprecated in favour of external signers. Hosted [[rpc-provider|providers]] add their own enhanced methods on top.",
+          "Only part of what an endpoint offers is specified. The [[execution-apis|execution-apis]] repository defines `eth_`, `net_`, `web3_`, and the [[engine-api|Engine API]] as [[openrpc|OpenRPC]] schemas. Everything else is convention: `debug_` follows [[geth|Geth]]'s shape, the [[trace-api|trace_ namespace]] follows Parity's and is implemented by [[nethermind|Nethermind]], [[erigon|Erigon]], and [[reth|Reth]], [[txpool-api|txpool_]] and [[admin-api|admin_]] differ per client, and `personal_` is deprecated in favour of external signers. Hosted [[rpc-provider|providers]] add their own enhanced methods on top.",
           "Even standard methods differ in behaviour. Nodes cap the gas an `eth_call` may consume, limit how many blocks [[eth-get-logs|eth_getLogs]] may span, disagree on what `pending` includes, and word their error messages differently. Portable code therefore treats [[endpoint-capabilities|endpoint capabilities]] as something to probe, not assume, starting with `web3_clientVersion`.",
         ],
       },
@@ -139,7 +139,7 @@ export const topics = [
     related: ["request-response", "namespaces", "execution-apis", "hex-encoding", "block-tag", "rpc-errors", "http-transport", "eth-call", "endpoint-capabilities", "execution-layer"],
     sources: [
       { title: "ethereum.org: JSON-RPC API", url: "https://ethereum.org/developers/docs/apis/json-rpc/" },
-      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/" },
       { title: "JSON-RPC 2.0 Specification", url: "https://www.jsonrpc.org/specification" },
     ],
   },
@@ -296,40 +296,40 @@ export const topics = [
     id: "execution-apis",
     title: "Execution APIs specification",
     category: "foundations",
-    aliases: ["execution-apis", "openrpc", "eth spec", "api specification", "hive"],
-    summary: "`ethereum/execution-apis` is the repository that normatively defines the [[execution-layer|execution layer]]'s RPC surface: machine-readable OpenRPC schemas for the `eth_`, `net_`, and `web3_` methods, the [[engine-api|Engine API]] specification, and the shared test fixtures clients are checked against.",
+    aliases: ["execution-apis", "eth spec", "api specification", "hive"],
+    summary: "`ethereum/execution-apis` is the repository that normatively defines the [[execution-layer|execution layer]]'s RPC surface: machine-readable [[openrpc|OpenRPC]] schemas for the `eth_` and `net_` methods and parts of `debug_` and `txpool_`, the [[engine-api|Engine API]] specification, and the shared test fixtures clients are checked against.",
     sections: [
       {
         heading: "What the repository holds",
         paragraphs: [
           "Each method has a schema file describing its parameters, its result, and the exact types involved: a QUANTITY, a 20-byte DATA [[address|address]], a 32-byte hash, a block object. Those files are compiled into a single `openrpc.json` document, which is what the rendered API documentation and most code generators consume. Because the types are machine-readable, a disagreement about whether a field is optional or whether an unknown [[block|block]] returns `null` has one place to be settled.",
-          "The [[engine-api|Engine API]] lives in the same repository but in prose specifications split by fork, so `engine_newPayloadV3` and its Cancun rules sit in one document and the Prague version in another. That split is deliberate: the [[json-rpc|application-facing API]] evolves slowly and additively, while the consensus-to-execution interface gains a new method version at nearly every [[hardfork|network upgrade]].",
+          "The [[engine-api|Engine API]] lives in the same repository, mainly in prose specifications split by fork, so `engine_newPayloadV3` and its Cancun rules sit in one document and the Prague version in another. That split is deliberate: the [[json-rpc|application-facing API]] evolves slowly and additively, while the consensus-to-execution interface gains a new method version at nearly every [[hardfork|network upgrade]]. Machine-readable [[openrpc|OpenRPC]] schemas for the Engine API methods sit beside the prose under `src/engine/openrpc`.",
         ],
       },
       {
         heading: "How a method becomes standard",
         paragraphs: [
           "The path is a pull request, not automatically an [[eip|EIP]]. A method is proposed, argued over by client teams, usually implemented by at least two [[execution-client|execution clients]], and then merged as a schema. [[eth-get-block-receipts|eth_getBlockReceipts]] and [[eth-simulate|eth_simulateV1]] both arrived this way after existing as client extensions first. EIP-1474 still describes the older baseline and the error codes, but the repository is what client teams treat as current.",
-          "Methods that never make it stay client-specific. The [[debug-api|debug_ namespace]] and the [[trace-api|trace_ namespace]] are documented by the clients that implement them rather than here, which is exactly why their availability and their output shapes vary.",
+          "Methods that never make it stay client-specific. The Parity-style [[trace-api|trace_ namespace]] is absent and documented only by the clients that implement it, which is exactly why its availability and output shapes vary. The [[debug-api|debug_ namespace]] is covered in part: the specification has long carried `debug_getRawHeader`, `debug_getRawBlock`, `debug_getRawTransaction`, `debug_getRawReceipts` and `debug_getBadBlocks`, and since June 2026 `debug_traceTransaction`, `debug_traceBlockByNumber` and `debug_traceBlockByHash` with a standardised opcode tracer, while `debug_traceCall` and the output of named tracers such as `callTracer` remain client-defined. Other recent additions took the same pull-request path: `txpool_status`, `txpool_content` and `txpool_contentFrom` in April 2026, `eth_capabilities`, which [[eth-capabilities|reports the head and how far back each kind of data is retained]], in June 2026, and a catalogue of [[rpc-errors|error groups]] that so far only the transaction-submission methods reference.",
         ],
       },
       {
         heading: "Conformance and its limits",
         paragraphs: [
-          "The repository carries request and response test vectors, and the community `hive` harness runs them against real client builds so that an answer's shape, not just its value, is compared. This is a practical lever for [[client-diversity|client diversity]]: an application written against the schema should get the same field names from [[geth|Geth]], [[nethermind|Nethermind]], [[erigon|Erigon]], [[reth|Reth]], and [[besu|Besu]].",
-          "What the specification does not fix is everything operational. It says nothing about [[authentication|authentication]], [[rate-limits|rate limits]], block-range caps on [[eth-get-logs|eth_getLogs]], gas caps on [[eth-call|eth_call]], or how much history a node kept. A node can be fully conformant and still refuse your query.",
+          "The repository carries request and response test vectors, and the community `hive` [[hive|harness]] runs them against real client builds so that an answer's shape, not just its value, is compared. This is a practical lever for [[client-diversity|client diversity]]: an application written against the schema should get the same field names from [[geth|Geth]], [[nethermind|Nethermind]], [[erigon|Erigon]], [[reth|Reth]], and [[besu|Besu]].",
+          "What the specification does not fix is everything operational. It says nothing about [[authentication|authentication]], [[rate-limits|rate limits]], block-range caps on [[eth-get-logs|eth_getLogs]], gas caps on [[eth-call|eth_call]], or how much history a node must keep. A node can be fully conformant and still refuse your query.",
         ],
       },
     ],
     pitfalls: [
-      "Treating the rendered API documentation as exhaustive; `debug_` and `trace_` are absent from it because they are not part of the specification.",
+      "Treating the rendered API documentation as exhaustive; `trace_` is absent from it, and only a few `debug_` methods are specified, so `debug_traceCall` and named tracers such as `callTracer` behave however each client decides.",
       "Assuming a method present in the schema is enabled on your endpoint; namespaces and per-method allow-lists are an operator decision.",
       "Reading a single Engine API document for all forks; the method versions are specified per fork and an old page describes an old payload shape.",
     ],
-    related: ["json-rpc", "engine-api", "namespaces", "eip", "client-diversity", "endpoint-capabilities", "hardfork", "rpc-errors"],
+    related: ["json-rpc", "engine-api", "namespaces", "eip", "client-diversity", "endpoint-capabilities", "hardfork", "rpc-errors", "openrpc", "hive"],
     sources: [
       { title: "ethereum/execution-apis", url: "https://github.com/ethereum/execution-apis" },
-      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/" },
       { title: "EIP-1474: Remote procedure call specification", url: "https://eips.ethereum.org/EIPS/eip-1474" },
     ],
   },
@@ -343,7 +343,7 @@ export const topics = [
       {
         heading: "The application namespaces",
         paragraphs: [
-          "`eth_` is the interface applications use: [[block|blocks]], transactions, receipts, [[eth-get-logs|logs]], [[state|state]] reads, simulation, fee data, and [[eth-send-raw-transaction|eth_sendRawTransaction]]. `net_` and `web3_` are tiny and describe the process rather than the chain, through [[net-web3-api|net_peerCount, net_listening, and web3_clientVersion]]. These three are the ones defined by the [[execution-apis|execution APIs specification]], and an endpoint that offers nothing else is still a useful endpoint.",
+          "`eth_` is the interface applications use: [[block|blocks]], transactions, receipts, [[eth-get-logs|logs]], [[state|state]] reads, simulation, fee data, and [[eth-send-raw-transaction|eth_sendRawTransaction]]. `net_` and `web3_` are tiny and describe the process rather than the chain, through [[net-web3-api|net_peerCount, net_listening, and web3_clientVersion]]. The [[execution-apis|execution APIs specification]] defines `eth_` and `net_`, plus part of `debug_` and `txpool_`, but not `web3_`, which clients serve by convention; an endpoint that offers only these three is still a useful endpoint.",
           "`eth_` also hides a wallet-era wart. `eth_accounts`, `eth_sign`, and [[eth-send-transaction|eth_sendTransaction]] assume the node holds private keys. Public nodes leave those disabled, and browser wallets implement the same names themselves behind the [[eip-1193|EIP-1193 provider]], which is why the method name you call in a dapp is not always answered by a node.",
         ],
       },
@@ -351,7 +351,7 @@ export const topics = [
         heading: "Diagnostic and administrative namespaces",
         paragraphs: [
           "The [[debug-api|debug_ namespace]] is [[geth|Geth]]-shaped and gives transaction and block tracing plus raw RLP access; the [[trace-api|trace_ namespace]] is the older Parity shape offered by [[nethermind|Nethermind]], [[erigon|Erigon]], and [[reth|Reth]]. Both are expensive: one `debug_traceBlockByNumber` can cost more than thousands of ordinary reads. The [[txpool-api|txpool_ namespace]] exposes the node's [[mempool|pending and queued transactions]], and the [[admin-api|admin_ namespace]] can add peers and start or stop listeners. `personal_` managed local keys and is deprecated in favour of external signers.",
-          "Two namespaces are not part of this surface at all. `engine_` is only valid on the authenticated [[engine-api|Engine API]] listener, and clients refuse it on the public port. Client-specific prefixes such as Erigon's `ots_` for Otterscan, and provider-specific prefixes added by hosted [[rpc-provider|providers]], round out what a given endpoint may answer.",
+          "Two namespaces are not part of this surface at all. `engine_` is only valid on the authenticated [[engine-api|Engine API]] listener, and clients refuse it on the public port. [[client-namespaces|Client-specific prefixes]] such as the `ots_` that Erigon, and in part Reth, serve for [[otterscan|Otterscan]], and provider-specific prefixes added by hosted [[rpc-provider|providers]], round out what a given endpoint may answer.",
         ],
       },
       {
@@ -385,7 +385,7 @@ export const topics = [
     id: "http-transport",
     title: "HTTP transport",
     category: "foundations",
-    aliases: ["http", "https", "post", "keep-alive", "cors", "rest endpoint"],
+    aliases: ["http", "https", "post", "keep-alive", "rest endpoint"],
     summary: "JSON-RPC over HTTP sends each call as a POST with a JSON body to one URL and receives exactly one response body, with no connection state and no way for the node to push anything back.",
     sections: [
       {
@@ -399,7 +399,7 @@ export const topics = [
         heading: "Two layers of failure",
         paragraphs: [
           "HTTP and JSON-RPC each have their own notion of an error, and they do not line up. A method that fails inside the node returns `200 OK` with an [[rpc-errors|error object]] in the body. A request that never reached the node's dispatcher fails at the HTTP layer with no JSON at all: `413` when the body exceeds the server's limit, `429` when a rate limiter fires, `401` or `403` on a bad key, `502` and `504` from a proxy in front of the node. Client code must handle both shapes.",
-          "The transport also imposes limits the specification does not. [[reverse-proxy|Reverse proxies]] cap body size and set read timeouts that abort a long [[debug-api|debug_ trace]] mid-flight, and browsers add CORS: a page can only call an endpoint whose responses carry permissive `access-control-allow-origin` headers, configured in Geth with `--http.corsdomain` and guarded separately by `--http.vhosts`.",
+          "The transport also imposes limits the specification does not. [[reverse-proxy|Reverse proxies]] cap body size and set read timeouts that abort a long [[debug-api|debug_ trace]] mid-flight, and browsers add [[cors|CORS]]: a page can only call an endpoint whose responses carry permissive `access-control-allow-origin` headers, configured in Geth with `--http.corsdomain` and guarded separately by `--http.vhosts`.",
         ],
       },
       {
@@ -416,7 +416,7 @@ export const topics = [
       "Polling `eth_blockNumber` every 200 ms against a metered endpoint and exhausting the quota before any real work happens.",
       "Putting a filter-based workflow behind a load balancer; the follow-up `eth_getFilterChanges` reaches a node that has never heard of the filter.",
     ],
-    related: ["websocket-transport", "ipc-transport", "json-rpc", "rpc-errors", "batch-request", "load-balancer", "rate-limits", "caching"],
+    related: ["websocket-transport", "ipc-transport", "json-rpc", "rpc-errors", "batch-request", "load-balancer", "rate-limits", "caching", "cors"],
     sources: [
       { title: "ethereum.org: JSON-RPC API", url: "https://ethereum.org/developers/docs/apis/json-rpc/" },
       { title: "Geth: JSON-RPC server", url: "https://geth.ethereum.org/docs/interacting-with-geth/rpc" },
@@ -557,7 +557,7 @@ export const topics = [
     related: ["json-rpc", "block-tag", "wei", "eth-get-storage-at", "address", "request-response", "rlp", "eth-get-balance"],
     sources: [
       { title: "ethereum.org: JSON-RPC hex value encoding", url: "https://ethereum.org/developers/docs/apis/json-rpc/#hex-value-encoding" },
-      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/" },
       { title: "EIP-55: Mixed-case checksum address encoding", url: "https://eips.ethereum.org/EIPS/eip-55" },
     ],
   },
@@ -579,7 +579,7 @@ export const topics = [
         heading: "The five tags",
         paragraphs: [
           "`latest` is the head of the chain as this node currently sees it: the block most recently chosen by [[fork-choice|fork choice]]. It can move backwards during a [[reorg|reorganization]] and differs between nodes that are milliseconds apart. `pending` is a hypothetical next block assembled from the node's [[mempool|transaction pool]]; it is a local guess rather than chain data, and some clients and providers quietly treat it as `latest`.",
-          "`safe` and `finalized` arrived with [[the-merge|the Merge]]. `finalized` is the most recent block that [[finality|Casper FFG finality]] has locked in; under normal conditions it trails the head by two to three epochs, about 13 to 19 minutes, and reverting it would require at least a third of all staked ETH to be slashed. `safe` is the block at the latest justified checkpoint, which the [[consensus-client|consensus client]] considers extremely unlikely to be reorged; in the current spec it is simply the block at the latest justified checkpoint, so it usually trails the head by one to two epochs, about 6 to 13 minutes. `earliest` is the [[genesis|genesis block]] and is mostly useful as the start of a range.",
+          "`safe` and `finalized` arrived with [[the-merge|the Merge]]. `finalized` is the most recent block that [[finality|Casper FFG finality]] has locked in; under normal conditions it trails the head by two to three epochs, about 13 to 19 minutes, and reverting it would require at least a third of all staked ETH to be slashed. `safe` is the block the [[consensus-client|consensus client]] considers extremely unlikely to be reorged. The consensus specs now define it through the [[fast-confirmation-rule|Fast Confirmation Rule]], which under normal network conditions confirms blocks much closer to the head, but a client that does not run that rule sends the block at the latest justified checkpoint, which usually trails the head by one to two epochs, about 6 to 13 minutes. `earliest` is the [[genesis|genesis block]] and is mostly useful as the start of a range.",
           "The [[consensus-layer|consensus layer]] decides what `safe` and `finalized` mean. It pushes those two hashes together with the head hash to the [[execution-client|execution client]] on every `engine_forkchoiceUpdated` call over the [[engine-api|Engine API]]. An execution client that has lost its consensus client keeps answering `latest` from its last known head, but its `finalized` view silently stops advancing.",
         ],
       },
@@ -606,14 +606,14 @@ export const topics = [
     sources: [
       { title: "EIP-1898: Add blockHash to defaultBlock methods", url: "https://eips.ethereum.org/EIPS/eip-1898" },
       { title: "ethereum.org: JSON-RPC default block parameter", url: "https://ethereum.org/developers/docs/apis/json-rpc/#default-block" },
-      { title: "Consensus specs: safe block", url: "https://github.com/ethereum/consensus-specs/blob/dev/fork_choice/safe-block.md" },
+      { title: "Consensus specs: safe execution block (fast confirmation)", url: "https://github.com/ethereum/consensus-specs/blob/master/specs/bellatrix/fast-confirmation.md" },
     ],
   },
   {
     id: "chain-id",
     title: "Chain ID",
     category: "foundations",
-    aliases: ["eth_chainId", "net_version", "EIP-155", "network id", "replay protection", "chainlist"],
+    aliases: ["eth_chainId", "net_version", "EIP-155", "network id", "replay protection"],
     summary: "The chain id is the integer that identifies one Ethereum network inside every transaction signature under EIP-155, reported by `eth_chainId`, and it is the first thing a caller checks to confirm an endpoint really serves the intended network.",
     sections: [
       {
@@ -627,7 +627,7 @@ export const topics = [
         heading: "eth_chainId versus net_version",
         paragraphs: [
           "Two methods answer similar questions. `eth_chainId` returns the EIP-155 chain id as a [[hex-encoding|hex QUANTITY]], so mainnet is `0x1`. `net_version` is the older network id and returns a decimal string, so mainnet is `\"1\"`; see [[net-web3-api|net_ and web3_ methods]]. The two values are usually equal but are conceptually different, and some networks have deliberately set them apart, so sign with the chain id and use `net_version` only for diagnostics.",
-          "Common values are worth memorising: mainnet is 1, Sepolia is 11155111, Hoodi is 560048, and the deprecated Holesky was 17000; see [[testnets|testnets]]. Layer 2 networks have their own, and community registries such as chainlist map ids to public endpoints and currency symbols. Because anyone can pick an id for a private network, a matching chain id proves intent, not authenticity.",
+          "Common values are worth memorising: mainnet is 1, Sepolia is 11155111, Hoodi is 560048, and the deprecated Holesky was 17000; see [[testnets|testnets]]. Layer 2 networks have their own, and community registries such as [[chainlist|chainlist]] map ids to public endpoints and currency symbols. Because anyone can pick an id for a private network, a matching chain id proves intent, not authenticity.",
         ],
       },
       {
@@ -650,7 +650,7 @@ export const topics = [
       "Failing over to an upstream without re-checking the chain id, which can route mainnet traffic to a testnet node.",
       "Ignoring the `chainChanged` event in a dapp and continuing to use addresses and cached data from the previous network.",
     ],
-    related: ["testnets", "eip", "net-web3-api", "eth-send-raw-transaction", "health-check", "failover", "wallet-rpc", "genesis"],
+    related: ["testnets", "eip", "net-web3-api", "eth-send-raw-transaction", "health-check", "failover", "wallet-rpc", "genesis", "chainlist", "gnosis-chain"],
     sources: [
       { title: "EIP-155: Simple replay attack protection", url: "https://eips.ethereum.org/EIPS/eip-155" },
       { title: "ethereum.org: JSON-RPC API", url: "https://ethereum.org/developers/docs/apis/json-rpc/" },
@@ -710,7 +710,7 @@ export const topics = [
         heading: "What it does",
         paragraphs: [
           "The consensus layer maintains the Beacon Chain: a separate chain of [[beacon-block|beacon blocks]], one per 12-second slot with 32 slots to an epoch, that records who the [[validator|validators]] are, what they voted for, and which checkpoints are justified and finalized; see [[slot-epoch|slots and epochs]]. Each beacon block wraps an [[execution-payload|execution payload]], which is the execution block, so the two chains advance together.",
-          "Its job is ordering and agreement, not computation. [[attestation|Attestations]] from validators feed the [[fork-choice|LMD-GHOST fork choice]] that picks a head, and Casper FFG turns accumulated votes into justified and finalized checkpoints, normally two epochs behind the head; see [[finality|finality]]. It also runs [[sync-committee|sync committees]] so that [[light-client|light clients]] can follow along, and it gossips [[blob|blob]] sidecars, which it retains for 4096 epochs, roughly 18 days.",
+          "Its job is ordering and agreement, not computation. [[attestation|Attestations]] from validators feed the [[fork-choice|LMD-GHOST fork choice]] that picks a head, and Casper FFG turns accumulated votes into justified and finalized checkpoints, normally two epochs behind the head; see [[finality|finality]]. It also runs [[sync-committee|sync committees]] so that [[light-client|light clients]] can follow along, and it gossips [[blob|blob]] data, as data column sidecars since Fulu, which it retains for 4096 epochs, roughly 18 days.",
         ],
       },
       {
@@ -799,7 +799,7 @@ export const topics = [
     id: "beacon-api",
     title: "Beacon API",
     category: "foundations",
-    aliases: ["beacon node api", "5052", "3500", "REST", "SSE", "eth/v1/beacon", "consensus api"],
+    aliases: ["beacon node api", "5052", "3500", "REST", "eth/v1/beacon", "consensus api"],
     summary: "The Beacon API is the consensus client's REST interface, on a port that differs by client (5052 on Lighthouse and Nimbus), serving beacon blocks and states, validator data, node status, chain configuration, and a server-sent event stream, in JSON or SSZ.",
     sections: [
       {
@@ -812,15 +812,15 @@ export const topics = [
       {
         heading: "What lives where",
         paragraphs: [
-          "The `/eth/v1/beacon` group covers chain data: [[beacon-block|beacon blocks]], headers, [[attestation|attestation]] and exit pools, [[validator|validator]] balances and statuses under `/eth/v1/beacon/states/{state_id}/validators`, [[finality|finality]] state under `/eth/v1/beacon/states/{state_id}/finality_checkpoints`, and [[blob|blob]] sidecars under `/eth/v1/beacon/blob_sidecars/{block_id}`. The `/eth/v1/node` group reports `syncing`, `health`, `identity`, `version`, and `peers`, which is what an operator's [[health-check|health check]] uses. The `/eth/v1/config` group returns the spec constants and the fork schedule, so a tool can discover a network's parameters instead of hard-coding them.",
+          "The `/eth/v1/beacon` group covers chain data: [[beacon-block|beacon blocks]], headers, [[attestation|attestation]] and exit pools, [[validator|validator]] balances and statuses under `/eth/v1/beacon/states/{state_id}/validators`, [[finality|finality]] state under `/eth/v1/beacon/states/{state_id}/finality_checkpoints`, and [[blob|blobs]] under `/eth/v1/beacon/blobs/{block_id}`, which beacon-APIs v4.0.0 added when it deprecated `/eth/v1/beacon/blob_sidecars/{block_id}`. The `/eth/v1/node` group reports `syncing`, `health`, `identity`, `version`, and `peers`, which is what an operator's [[health-check|health check]] uses. The `/eth/v1/config` group returns the spec constants and the fork schedule, so a tool can discover a network's parameters instead of hard-coding them.",
           "Two groups are not for general use. `/eth/v1/validator` serves duties, attestation data, and block production to a [[validator-client|validator client]], and the `/eth/v1/debug` routes dump whole beacon states, which are large and expensive. [[beacon-endpoints|The concrete route reference]] lists the rest.",
         ],
       },
       {
         heading: "Events and what only this API can answer",
         paragraphs: [
-          "`/eth/v1/events` is a server-sent event stream, the consensus-side counterpart to [[eth-subscribe|eth_subscribe]]. Subscribing to topics such as `head`, `block`, `finalized_checkpoint`, and `chain_reorg` gives a push notification the moment the [[fork-choice|fork choice]] moves, which is a cleaner reorg signal than polling execution blocks and comparing parent hashes.",
-          "Some facts exist nowhere else. Whether a validator is active, exited, or slashed; what the current justified and finalized checkpoints are; which validators sit on the [[sync-committee|sync committee]]; and the blob sidecars with their KZG proofs, which the [[consensus-layer|consensus layer]] keeps for about 18 days and the [[execution-layer|execution layer]] never stores at all. [[checkpoint-sync|Checkpoint sync]] and [[light-client|light clients]] are both built on this API.",
+          "`/eth/v1/events` is a [[server-sent-events|server-sent event stream]], the consensus-side counterpart to [[eth-subscribe|eth_subscribe]]. Subscribing to topics such as `head`, `block`, `finalized_checkpoint`, and `chain_reorg` gives a push notification the moment the [[fork-choice|fork choice]] moves, which is a cleaner reorg signal than polling execution blocks and comparing parent hashes.",
+          "Some facts exist nowhere else. Whether a validator is active, exited, or slashed; what the current justified and finalized checkpoints are; which validators sit on the [[sync-committee|sync committee]]; and blob contents, which the [[consensus-layer|consensus layer]] keeps for about 18 days and the [[execution-layer|execution layer]] never stores at all. Since Fulu a node keeps them as the data columns it custodies, with their KZG proofs, rather than as whole blob sidecars, so only a supernode, which custodies every column, is required to return full blobs. [[checkpoint-sync|Checkpoint sync]] and [[light-client|light clients]] are both built on this API.",
         ],
       },
       {
@@ -840,20 +840,20 @@ export const topics = [
       "Expecting JSON-RPC semantics; there is no envelope, errors are HTTP status codes, and results are wrapped in a `data` member.",
       "Requesting a state by slot on a pruned [[beacon-node|beacon node]]; historical states are expensive and most nodes keep only recent ones.",
       "Exposing the API publicly without a proxy, which hands out validator endpoints and lets anyone request costly state dumps.",
-      "Assuming blob sidecars are available for old blocks; the consensus layer drops them after roughly 18 days.",
+      "Assuming blobs are available for old blocks; the consensus layer drops them after roughly 18 days, and older ones come only from a [[blob-archive|blob archive]].",
     ],
     related: ["consensus-layer", "beacon-endpoints", "beacon-node", "validator-client", "engine-api", "checkpoint-sync", "finality", "blob", "consensus-client"],
     sources: [
       { title: "Beacon APIs specification", url: "https://ethereum.github.io/beacon-APIs/" },
       { title: "ethereum/beacon-APIs", url: "https://github.com/ethereum/beacon-APIs" },
-      { title: "Lighthouse Book: Beacon node API", url: "https://lighthouse-book.sigmaprime.io/api-bn.html" },
+      { title: "Lighthouse Book: Beacon node API", url: "https://lighthouse-book.sigmaprime.io/api_bn.html" },
     ],
   },
   {
     id: "the-merge",
     title: "The Merge",
     category: "foundations",
-    aliases: ["merge", "paris", "proof of work to proof of stake", "september 2022", "prevRandao", "TTD"],
+    aliases: ["merge", "paris", "proof of work to proof of stake", "september 2022", "TTD"],
     summary: "The Merge, on 15 September 2022, retired Ethereum's proof-of-work consensus by attaching the existing execution chain to the Beacon Chain, which is why a node is now two clients and why the `safe` and `finalized` [[block-tag|block tags]] exist.",
     sections: [
       {
@@ -866,7 +866,7 @@ export const topics = [
       {
         heading: "What it changed for RPC",
         paragraphs: [
-          "Several [[block-header|header fields]] became constants. `difficulty` is `0x0`, the header `nonce` is zero, the ommers list is always empty so `sha3Uncles` never varies, and `mixHash` now carries `prevRandao`, the consensus layer's randomness for that block. Mining methods such as `eth_getWork` disappeared from clients, and issuance moved to the consensus layer, so the execution block no longer pays a block reward.",
+          "Several [[block-header|header fields]] became constants. `difficulty` is `0x0`, the header `nonce` is zero, the ommers list is always empty so `sha3Uncles` never varies, and `mixHash` now carries `prevRandao`, [[randao|the consensus layer's randomness]] for that block. Mining methods such as `eth_getWork` disappeared from clients, and issuance moved to the consensus layer, so the execution block no longer pays a block reward.",
           "Two additions matter more. The `safe` and `finalized` tags became available because the consensus layer now has a notion of both, and block timing became a 12-second schedule with occasional missed slots rather than a Poisson process, which makes polling intervals predictable. Deep [[reorg|reorganizations]] became rare: a single-block reorg still happens, but the multi-block ones of the proof-of-work era do not.",
         ],
       },
@@ -880,7 +880,7 @@ export const topics = [
     ],
     pitfalls: [
       "Detecting proof of work by reading `difficulty`; it is `0x0` on every post-Merge block, which is not the same as the network being unavailable.",
-      "Treating `mixHash` as a mining artefact; it carries `prevRandao` and is a usable source of consensus randomness, defined by EIP-4399.",
+      "Treating `mixHash` as a mining artefact; it carries `prevRandao`, defined by EIP-4399, which is consensus randomness that a proposer can bias and predict a block ahead, so a contract using it needs the lookahead the [[randao|RANDAO]] lesson describes.",
       "Assuming `withdrawals` exists in every post-Merge block; the field was introduced at Shapella, months later.",
       "Expecting the Merge to have changed fees or throughput; it changed who produces blocks, not how much they can hold.",
     ],
@@ -968,7 +968,7 @@ export const topics = [
       "Hard-coding gas estimates across an upgrade; repricings such as the calldata cost change in Pectra silently invalidate them.",
       "Assuming a provider forks at the same instant you do; confirm their upgrade window rather than discovering it from failing calls.",
     ],
-    related: ["eip", "the-merge", "engine-api", "testnets", "blob", "transaction-types", "block-header", "execution-apis"],
+    related: ["eip", "the-merge", "engine-api", "testnets", "blob", "transaction-types", "block-header", "execution-apis", "kurtosis"],
     sources: [
       { title: "ethereum.org: History and forks", url: "https://ethereum.org/history/" },
       { title: "Ethereum Improvement Proposals", url: "https://eips.ethereum.org/" },
@@ -979,21 +979,21 @@ export const topics = [
     id: "testnets",
     title: "Testnets",
     category: "foundations",
-    aliases: ["Sepolia", "Hoodi", "Holesky", "Goerli", "Ephemery", "faucet", "test network"],
+    aliases: ["Sepolia", "Hoodi", "Holesky", "Goerli", "test network"],
     summary: "A testnet is a separate Ethereum network with its own [[chain-id|chain id]] and worthless ether, running the same clients and the same RPC surface as mainnet: Sepolia for application work, Hoodi for staking and validator work.",
     sections: [
       {
         heading: "Which network to use",
         paragraphs: [
           "Sepolia, chain id 11155111, is the default for application testing. It is comparatively small and quick to sync, and its validator set is permissioned, which keeps it stable but means it is not a realistic rehearsal for staking software. Hoodi, chain id 560048 and launched in March 2025, is the network for validator, staking, and node-operator testing, with a permissionless validator set; it replaced Holesky, chain id 17000, which was deprecated in 2025 after Goerli's deprecation in 2024.",
-          "Two other kinds of network fill the gaps. Ephemery resets on a fixed period, so it never accumulates state and is useful for automated testing that would otherwise need a fresh chain. Short-lived devnets, usually spun up with tooling such as the Kurtosis ethereum package, are how client teams rehearse an upgrade before it reaches a public testnet. For unit tests and local iteration, a [[local-devnet|local development node]] beats any of them.",
+          "Two other kinds of network fill the gaps. [[ephemery|Ephemery]] resets on a fixed period, so it never accumulates state and is useful for automated testing that would otherwise need a fresh chain. Short-lived devnets, usually spun up with tooling such as the [[kurtosis|Kurtosis ethereum package]], are how client teams rehearse an upgrade before it reaches a public testnet. For unit tests and local iteration, a [[local-devnet|local development node]] beats any of them.",
         ],
       },
       {
         heading: "Why the RPC behaves the same",
         paragraphs: [
           "A testnet runs the same [[execution-client|execution clients]] and [[consensus-client|consensus clients]] as mainnet with a different [[genesis|genesis and chain configuration]]. The [[namespaces|namespaces]], the [[hex-encoding|encodings]], the [[block-tag|block tags]], the [[rpc-errors|error codes]], and the [[engine-api|Engine API]] are all identical, so code written against a testnet endpoint works unchanged against mainnet. That is the point: the network differs, the interface does not.",
-          "Some practical differences favour testing. History and [[state|state]] are small enough that an [[archive-node|archive node]] is cheap to run and full history is easy to scan with [[eth-get-logs|eth_getLogs]]. Fees are near zero, so gas budgeting exercises nothing. Getting ether at all requires a faucet, which is usually rate limited per address and per day.",
+          "Some practical differences favour testing. History and [[state|state]] are small enough that an [[archive-node|archive node]] is cheap to run and full history is easy to scan with [[eth-get-logs|eth_getLogs]]. Fees are near zero, so gas budgeting exercises nothing. Getting ether at all requires a [[faucet|faucet]], which is usually rate limited per address and per day.",
         ],
       },
       {
@@ -1010,11 +1010,264 @@ export const topics = [
       "Trusting gas and fee behaviour measured on a testnet, where an almost empty transaction pool hides real fee pressure entirely.",
       "Relying on a public testnet endpoint for load testing; faucets and shared endpoints are rate limited far more aggressively than paid mainnet ones.",
     ],
-    related: ["chain-id", "hardfork", "local-devnet", "genesis", "archive-node", "execution-client", "health-check", "the-merge"],
+    related: ["chain-id", "hardfork", "local-devnet", "genesis", "archive-node", "execution-client", "health-check", "the-merge", "faucet", "ephemery"],
     sources: [
       { title: "ethereum.org: Networks", url: "https://ethereum.org/developers/docs/networks/" },
       { title: "EIP-155: Simple replay attack protection", url: "https://eips.ethereum.org/EIPS/eip-155" },
       { title: "Nethermind: supported networks", url: "https://docs.nethermind.io/" },
+    ],
+  },
+  {
+    id: "ephemery",
+    title: "Ephemery",
+    category: "foundations",
+    aliases: ["Ephemery testnet", "ephemeral testnet", "resetting testnet", "39438000", "retention.sh", "ephemery-genesis"],
+    summary: "Ephemery is a public Ethereum [[testnets|testnet]] that throws its whole chain away every 28 days and restarts from a new [[genesis|genesis]] with a new [[chain-id|chain id]], so it never accumulates state and never runs short of test ether.",
+    sections: [
+      {
+        heading: "One network, many iterations",
+        paragraphs: [
+          "Each run of the network is an iteration, and the genesis of the next is derived from the previous one. The genesis timestamp moves forward by the period, 2,419,200 seconds; the chain id becomes 39438000 plus the iteration number, so `eth_chainId` minus 39438000 is the iteration a node is on; and the genesis validator set is altered by the iteration number so the consensus fork digest changes while the fork versions stay fixed. Everything else — execution [[state|state]], blocks, receipts, the beacon state — is discarded. Each iteration's files are published as a release of the `ephemery-testnet/ephemery-genesis` repository, tagged `ephemery-` followed by the iteration number, and each iteration's fork schedule activates the latest upgrades at or soon after genesis, so an Ephemery node must run a client release that already supports them.",
+          "The design exists to avoid the problems of long-lived testnets: scarce ether, inactive [[validator|validators]], and state bloat. Every genesis premines the operators and the [[faucet|faucets]] with millions of ether, so faucets refill themselves, and validators whose public keys are committed to the genesis repository are active from the first slot. The period is not arbitrary: the specification sizes it against the number of genesis validators, so that validators deposited later cannot activate fast enough to push the genesis set below a two-thirds majority before the next reset.",
+        ],
+      },
+      {
+        heading: "What a reset does to a node",
+        paragraphs: [
+          "For an [[execution-client|execution]] or [[consensus-client|consensus client]], a reset is a new network: the old database cannot continue, so the node must be stopped, its data directory cleared, the new genesis initialised, and the client restarted. The project's `retention.sh`, run from cron every five minutes, does exactly that, keeping node keys and deleting chain data. A few clients know the network natively: [[besu|Besu]] and [[teku|Teku]] accept `--network=ephemery` and derive the current iteration themselves, and Teku implements the reset as well. [[beacon-node|Beacon nodes]] can [[checkpoint-sync|checkpoint sync]] from several public Ephemery endpoints, and the [[kurtosis|Kurtosis]] `ethereum-package` joins the current iteration with `network: ephemery`.",
+        ],
+      },
+      {
+        heading: "What a reset does to RPC consumers",
+        paragraphs: [
+          "For anything that reads the chain over RPC, a reset looks like nothing it was designed for. Block numbers restart at zero, every [[block-hash|block hash]] and transaction hash from the previous iteration is gone, and contracts must be redeployed. An [[indexer|indexer]] whose cursor says block 190,000 with hash X finds a lower head and a different hash at every height it checks; handled as a [[reorg|reorg]], that would roll back 190,000 blocks one at a time. The reliable signal is the chain id or the genesis block hash changing, which should trigger a wipe and a fresh start, and the same applies to a [[block-explorer|block explorer]]'s database.",
+          "Changing the chain id is deliberate: EIP-155 then makes any replay-protected transaction signed for one iteration invalid on the next, and no tool can confuse two iterations. The cost lands on configuration. The public RPC URLs stay the same across resets, so a wallet network saved with last month's id no longer matches `eth_chainId` and must be re-added, and hard-coded ids in deployment scripts, test fixtures, and [[eip-712|EIP-712]] domains all break at the next reset. Contract addresses can survive: the same deployer key starting from nonce zero on a fresh chain produces the same `CREATE` addresses in the same order. Balances, approvals, and registrations do not, which makes Ephemery a good fit for automated tests that build their world from scratch and a poor one for anything that must persist.",
+        ],
+      },
+    ],
+    example: {
+      title: "Detecting a new iteration before resuming an indexer",
+      language: "bash",
+      code: "# stored by the indexer at the end of its last run\nLAST_CHAIN_ID=$(cat state/chain_id)\nLAST_GENESIS=$(cat state/genesis_hash)\n\nchain_id=$(cast chain-id --rpc-url $EPHEMERY_RPC)     # 39438000 + iteration\ngenesis=$(cast block 0 --field hash --rpc-url $EPHEMERY_RPC)\n\n# the current iteration, also the tag of its release: ephemery-<iteration>\ngh release view -R ephemery-testnet/ephemery-genesis --json tagName -q .tagName\n\nif [ $chain_id != $LAST_CHAIN_ID ] || [ $genesis != $LAST_GENESIS ]; then\n  echo new iteration $((chain_id - 39438000)): wiping the index and starting from block 0\n  echo $chain_id > state/chain_id; echo $genesis > state/genesis_hash\nfi",
+      note: "The chain id alone identifies an Ephemery iteration, since subtracting 39438000 gives its number; checking the genesis hash as well also catches devnets that restart without changing their id.",
+    },
+    pitfalls: [
+      "Saving Ephemery in a wallet or config with a fixed chain id; it changes every iteration, and transactions signed with last month's id are rejected.",
+      "Letting an indexer treat a reset as a deep reorg instead of detecting the new genesis and starting over.",
+      "Restarting a node on its old data directory after a reset, which cannot join the new iteration.",
+      "Running an older client release; each iteration activates the latest upgrades near genesis, and a client without them drops off at the fork.",
+      "Using Ephemery for a demo deployment or a soak test that has to outlive the 28-day period.",
+    ],
+    related: ["testnets", "chain-id", "genesis", "faucet", "kurtosis", "checkpoint-sync", "indexer", "reorg", "besu", "teku"],
+    sources: [
+      { title: "ephemery-testnet/ephemery-resources (network info and spec)", url: "https://github.com/ephemery-testnet/ephemery-resources" },
+      { title: "ephemery-testnet/ephemery-genesis (per-iteration releases)", url: "https://github.com/ephemery-testnet/ephemery-genesis" },
+      { title: "ethereum.org: Networks", url: "https://ethereum.org/developers/docs/networks/" },
+    ],
+  },
+  {
+    id: "gnosis-chain",
+    title: "Gnosis Chain",
+    category: "foundations",
+    aliases: ["Gnosis", "xDAI", "xDai chain", "GNO", "Chiado", "chain id 100", "gnosis beacon chain"],
+    summary: "Gnosis Chain is an EVM network with [[chain-id|chain id]] 100 whose native gas token is the DAI-backed xDAI and whose own beacon chain is secured by validators staking GNO; it runs Ethereum's client software with different constants, a two-token model and chain-specific rules a mainnet caller should not assume.",
+    sections: [
+      {
+        heading: "Same architecture, different constants",
+        paragraphs: [
+          "Since its merge Gnosis Chain has run exactly the structure of Ethereum: an [[execution-layer|execution layer]] and a [[consensus-layer|consensus layer]] joined by the [[engine-api|Engine API]]. The numbers differ. Its chain id is 100 (`0x64`) and its testnet, Chiado, is 10200 (`0x27d8`). Slots are 5 seconds and epochs 16 slots, so an epoch lasts 80 seconds, blocks arrive every 5 seconds, and [[finality|finality]] lands within a few minutes rather than about 13. The beacon chain uses its own `gnosis` preset, which `/eth/v1/config/spec` reports, and tools that hard-code 12-second slots or 32-slot epochs compute wrong times and wrong epochs.",
+          "Fees differ too. The EIP-1559 base fee is not burned but paid to a fee collector address, `0x6BBe78ee9e474842Dbd4AB4987b3CeFE88426A92`, since block 19,040,000, so burn-based supply accounting does not apply. Blobs target one per block with a maximum of two, the blob base fee has a 1 gwei floor, and blob data is kept for 16,384 epochs, about 15 days. Execution clients are [[nethermind|Nethermind]] and [[erigon|Erigon]] natively, plus Gnosis-maintained ports of Geth and Reth; the documented consensus clients are [[lighthouse|Lighthouse]], [[lodestar|Lodestar]], [[nimbus|Nimbus]] and [[teku|Teku]].",
+        ],
+      },
+      {
+        heading: "Two tokens, and withdrawals that are not balance credits",
+        paragraphs: [
+          "xDAI is the native token: [[eth-get-balance|eth_getBalance]] reports it and gas is priced in it. It is minted when DAI is bridged from Ethereum, and the minting happens inside block processing: after each block's transactions the client makes a system call to the block reward contract, `0x481c034c6d9441db23Ea48De68BCAe812C5d39bA`, and credits the native balances it returns. An address's xDAI can therefore grow with no transaction, no log and no receipt, which breaks reconciliation that sums transfers.",
+          "GNO is an ERC-20 used for staking, one GNO per [[validator|validator]], which the beacon chain accounts as 32 mGNO. Gnosis changes EIP-4895: the [[withdrawals|withdrawals]] listed in a block do not credit native balances. The client instead calls `executeSystemWithdrawals` on the deposit contract at `0x0B98057eA310F4d31F2a452B414647007d1645d9`, which records claimable GNO, and the owner later calls `claimWithdrawal` to receive it as a token transfer. The `withdrawals` array looks like mainnet's, while the payout is a token claim rather than an xDAI credit.",
+        ],
+      },
+      {
+        heading: "Traces, rewards and irregular state changes",
+        paragraphs: [
+          "Before the merge the chain, then called xDai, ran AuRa proof of authority, from 2020 under POSDAO staking contracts, and a block reward contract paid out native tokens in every block. [[nethermind|Nethermind]] reports those payouts in [[trace-api|trace_block]] as `reward` entries with `rewardType` `external`, and [[block-explorer|Blockscout]]'s Nethermind integration reads them through `trace_block` to attribute block rewards, so on this chain they are data rather than noise. After the merge the reward contract still mints bridged xDAI through its system call, but Nethermind's trace module then reports only a zero-value `block` reward per block, so the mint is visible as a balance change rather than as a trace entry.",
+          "Gnosis hard forks have also changed state without a transaction. The December 2025 upgrade replaced the code of the Balancer V2 exploiter's account with a restricted forwarding contract at a fixed timestamp, as an irregular state transition written into client configuration. [[eth-get-code|eth_getCode]] at that address changes between two blocks with nothing in either block to explain it, so an [[indexer|indexer]] or replay tool that derives code only from transactions diverges from the chain.",
+        ],
+      },
+    ],
+    pitfalls: [
+      "Assuming 12-second slots and 32-slot epochs when converting Gnosis timestamps to blocks or estimating when `finalized` will move.",
+      "Reconciling xDAI balances from transactions and logs alone; bridge mints arrive through the block reward system call.",
+      "Watching a withdrawal address's native balance for staking payouts; they are claimable GNO in the deposit contract.",
+      "Dropping `trace_block` reward entries when indexing Gnosis history; its AuRa-era `external` rewards are how explorers attribute block rewards.",
+    ],
+    related: ["chain-id", "consensus-layer", "nethermind", "erigon", "withdrawals", "trace-api", "block-explorer", "slot-epoch", "finality", "testnets"],
+    sources: [
+      { title: "Gnosis Chain docs: specs", url: "https://docs.gnosischain.com/about/specs/" },
+      { title: "Gnosis Chain docs: run a node", url: "https://docs.gnosischain.com/node/" },
+      { title: "gnosischain/specs: withdrawals", url: "https://github.com/gnosischain/specs/blob/master/execution/withdrawals.md" },
+      { title: "gnosischain/specs: POSDAO post-merge", url: "https://github.com/gnosischain/specs/blob/master/execution/posdao-post-merge.md" },
+    ],
+  },
+  {
+    id: "permissioned-network",
+    title: "Permissioned networks",
+    category: "foundations",
+    aliases: ["private network", "consortium chain", "QBFT", "IBFT 2.0", "Clique", "AuRa", "proof of authority", "perm_"],
+    summary: "A permissioned network is a private or consortium EVM chain whose block producers are a fixed, known set, usually under proof-of-authority or BFT consensus such as QBFT, and which may restrict who connects or transacts, so it speaks Ethereum [[json-rpc|JSON-RPC]] while differing from mainnet in consensus, finality, fees and access.",
+    sections: [
+      {
+        heading: "Consensus without proof of stake",
+        paragraphs: [
+          "Mainnet since [[the-merge|the Merge]] runs [[proof-of-stake|proof of stake]] with a beacon chain. A consortium usually wants a known set of validators and no beacon chain at all. QBFT and IBFT 2.0, implemented by [[besu|Besu]], are Byzantine-fault-tolerant: validators take turns proposing, a supermajority of at least two thirds commits each block, and four validators are the minimum that tolerates one faulty member. The validator list and commit seals travel in the header's `extraData`, timing comes from genesis options such as `blockperiodseconds` and `requesttimeoutseconds`, and validators are added by vote with `qbft_proposeValidatorVote` or by a validator contract. Clique rotates signers without BFT voting, and AuRa, which [[nethermind|Nethermind]] runs for chains such as Energy Web, assigns fixed time steps to validators in turn.",
+          "Client support has narrowed. [[geth|Geth]] since v1.14 cannot seal Clique or Ethash blocks and runs private networks only as proof of stake with a consensus client. Besu removed Clique in 26.4.0, keeping only the ability to sync chains that started as Clique and later moved to proof of stake, and supports IBFT 2.0 for existing networks while recommending QBFT. Nethermind still ships Clique and AuRa engines. A new private network on the other clients is therefore a small proof-of-stake chain, of the kind [[kurtosis|Kurtosis]] or a [[local-devnet|local devnet]] spins up.",
+        ],
+      },
+      {
+        heading: "Finality and the block tags",
+        paragraphs: [
+          "Under QBFT or IBFT 2.0 a committed block is final: there are no forks, so the [[confirmations|confirmation]] counting and [[reorg|reorg]] handling written for public chains protects against nothing. The `safe` and `finalized` [[block-tag|block tags]], though, are defined by the [[engine-api|Engine API]] forkchoice, which a BFT network does not have. Besu resolves them from markers only the Engine API or a plugin sets, so on a plain QBFT network `eth_getBlockByNumber` with `finalized` returns an `Unknown block` error; its plugin API added setters for exactly this case. On such a network `latest` is the final block, and a library that defaults to `finalized` breaks.",
+          "Clique and AuRa do not give that guarantee; short forks are possible and confirmations still mean something. BFT networks fail differently: when more than a third of validators are offline they stop producing blocks altogether, so [[eth-block-number|eth_blockNumber]] freezes instead of the chain forking, and a [[health-check|health check]] that watches head progress is the one that notices.",
+        ],
+      },
+      {
+        heading: "Permissioning, privacy and fees",
+        paragraphs: [
+          "Besu's local permissioning is enabled with `--permissions-nodes-config-file-enabled` and `--permissions-accounts-config-file-enabled`, reads allowlists from `permissions_config.toml`, and is managed at runtime through the `perm_` [[namespaces|namespace]], such as `perm_addAccountsToAllowlist`. Account permissioning is a policy of each node, not a consensus rule: a node rejects a non-allowlisted sender at [[eth-send-raw-transaction|eth_sendRawTransaction]] and will not propagate or include the transaction, yet accepts a block from another node that contains it. Smart-contract permissioning and Tessera private transactions were removed from Besu in 25.6.0 and the `PRIV` and `EEA` API groups in 25.7.0, so the `priv_` methods older guides describe no longer exist.",
+          "Many private networks charge nothing for gas. In Besu that takes `--min-gas-price=0` on every node, `zeroBaseFee: true` in the [[genesis|genesis]] config for London and later, and turning off the pool's balance check, after which `eth_gasPrice` can return `0x0` and wallets or libraries that assume a positive base fee can misbehave. The chain id is chosen locally and can collide with a public network's, and the consensus methods — `qbft_`, `ibft_`, Nethermind's `clique_` — are extra namespaces enabled per node, for example by adding `QBFT` to Besu's `--rpc-http-api`.",
+        ],
+      },
+    ],
+    example: {
+      title: "A QBFT genesis with free gas, and the finalized tag on such a network",
+      language: "json",
+      code: "// genesis config (excerpt)\n{\n  \"config\": {\n    \"chainid\": 1337,\n    \"berlinBlock\": 0,\n    \"londonBlock\": 0,\n    \"zeroBaseFee\": true,\n    \"qbft\": { \"blockperiodseconds\": 2, \"epochlength\": 30000, \"requesttimeoutseconds\": 4 }\n  },\n  \"gasLimit\": \"0x1fffffffffffff\",\n  \"difficulty\": \"0x1\",\n  \"extraData\": \"0xf87aa0…c080c0\"\n}\n\n// request against a Besu QBFT node with no plugin setting finality\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getBlockByNumber\",\"params\":[\"finalized\",false]}\n{\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":-39001,\"message\":\"Unknown block\"}}",
+      note: "Every block here is final once committed, yet the tag that says so is missing; on this network `latest` is the answer a `finalized` caller wanted.",
+    },
+    pitfalls: [
+      "Defaulting reads to the `finalized` tag on a QBFT network, where Besu answers `Unknown block` although every committed block is final.",
+      "Treating Besu account permissioning as a chain rule; it filters what one node accepts, and blocks from other nodes can still contain those transactions.",
+      "Following an older guide to `priv_` methods or Tessera on a current Besu release, where private transactions have been removed.",
+      "Starting a new Clique network on Geth or Besu; neither can seal Clique blocks any more.",
+      "Leaving one node with a non-zero `--min-gas-price` on a free-gas network, which silently refuses zero-price transactions sent to it.",
+    ],
+    related: ["besu", "nethermind", "geth", "genesis", "chain-id", "block-tag", "finality", "namespaces", "local-devnet", "the-merge"],
+    sources: [
+      { title: "Besu: proof of authority consensus", url: "https://docs.besu-eth.org/private-networks/concepts/poa" },
+      { title: "Besu: local permissioning", url: "https://docs.besu-eth.org/private-networks/how-to/use-local-permissioning" },
+      { title: "Geth: private networks", url: "https://geth.ethereum.org/docs/fundamentals/private-network" },
+      { title: "Besu changelog", url: "https://github.com/besu-eth/besu/blob/main/CHANGELOG.md" },
+    ],
+  },
+  {
+    id: "server-sent-events",
+    title: "Server-sent events",
+    category: "foundations",
+    aliases: ["SSE", "text/event-stream", "EventSource", "Last-Event-ID", "/eth/v1/events", "event stream", "Beacon API events"],
+    summary: "Server-sent events are a one-way push stream carried in an ordinary HTTP response of type `text/event-stream`, which the [[beacon-api|Beacon API]] uses at `/eth/v1/events` to announce heads, blocks, finality and reorgs as the beacon node sees them.",
+    sections: [
+      {
+        heading: "The wire format",
+        paragraphs: [
+          "The client sends a GET, usually with `accept: text/event-stream`, and the server keeps the response open, writing UTF-8 text as things happen. Each line is a field: `event:` sets the event type, `data:` appends to the payload, `id:` sets the last event id, and `retry:` sets the reconnection delay in milliseconds. A blank line dispatches the event built so far, and a line starting with a colon is a comment, which servers use as a keep-alive.",
+          "Nothing flows the other way. There is no upgrade and no binary framing, just an HTTP response that never finishes, which is why it passes through anything that passes [[http-transport|HTTP]] and is trivial to read with `curl -N`. A [[websocket-transport|WebSocket]] is the opposite trade: bidirectional frames after an upgrade handshake, so a client can send requests on the same connection, which is how [[eth-subscribe|eth_subscribe]] works on the execution layer.",
+        ],
+      },
+      {
+        heading: "Reconnection, and what it does not recover",
+        paragraphs: [
+          "A browser's `EventSource` reconnects by itself after a delay the browser chooses, a few seconds unless the server sent `retry:`, and it sends `Last-Event-ID` with the last id it saw, so a server that keeps a history can resume from there; an HTTP 204 tells it to stop trying. Resumption is entirely the server's feature, and `EventSource` cannot set custom headers, so a key has to travel in the URL or a cookie.",
+          "The Beacon API does not define event ids or replay. Its stream carries only `event:` and `data:` lines, so a consumer that reconnects receives events from that moment on and nothing from the gap. That is the same shape as a dropped `eth_subscribe` connection, and it has the same remedy: remember the last block root and slot you processed, then fill the gap over REST before trusting the stream again.",
+        ],
+      },
+      {
+        heading: "The Beacon API stream",
+        paragraphs: [
+          "`GET /eth/v1/events?topics=head,chain_reorg,finalized_checkpoint` subscribes to several topics on one connection. Version 4.0.0 of the specification lists `head`, `block`, `block_gossip`, `attestation`, `single_attestation`, `voluntary_exit`, `bls_to_execution_change`, `proposer_slashing`, `attester_slashing`, `finalized_checkpoint`, `chain_reorg`, `contribution_and_proof`, the two light-client updates, `payload_attributes`, `blob_sidecar` and `data_column_sidecar`. Payload numbers are decimal strings, as elsewhere in the API; the pre-release for the next fork deprecates `head` in favour of `head_v2`.",
+          "`head` carries the slot, block root, state root and dependent roots whenever [[fork-choice|fork choice]] moves; `chain_reorg` adds `depth` and the old and new head roots, the one place a [[reorg|reorg]] arrives as an explicit event; `finalized_checkpoint` fires about once per epoch with the new [[finality|finalized]] root. `block_gossip` fires when a block passes gossip validation and `block` when fork choice imports it, which is why [[network-telemetry|telemetry]] records both. `payload_attributes` is what builders and relays use to prepare the next proposal, and the attestation topics are high-volume.",
+        ],
+      },
+      {
+        heading: "Proxies and backfill",
+        paragraphs: [
+          "nginx buffers proxied responses by default, so events arrive in bursts or only once a buffer fills; `proxy_buffering off` for the location, or an `X-Accel-Buffering: no` response header, fixes it. Its `proxy_read_timeout` of 60 seconds cuts a quiet stream: a subscription to `finalized_checkpoint` alone is idle for several minutes at a time, and the Beacon API permits keep-alive comments without requiring them. Configure the [[reverse-proxy|reverse proxy]] for a stream, not for a request.",
+          "After any reconnect, backfill before resuming: read `/eth/v1/beacon/headers/head` and `/eth/v1/beacon/states/head/finality_checkpoints` from the [[beacon-endpoints|REST routes]], compare the canonical root at each slot since your last processed one, and walk parent roots back to the first match to find reorgs you missed.",
+        ],
+      },
+    ],
+    example: {
+      title: "A head and a reorg on the stream, and a proxy that does not break it",
+      language: "text",
+      code: "curl -sN -H 'accept: text/event-stream' \\\n  'http://127.0.0.1:5052/eth/v1/events?topics=head,chain_reorg,finalized_checkpoint'\n\nevent: head\ndata: {\"slot\":\"15307260\",\"block\":\"0x4f1c…a2e9\",\"state\":\"0x9d02…17bb\",\"epoch_transition\":false,\"previous_duty_dependent_root\":\"0x6ab3…0c41\",\"current_duty_dependent_root\":\"0x2e7f…d905\",\"execution_optimistic\":false}\n\nevent: chain_reorg\ndata: {\"slot\":\"15307261\",\"depth\":\"1\",\"old_head_block\":\"0x8c55…3f10\",\"new_head_block\":\"0xb21e…77a4\",\"old_head_state\":\"0x51d0…9e2c\",\"new_head_state\":\"0xe3a4…0b58\",\"epoch\":\"478351\",\"execution_optimistic\":false}\n\n# nginx in front of it\nlocation /eth/v1/events {\n  proxy_pass http://127.0.0.1:5052;\n  proxy_buffering off;        # otherwise events arrive in bursts\n  proxy_read_timeout 1h;      # a quiet topic can be idle for minutes\n}",
+      note: "Neither event carries an `id:` line, so a reconnect cannot ask for what it missed; the REST routes are the only way to fill the gap.",
+    },
+    pitfalls: [
+      "Assuming a reconnect resumes the Beacon API stream, when it defines no replay and the gap has to be backfilled over REST.",
+      "Serving the stream through nginx with default buffering, so events arrive late and in batches.",
+      "Leaving a 60-second proxy read timeout on a subscription whose only topic fires once per epoch.",
+      "Treating a `head` event as final; a later `chain_reorg` can replace it, and only `finalized_checkpoint` means finality.",
+      "Subscribing a dashboard to attestation topics on a shared beacon node, pulling a high-volume stream through it for no reason.",
+    ],
+    related: ["beacon-api", "beacon-endpoints", "eth-subscribe", "websocket-transport", "http-transport", "reverse-proxy", "reorg", "finality", "fork-choice", "network-telemetry", "mev-share"],
+    sources: [
+      { title: "WHATWG HTML: server-sent events", url: "https://html.spec.whatwg.org/multipage/server-sent-events.html" },
+      { title: "Beacon APIs: event stream", url: "https://github.com/ethereum/beacon-APIs/blob/master/apis/eventstream/index.yaml" },
+      { title: "nginx: ngx_http_proxy_module", url: "https://nginx.org/en/docs/http/ngx_http_proxy_module.html" },
+    ],
+  },
+  {
+    id: "openrpc",
+    title: "OpenRPC",
+    category: "foundations",
+    aliases: ["OpenRPC", "openrpc.json", "rpc.discover", "JSON Schema", "rpc_modules", "rpc-compat", "method schema"],
+    summary: "OpenRPC is a JSON-Schema-based format for describing a [[json-rpc|JSON-RPC]] 2.0 API, its methods, parameters, results, errors and examples, in one machine-readable document, much as OpenAPI describes a REST API, and it is the language the [[execution-apis|execution-apis]] specification is written in.",
+    sections: [
+      {
+        heading: "What a document contains",
+        paragraphs: [
+          "An OpenRPC document is a JSON object with `openrpc`, the specification version, currently 1.4.x; `info`; optional `servers`; `methods`; and `components`, which holds reusable schemas referenced with `$ref`. Each method has a `name`, a `summary`, `params` as an array of content descriptors, each with a `name`, a `schema` and a `required` flag, a `result` descriptor, optional `errors` with `code`, `message` and `data`, `examples`, and `paramStructure`, which is `by-position`, `by-name` or, by default, `either`.",
+          "Schemas follow JSON Schema draft 7, which is where Ethereum's [[hex-encoding|encoding rules]] become checkable. The execution-apis base types define `uint` as a string matching `^0x(0|[1-9a-f][0-9a-f]*)$`, so a QUANTITY with a leading zero fails validation, and fixed-width types such as a 32-byte hash as exact-length patterns. Ethereum methods take positional parameters, so a descriptor's place in the array is its meaning.",
+        ],
+      },
+      {
+        heading: "How execution-apis uses it",
+        paragraphs: [
+          "The specification is written as YAML split by area, such as `src/eth/client.yaml` and `src/schemas/base-types.yaml`, and `make build` compiles it into one `openrpc.json` with every `$ref` resolved, validated against the OpenRPC metaschema along the way. That file drives the rendered documentation at `ethereum.github.io/execution-apis` and whatever client generators consume it. Beyond `eth_`, the repository now also carries some [[debug-api|debug_]] methods, `txpool_content`, the [[engine-api|Engine API]] and, since 2026, an `eth_capabilities` [[eth-capabilities|method for reporting retention]].",
+          "Conformance is tested separately. The `tests` directory holds `.io` files, each a request line prefixed `>>` and the expected response prefixed `<<`, recorded against a fixed chain built from `genesis.json` and `chain.rlp`; `speccheck` validates those cases against the schema, and [[hive|hive's]] `rpc-compat` simulator replays them against every major client daily, publishing results at hive.ethpandaops.io. This is the lever that keeps [[client-diversity|different clients]] returning the same shapes.",
+        ],
+      },
+      {
+        heading: "Discovery at runtime",
+        paragraphs: [
+          "OpenRPC defines one method of its own, `rpc.discover`, which a server answers with its own OpenRPC document, so a client could learn the exact surface of the endpoint in front of it. Ethereum execution clients do not generally serve it. What [[geth|Geth]], [[nethermind|Nethermind]] and [[reth|Reth]] answer instead is `rpc_modules`, which returns the enabled [[namespaces|namespaces]] with a version string each, such as `eth` mapped to `1.0`, and says nothing about individual methods, parameters or limits. The practical way to learn an endpoint's surface is still to probe it; see [[endpoint-capabilities|endpoint capabilities]].",
+        ],
+      },
+      {
+        heading: "What the schema cannot say",
+        paragraphs: [
+          "A schema fixes shapes, not behaviour. It cannot say how much gas an [[eth-call|eth_call]] may use, how wide an [[eth-get-logs|eth_getLogs]] range may be, how long a call may run, which namespaces an operator enabled, or how fast anything is, and the meaning of a tag such as `pending` lives in prose descriptions. A response can be schema-valid and wrong, since no pattern knows the correct balance; the recorded tests compare values only on their own small chain.",
+          "Errors are the thinnest part. Since 2026 the repository has an error-group catalogue, with code `3` for execution reverted, 800 to 999 for gas errors and 1000 to 1199 for transaction-pool errors, but so far only `eth_sendTransaction` and [[eth-send-raw-transaction|eth_sendRawTransaction]] reference it, so most methods' failures remain unspecified. Client-specific namespaces such as [[trace-api|trace_]] and `ots_` are absent entirely.",
+        ],
+      },
+    ],
+    example: {
+      title: "One method, its type, and its conformance test",
+      language: "yaml",
+      code: "# src/eth/client.yaml\n- name: eth_chainId\n  summary: Returns the chain ID of the current network.\n  params: []\n  result:\n    name: Chain ID\n    schema:\n      $ref: '#/components/schemas/uint'\n\n# src/schemas/base-types.yaml: the QUANTITY rule as a pattern\nuint:\n  title: hex encoded unsigned integer\n  type: string\n  pattern: ^0x(0|[1-9a-f][0-9a-f]*)$\n\n# tests/eth_chainId/get-chain-id.io, replayed by hive's rpc-compat simulator\n# >> {\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_chainId\"}\n# << {\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"0xc72dd9d5e883e\"}",
+      note: "The schema would reject `0x01`; only the test notices whether the value is the chain id of the test chain, and neither says whether your endpoint enables the method.",
+    },
+    pitfalls: [
+      "Treating a schema-valid response as a correct one; the schema checks encoding and shape, not the value.",
+      "Calling `rpc.discover` on an execution client and concluding the endpoint is broken, when clients serve `rpc_modules` instead.",
+      "Generating a client from `openrpc.json` and assuming every method in it is enabled on your endpoint.",
+      "Branching on error codes from the catalogue for methods that do not yet reference it, where clients still differ.",
+      "Reading the rendered documentation as the whole surface; client namespaces such as `trace_` and `ots_` are not in it.",
+    ],
+    related: ["execution-apis", "json-rpc", "namespaces", "hex-encoding", "rpc-errors", "endpoint-capabilities", "client-diversity", "engine-api", "client-namespaces", "hive"],
+    sources: [
+      { title: "OpenRPC specification", url: "https://spec.open-rpc.org/" },
+      { title: "ethereum/execution-apis", url: "https://github.com/ethereum/execution-apis" },
+      { title: "Execution APIs: tests", url: "https://github.com/ethereum/execution-apis/blob/main/docs-api/docs/tests.md" },
+      { title: "hive: rpc-compat simulator", url: "https://github.com/ethereum/hive/tree/master/simulators/ethereum/rpc-compat" },
     ],
   },
 ];

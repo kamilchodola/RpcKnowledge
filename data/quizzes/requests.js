@@ -167,10 +167,10 @@ export const quizzes = {
       kind: "contrast",
       question: "eth_getBlockReceipts returns [] for one block and null for another. What distinguishes the two answers?",
       options: [
-        "The first block is empty; the node cannot serve the second block at all",
+        "The first block is empty; the node has never had the second block at all",
         "The first block is not yet finalized; the second was reorged out of the chain",
         "The first block holds only failed transactions; the second holds none at all",
-        "The first was pruned from the receipt store; the second was never produced",
+        "The first block's receipts were pruned; the second block is still pending",
       ],
       answer: 0,
     },
@@ -553,7 +553,7 @@ export const quizzes = {
     },
     {
       kind: "detail",
-      question: "Where is the value for key k of a mapping declared at slot p stored?",
+      question: "In Solidity, where is the value for key k of a mapping declared at slot p stored?",
       options: [
         "At slot p plus the numeric value of k",
         "At keccak256(pad32(p) concatenated with pad32(k))",
@@ -1064,7 +1064,7 @@ export const quizzes = {
         "Sent the exact same bytes that the pool already holds",
         "Used a nonce below the account's current nonce",
         "Offered a fee below the pool's configured minimum",
-        "Reused a queued nonce without a large enough fee bump",
+        "Reused a pooled nonce without a large enough fee bump",
       ],
       answer: 3,
     },
@@ -1440,7 +1440,7 @@ export const quizzes = {
     },
     {
       kind: "cause",
-      question: "Why does simulating a call that withdraws ether from a contract show no value moving unless traceTransfers is set?",
+      question: "On mainnet, why does simulating a call that withdraws ether from a contract show no value moving unless traceTransfers is set?",
       options: [
         "Ether transfers are hidden inside delegate calls by default",
         "Plain ether transfers emit no logs for the simulation to show",
@@ -1691,12 +1691,12 @@ export const quizzes = {
     },
     {
       kind: "cause",
-      question: "Why does the reward trace type appear only on blocks from before the Merge?",
+      question: "A client includes a reward entry when tracing a post-Merge Ethereum mainnet block. Why is its value zero?",
       options: [
-        "Rewards moved into the stateDiff trace type after the Merge",
-        "Post-Merge rewards are paid by a system call that is not traced",
+        "Rewards moved into the stateDiff trace type at the Merge",
+        "Post-Merge rewards are paid by a system call it does not trace",
         "Since the Merge there is no execution-layer block reward",
-        "Reward traces are pruned from full nodes after the Merge",
+        "Reward values are pruned from full nodes after the Merge",
       ],
       answer: 2,
     },
@@ -2002,16 +2002,16 @@ export const quizzes = {
       options: [
         "The finality_checkpoints route, comparing epochs across polls",
         "The /eth/v1/events stream with the chain_reorg topic",
-        "The blob_sidecars route, which leaves out reorged blocks",
+        "The blobs route, which leaves out any reorged blocks",
         "The headers route, checking the canonical flag on each slot",
       ],
       answer: 1,
     },
     {
       kind: "consequence",
-      question: "You request blob sidecars from a beacon node for a block from two months ago. What do you get?",
+      question: "You request the blobs of a block from two months ago from a supernode's Beacon API. What do you get?",
       options: [
-        "The blobs, since beacon nodes keep them for good",
+        "The blobs, since supernodes keep them for good",
         "The blobs, but only in SSZ form, never as JSON",
         "Nothing: they are kept for only about 18 days",
         "The versioned hashes, with the blob bodies removed",
@@ -2037,6 +2037,420 @@ export const quizzes = {
         "/eth/v1/node/syncing, via the head_slot it reports",
         "/eth/v2/beacon/blocks/{block_id}, via the payload in its body",
         "/eth/v1/beacon/states/{state_id}/finality_checkpoints",
+      ],
+      answer: 2,
+    },
+  ],
+
+  "client-namespaces": [
+    {
+      kind: "scenario",
+      question: "An explorer built on ots_searchTransactionsBefore fails over from Erigon to a Reth node with ots enabled. What does it get?",
+      options: [
+        "The same results, since both report ots API level 8",
+        "A -32601 error, because Reth has no ots namespace",
+        "Results limited to blocks Reth has indexed so far",
+        "A -32603 unimplemented error from the search method",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "cause",
+      question: "Why can the same client answer an erigon_ call on one endpoint and return -32601 on another?",
+      options: [
+        "The namespace is served only once the node is finalized",
+        "Namespaces are enabled per listener by the operator",
+        "The client picks namespaces from the caller's API key",
+        "The answer depends on the storage engine's version",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "contrast",
+      question: "How does the optimism_ namespace differ from Erigon's erigon_ namespace?",
+      options: [
+        "It is served by the rollup node, not by an execution client",
+        "It is standardised in execution-apis, unlike the erigon_ set",
+        "It runs only on the Engine API port behind JWT authentication",
+        "It is a set of aliases that map onto standard eth_ methods",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "detail",
+      question: "What does Nethermind's proof_getTransactionReceipt add to an ordinary receipt?",
+      options: [
+        "A state proof of the sender's account at the parent block",
+        "A signature from the node vouching for the receipt's content",
+        "Trie proofs of the transaction and receipt against block roots",
+        "The execution trace of the transaction's internal calls",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "consequence",
+      question: "An indexer is written against erigon_getBlockByTimestamp, then a Geth fallback is added. What happens on failover?",
+      options: [
+        "Geth quietly translates the call to eth_getBlockByNumber",
+        "Calls succeed but return blocks in a different time zone",
+        "Geth answers once its own erigon module has been enabled",
+        "Calls fail with method not found until the code changes",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "detail",
+      question: "What does rpc_modules tell a caller about a Geth, Nethermind or Reth listener?",
+      options: [
+        "Which methods exist, each with its full parameter schema",
+        "Which namespaces are enabled, each with a version string",
+        "Which clients the listener proxies to, listed by version",
+        "Which namespaces are standard according to the spec",
+      ],
+      answer: 1,
+    },
+  ],
+
+  "mev-bundle": [
+    {
+      kind: "scenario",
+      question: "A searcher's eth_callBundle succeeds, but one entry carries a revert field. What does that mean for the real submission?",
+      options: [
+        "Unless its hash is in revertingTxHashes, the bundle is dropped",
+        "The relay has already rejected the bundle for that target block",
+        "The revert is ignored, because the simulation passed as a whole",
+        "The builder reorders the bundle so that the revert disappears",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "cause",
+      question: "Why does a strategy aimed at the next three blocks submit its bundle three times?",
+      options: [
+        "Builders discard a bundle after its first failed slot",
+        "The signature header expires after twelve seconds",
+        "Each eth_sendBundle names one target blockNumber",
+        "Relays accept one bundle per searcher key per slot",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "contrast",
+      question: "How does the inclusion field of mev_sendBundle differ from the blockNumber of eth_sendBundle?",
+      options: [
+        "It names a beacon slot rather than an execution block",
+        "It is a timestamp window rather than a block number",
+        "It names the one builder that must include the bundle",
+        "It can name a range of blocks, from block to maxBlock",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "detail",
+      question: "In an eth_callBundle response, what does ethSentToCoinbase measure?",
+      options: [
+        "The total gas fees the bundle pays, with base fee included",
+        "Coinbase gain beyond priority fees, such as direct payments",
+        "The priority fee per gas that each transaction specifies",
+        "The value field of the last transaction in the bundle",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "consequence",
+      question: "A searcher pretty-prints the JSON body after computing its X-Flashbots-Signature. What follows?",
+      options: [
+        "The relay accepts it, since it hashes the parsed JSON object",
+        "The relay accepts it but stops tracking the key's reputation",
+        "The signature no longer matches the bytes the relay receives",
+        "The bundle is simulated but never forwarded to any builder",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "scenario",
+      question: "A searcher calls eth_cancelBundle with the bundle's replacementUuid. What can still happen?",
+      options: [
+        "A bid already sent to the relay still carries the bundle",
+        "Nothing, as cancelling removes it from every builder",
+        "The bundle is resubmitted for the following block",
+        "The relay refunds the fees the bundle would have paid",
+      ],
+      answer: 0,
+    },
+  ],
+
+  "deployless-call": [
+    {
+      kind: "scenario",
+      question: "A deployless read of a function returning a bytes32 hash fails with invalid code: must not begin with 0xef, yet the same read through a code override works. Why?",
+      options: [
+        "The hash was longer than the 32 bytes eth_call can return",
+        "The override path skips a gas cap that the creation path applies",
+        "Creation results are checked as code, and this hash began 0xEF",
+        "The node rejects creation code that calls a view function",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "What does an eth_call that has no to field return as its result?",
+      options: [
+        "The address the contract would be deployed at",
+        "The bytes the initcode handed to RETURN",
+        "The runtime code stored at the zero address",
+        "An empty result, since nothing is deployed",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "contrast",
+      question: "Which deployless technique still works on an endpoint that strips state overrides from eth_call?",
+      options: [
+        "Creation code sent with no to, since it needs no third parameter",
+        "Runtime code placed by an override, since it skips creation rules",
+        "Neither, because both techniques rely on the override parameter",
+        "Either, because the client library restores stripped overrides",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "consequence",
+      question: "A team keeps adding reads to a deployless multicall until its return data reaches 30 KB. What happens?",
+      options: [
+        "The node truncates the result to 24,576 bytes",
+        "Only the calls beyond the limit report failure",
+        "The call succeeds but is charged double the gas",
+        "The whole call fails with a code-size error",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "cause",
+      question: "Why does replacing a deployed contract's code with an override that adds a getter expose the contract's internal variables?",
+      options: [
+        "The override copies the old storage into public variables",
+        "The contract's own storage stays in place under the new code",
+        "Overrides switch off the private keyword for that request",
+        "The getter reads the old code's memory from the last block",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "scenario",
+      question: "On a chain with no Multicall3 deployment, how does viem batch reads when multicall is called with deployless set to true?",
+      options: [
+        "It deploys Multicall3 with a transaction before the first read",
+        "It falls back to one eth_call per read in a JSON-RPC batch",
+        "It installs Multicall3 at its usual address with an override",
+        "It sends Multicall3's creation code and calldata with no to",
+      ],
+      answer: 3,
+    },
+  ],
+
+  "storage-slot-discovery": [
+    {
+      kind: "scenario",
+      question: "A simulator overrides keccak256(pad32(holder) . pad32(p)) on a Vyper token, and balanceOf still returns the old value. Why?",
+      options: [
+        "Vyper stores token balances in transient storage",
+        "Vyper tokens reject overrides on their balance slots",
+        "Vyper hashes the slot first and the key second",
+        "Vyper pads the key on the right rather than the left",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "In a debug_traceCall struct log of balanceOf, where is the storage key that an SLOAD reads?",
+      options: [
+        "At the top of the stack on that SLOAD step",
+        "In the memory field just after the SLOAD step",
+        "In the storage field of the next CALL step",
+        "In the return data of the outermost frame",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "consequence",
+      question: "A test writes the maximum uint256 into a USDC holder's balance slot and then simulates a transfer from that holder. What happens?",
+      options: [
+        "The transfer succeeds and moves the whole written amount",
+        "The balanceOf call reverts with an arithmetic overflow",
+        "The node rejects the override as an out-of-range value",
+        "The transfer reverts, because the top bit marks a blacklist",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "How does a slot that matched a Solidity mapping formula differ from a slot that matched no formula at all?",
+      options: [
+        "The formula works for any holder; the raw slot for one",
+        "The formula needs a trace; the raw slot needs none",
+        "The raw slot survives upgrades; the formula breaks",
+        "The formula is for proxies; the raw slot for tokens",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "cause",
+      question: "Why does writing 1,000 tokens' worth into stETH's shares entry not give a balance of exactly 1,000 stETH?",
+      options: [
+        "stETH keeps balances in the Lido oracle contract instead",
+        "The shares slot packs a timestamp into its upper bits",
+        "balanceOf converts shares to ether at the current rate",
+        "stETH rounds every balance down to whole units of ether",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "scenario",
+      question: "A stateDiff on a proxied token's implementation address has no effect on balanceOf. What should the simulator change?",
+      options: [
+        "Override the admin slot so the proxy reloads its code",
+        "Override the proxy's address, which owns the storage",
+        "Switch the implementation override from stateDiff to state",
+        "Pin the call to the block before the latest upgrade",
+      ],
+      answer: 1,
+    },
+  ],
+
+  "mempool-streaming": [
+    {
+      kind: "detail",
+      question: "Which form of the full-transaction option does Besu accept for a newPendingTransactions subscription?",
+      options: [
+        "A bare true passed as the second parameter",
+        "An object with includeTransactions set to true",
+        "A third parameter named fullTx, set to true or false",
+        "A subscription named fullPendingTransactions",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "cause",
+      question: "Why does subscribing for hashes and then calling eth_getTransactionByHash on each one lose transactions?",
+      options: [
+        "Hash notifications are truncated to their first 20 bytes",
+        "Lookups by hash search mined blocks but never the pool",
+        "Notifications use a different hash than the lookup does",
+        "Some leave the pool before the lookup arrives",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "How does a full-object newPendingTransactions stream on your own node differ from Flashbots' Mempool Dumpster?",
+      options: [
+        "The stream is one node's live view; the archive merges sources after the fact",
+        "The stream includes private orderflow; the archive covers only the public pools",
+        "The stream arrives in block order; the archive is sorted by first sighting",
+        "The stream is published as daily Parquet; the archive is a live WebSocket",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "consequence",
+      question: "A consumer reads Geth's pending-transaction stream more slowly than notifications arrive. What eventually happens?",
+      options: [
+        "Geth silently drops the oldest notifications and carries on",
+        "Geth switches the subscription to hashes to save memory",
+        "The connection breaks and every subscription on it stops",
+        "Geth pauses its pool until the consumer catches up",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "cause",
+      question: "Why do blob transactions reach a node's pool later and less evenly than other transaction types?",
+      options: [
+        "They travel only on the consensus layer's gossip topics",
+        "They are announced by hash and fetched on demand",
+        "They are held back by peers until the next slot starts",
+        "They are forwarded only to nodes that run a validator",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "scenario",
+      question: "A monitor that front-runs exploits from its node's pending stream never saw an attack that later landed in a block. Which explanation fits?",
+      options: [
+        "Its node was still syncing and ignored new arrivals",
+        "The exploit used a blob transaction, which skips pools",
+        "Pending streams leave out calls with large calldata",
+        "The attack went to builders privately, never to a pool",
+      ],
+      answer: 3,
+    },
+  ],
+
+  "eth-capabilities": [
+    {
+      kind: "scenario",
+      question: "A router reads state.oldestBlock at noon and keeps using that number all day, for a resource with a 128-block window. What happens?",
+      options: [
+        "The node keeps serving that floor until the router asks again",
+        "Requests near that floor fail as the real floor keeps rising",
+        "The node rejects calls from routers that do not refresh hourly",
+        "Requests below the floor are passed on by the node to an archive",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "detail",
+      question: "What does it mean when a resource in the eth_capabilities result has no deleteStrategy?",
+      options: [
+        "Its floor rises one block per block, like any other window",
+        "Its data is disabled, and its oldestBlock should be ignored",
+        "Its floor is unknown, and the node has to be probed instead",
+        "Its floor is fixed, or there is no floor below it at all",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "On a path-based Geth archive, how does the stateproofs resource differ from the state resource?",
+      options: [
+        "It follows the trie-node history setting, not the state window",
+        "It always equals the state floor, since proofs read the same data",
+        "It is reported only when the node has the trace namespace enabled",
+        "It also covers receipt and log proofs besides account proofs",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "detail",
+      question: "A router parses retentionBlocks strictly as a hex string, as the schema requires. What can some Reth and Nethermind releases send instead?",
+      options: [
+        "A quoted decimal string, such as 10064, in place of hex digits",
+        "A count of seconds, such as 120960, in place of a block count",
+        "A plain JSON number, such as 10064, in place of a hex string",
+        "A pair of block numbers, oldest and newest, in place of a count",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "consequence",
+      question: "A snap-synced Besu node reports its state resource with disabled set to true. What does a router that takes this literally do?",
+      options: [
+        "Stops sending it the latest-state reads it could still answer",
+        "Sends it archive reads that it answers from a cached snapshot",
+        "Sends it every eth_getProof call, since proofs use another store",
+        "Drops the node from header and block routing as well as state",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "cause",
+      question: "Why is the eth_capabilities conformance test in execution-apis marked speconly?",
+      options: [
+        "The method is optional, so hive cannot fail clients that lack it",
+        "Its result uses integers, which the rpc-compat diff cannot read",
+        "Retention differs per node and configuration, so values cannot match",
+        "The test chain has no history, so every resource reads disabled",
       ],
       answer: 2,
     },

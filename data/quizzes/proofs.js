@@ -154,14 +154,14 @@ export const quizzes = {
     },
     {
       kind: "scenario",
-      question: "eth_getProof returns codeHash 0xc5d24601…a470 and storageHash 0x56e81f17…b421 for an address. What does that indicate?",
+      question: "eth_getProof returns the empty-code hash as codeHash and the empty-trie root as storageHash for an address. What do those two values tell you?",
       options: [
-        "The account is a contract whose code self-destructed",
-        "The account does not exist; those are the empty constants",
+        "The account does not exist, since those are the empty constants",
         "The node lacked the trie nodes and returned placeholder values",
-        "The account exists, but its storage was pruned away",
+        "Nothing about existence; a funded EOA returns exactly the same",
+        "The account exists, but its code and storage were pruned away",
       ],
-      answer: 1,
+      answer: 2,
     },
     {
       kind: "cause",
@@ -568,12 +568,12 @@ export const quizzes = {
     },
     {
       kind: "detail",
-      question: "Which tracer output doubles as the witness a stateless verifier would need?",
+      question: "What does prestateTracer output lack that a stateless verifier's witness must carry?",
       options: [
-        "callTracer, listing the full tree of calls made",
-        "prestateTracer, listing every account and slot read",
-        "4byteTracer, counting the function selectors called",
-        "The struct logger, recording every opcode executed",
+        "The values of the accounts and slots that the transaction read",
+        "The trie nodes that prove each value against the state root",
+        "The call tree that shows which frame read each account or slot",
+        "The gas that each call frame used, for the verifier to re-meter",
       ],
       answer: 1,
     },
@@ -754,8 +754,560 @@ export const quizzes = {
       options: [
         "An eth_getProof of the called contract's code alone",
         "A sync committee signature over the returned data",
-        "Re-executing the call locally against a proven witness",
+        "Re-executing the call locally against proven state",
         "A receipt proof for the call's output under receiptsRoot",
+      ],
+      answer: 2,
+    },
+  ],
+
+  "witness": [
+    {
+      kind: "scenario",
+      question: "A prover is handed prestateTracer output for a block and re-executes the block from it. What does a successful run tell it about those input values?",
+      options: [
+        "That they match the parent state root the tracer read from",
+        "That they are complete, since the tracer includes every header",
+        "Nothing beyond the word of the node that ran the tracer",
+        "That they are final, since tracers only run on finalized blocks",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "Besides trie nodes and contract code, what does a debug_executionWitness response include so a verifier can check BLOCKHASH results?",
+      options: [
+        "Ancestor block headers that chain back by parentHash",
+        "A list of block hashes signed by the serving node",
+        "The beacon block roots of the last 256 slots",
+        "The receipts of every block BLOCKHASH can reach",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "cause",
+      question: "Why is a Merkle-Patricia witness so much larger than the values it carries?",
+      options: [
+        "Each value is repeated once for every transaction that reads it",
+        "Every node is shipped twice, once as RLP and once as JSON",
+        "Every account proof must include the account's whole storage trie",
+        "Each level of a path ships a branch node of up to sixteen hashes",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "scenario",
+      question: "You call debug_executionWitness for a two-year-old block on a pruned node. What should you expect?",
+      options: [
+        "A witness rebuilt from receipts, which pruned nodes keep for every block",
+        "A smaller witness, because older blocks touched fewer accounts",
+        "An error, because the node no longer holds that block's parent state",
+        "A witness with headers only, since state is left out for old blocks",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "contrast",
+      question: "How does eth_getProof differ from debug_executionWitness as a source of inputs for re-executing a block?",
+      options: [
+        "It returns unverified values, while the witness method returns proofs",
+        "It is verifiable per key but cannot say which keys a block needs",
+        "It covers a whole block at once, while the witness covers one account",
+        "It includes contract code, while the witness method returns only hashes",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "consequence",
+      question: "A verifier hashes every witness node correctly but takes the parent header from the same response. What is it actually trusting?",
+      options: [
+        "The server that sent it, since a made-up root verifies too",
+        "Nobody, because hashing every node already proves canonicality",
+        "The sync committee, which signs each execution witness",
+        "The block builder, who commits to the witness in the header",
+      ],
+      answer: 0,
+    },
+  ],
+
+  "verkle-tree": [
+    {
+      kind: "detail",
+      question: "In EIP-6800, how does a verkle node commit to its 256 children?",
+      options: [
+        "With a keccak-256 hash of the concatenated child references",
+        "With a Pedersen vector commitment over the Bandersnatch curve",
+        "With a SHA-256 Merkle root over the children, as SSZ does",
+        "With a KZG commitment that reuses the blob trusted setup",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "cause",
+      question: "Why do verkle proofs make witnesses smaller than hexary trie proofs?",
+      options: [
+        "Values are compressed with RLP before they are committed",
+        "Proofs cover only accounts and leave storage out of the witness",
+        "Nodes use a faster hash, so fewer of them need to be included",
+        "An opening proves a position without shipping the sibling data",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "scenario",
+      question: "A roadmap slide lists verkle trees as Ethereum's next state upgrade. What is the accurate status in 2026?",
+      options: [
+        "Set aside: the EIPs are Stagnant and a binary tree is the direction",
+        "Scheduled for Glamsterdam, with Sepolia activation in October",
+        "Live on mainnet since Pectra, with proofs served by eth_getProof",
+        "Scheduled for Hegotá, pending a final choice of commitment curve",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "contrast",
+      question: "How does the EIP-7864 binary tree differ from the verkle design it builds on?",
+      options: [
+        "It keeps a separate storage trie for each contract, unlike verkle",
+        "It keeps RLP-encoded nodes so that eth_getProof stays unchanged",
+        "It commits with hashes rather than elliptic-curve vector commitments",
+        "It keeps width 256 but swaps Pedersen for KZG commitments",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "consequence",
+      question: "Under the EIP-7612 overlay, what happens when a block reads an account nobody has written since the fork?",
+      options: [
+        "The read fails until conversion has moved that account across",
+        "The read misses the verkle tree and falls back to the frozen trie",
+        "The read returns empty, because the old trie is deleted at the fork",
+        "The read copies the account's entire storage into the new tree",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "detail",
+      question: "What can the verkle design distinguish that the current Merkle-Patricia trie cannot?",
+      options: [
+        "A contract account from an externally owned account",
+        "A finalized value from one written in a pending block",
+        "A storage slot from a code chunk that shares its key",
+        "A stored zero from a position that was never written",
+      ],
+      answer: 3,
+    },
+  ],
+
+  "exclusion-proof": [
+    {
+      kind: "detail",
+      question: "Which of these endings of a trie walk proves that the key is absent?",
+      options: [
+        "A branch whose seventeenth value slot is empty at that depth",
+        "A leaf whose value decodes to the RLP empty string 0x80",
+        "An extension whose segment is not a prefix of the remaining key",
+        "A final node whose encoding is shorter than 32 bytes",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "scenario",
+      question: "Your verifier's walk for a slot reaches a branch whose child for the next nibble is a hash, and the proof has no more nodes. How should it classify the result?",
+      options: [
+        "As an incomplete proof, since a real child is referenced",
+        "As proof of absence, since the path ended at a branch",
+        "As proof the slot holds zero, since no leaf was supplied",
+        "As a valid proof of the value stored in the branch itself",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "consequence",
+      question: "An application decides an address exists whenever eth_getProof returns non-zero codeHash and storageHash. What goes wrong?",
+      options: [
+        "Geth reports zero hashes for every account without contract code",
+        "Besu and Reth report the empty constants for absent accounts too",
+        "The two hashes change every block, so existence flips between calls",
+        "Non-zero hashes appear only for contracts, so every EOA looks absent",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "scenario",
+      question: "For a storage key of an account that exists, Geth answers value 0x0 with an empty proof array. When is that a valid proof that the slot is unset?",
+      options: [
+        "When the slot number is below 64 and sits in the account header",
+        "When the block is finalized and its old trie nodes were pruned",
+        "When the proven account leaf's storage root is the empty-trie root",
+        "When the account's codeHash equals the empty-code hash",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "cause",
+      question: "Why can't a storage proof tell a slot that was never written from one that was reset to zero?",
+      options: [
+        "Zero values are stored, but their proof nodes are pruned early",
+        "eth_getProof leaves out the proof for any slot whose value is zero",
+        "Both leaves hash alike, since RLP encodes zero as the byte 0x80",
+        "Writing zero deletes the slot's leaf, so both cases are absent",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "How does verifying an exclusion proof differ from verifying an inclusion proof in the same trie?",
+      options: [
+        "Only the last check differs: the final node must show the gap",
+        "It uses a different hash function for the empty positions",
+        "It starts from the leaf and hashes upward toward the root",
+        "It needs no trusted root, because absence cannot be forged",
+      ],
+      answer: 0,
+    },
+  ],
+
+  "hex-prefix-encoding": [
+    {
+      kind: "detail",
+      question: "A two-item trie node's path item begins with the byte 0x3a. What does that tell a verifier?",
+      options: [
+        "Extension, odd length, and a is the first path nibble",
+        "Leaf, odd length, and a is the first path nibble",
+        "Leaf, even length, and the a nibble is only padding",
+        "Extension, even length, and the path begins with 3",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "cause",
+      question: "Why do leaf and extension nodes need a flag at all?",
+      options: [
+        "RLP cannot encode strings longer than 55 bytes without one",
+        "A node's keccak-256 hash must begin with a type marker",
+        "Branch nodes use it to find their seventeenth value slot",
+        "Both are two-item lists, so nothing else says value or child",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "How does hex-prefix encoding relate to the 0x-prefixed hex strings of JSON-RPC?",
+      options: [
+        "It is the same format, applied to trie keys instead of values",
+        "It is JSON-RPC hex with leading zero nibbles stripped away",
+        "It is unrelated: a binary flag inside trie nodes, not text",
+        "It is JSON-RPC hex with an extra 0x marking odd lengths",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "consequence",
+      question: "A leaf's path item is 29 bytes long. What does that tell you about its nibble count?",
+      options: [
+        "It is 58 nibbles, two per byte, with no flag",
+        "It is 56 or 57, and only the flag says which",
+        "It is 57 nibbles, since leaf paths are odd",
+        "It is 56 nibbles, since byte one is padding",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "scenario",
+      question: "A verifier drops the low nibble of every path's first byte. Which proofs does it misread?",
+      options: [
+        "Those with a leaf or extension path of odd length",
+        "Only storage proofs, whose slot keys are not hashed",
+        "Only proofs whose nodes are shorter than 32 bytes",
+        "None, because that nibble is always a padding zero",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "scenario",
+      question: "After seven branch nodes, an account proof's leaf decodes to a 57-nibble path. What must the verifier check next?",
+      options: [
+        "That the path's keccak-256 hash equals the account address",
+        "That the path is shorter than the depth already walked",
+        "That the flag nibble matches the branch's value slot",
+        "That the 57 nibbles equal the key's unconsumed tail",
+      ],
+      answer: 3,
+    },
+  ],
+
+  "generalized-index": [
+    {
+      kind: "detail",
+      question: "In SSZ generalized-index numbering, which nodes are the children of node 26?",
+      options: [
+        "Nodes 27 and 28",
+        "Nodes 13 and 14",
+        "Nodes 52 and 53",
+        "Nodes 51 and 52",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "scenario",
+      question: "A light client hard-codes FINALIZED_ROOT_GINDEX as 105 and keeps running after Electra. What happens?",
+      options: [
+        "Finality branches stop verifying, as the root now sits at 169",
+        "Nothing, because generalized indices are fixed at genesis",
+        "It verifies updates, but only those signed by the old committee",
+        "It accepts updates, but with finality delayed by one period",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "cause",
+      question: "Why did Electra change the generalized index of finalized_checkpoint.root?",
+      options: [
+        "The Checkpoint container gained an extra slot field",
+        "The beacon state passed 32 fields, adding a tree level",
+        "SSZ switched the beacon state to a different hash function",
+        "Fields were reordered so that the new ones came first",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "consequence",
+      question: "A verifier combines the nested indices 52 and 3 by multiplying them. What goes wrong?",
+      options: [
+        "Nothing, since multiplying and concatenating agree here",
+        "It reaches the right node but hashes it on the wrong side",
+        "Its branch comes out one hash too long to verify",
+        "It targets node 156 instead of 105, a different node",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "From a proof verifier's point of view, how does EIP-7688's ProgressiveContainer differ from today's SSZ Container?",
+      options: [
+        "Appending fields leaves existing generalized indices in place",
+        "It hashes with keccak-256 so execution tools can verify it",
+        "It drops Merkleization, so fields are proven by byte offset",
+        "It pads every container to 64 leaves, whatever it holds",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "cause",
+      question: "Why should a verifier take the branch depth from the generalized index rather than from the number of hashes supplied?",
+      options: [
+        "Branch lengths change with the validator count each epoch",
+        "Provers pad every branch to 64 hashes for alignment",
+        "An inner node is 32 bytes like a leaf, so depth identifies it",
+        "SSZ branches arrive sorted by hash, so their length is unreliable",
+      ],
+      answer: 2,
+    },
+  ],
+
+  "light-client-update": [
+    {
+      kind: "scenario",
+      question: "A light client bootstraps from a block root returned by the same beacon node that serves its updates. What has it verified?",
+      options: [
+        "That the chain is canonical from that root onwards",
+        "That the root is finalized, since bootstraps require it",
+        "That the current committee was selected honestly",
+        "That the node's answers agree with one another",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "detail",
+      question: "Which field of a Capella-or-later LightClientHeader holds the root an eth_getProof response must hash up to?",
+      options: [
+        "beacon.state_root, the root of the beacon state",
+        "execution.state_root, proven against the body root",
+        "beacon.body_root, which commits to all account state",
+        "The last hash of finality_branch, the state root",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "cause",
+      question: "Why does a LightClientUpdate carry next_sync_committee together with a Merkle branch?",
+      options: [
+        "So the client can learn the next signers without trusting the server",
+        "So the server can prove that the committee members are slashable",
+        "So the committee's aggregate can be verified without BLS keys",
+        "So the client can skip verifying the attested header's signature",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "contrast",
+      question: "How does a LightClientOptimisticUpdate differ from a LightClientFinalityUpdate?",
+      options: [
+        "It is signed by the next committee rather than the current one",
+        "It carries the next committee, which finality updates omit",
+        "It has no finalized header or branch, only the attested head",
+        "It proves execution state, while finality updates prove beacon state",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "scenario",
+      question: "A light client that has been offline for eight months tries to resume from its last stored committee. Why might it find nothing to fetch?",
+      options: [
+        "Sync committees older than one period cannot be verified",
+        "Updates expire from the API once their slot is finalized",
+        "Bootstrap roots are deleted at each committee rotation",
+        "Servers are asked to keep roughly five months of updates",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "consequence",
+      question: "An update arrives with 300 of the 512 sync committee bits set. What can it change in a client that follows the spec?",
+      options: [
+        "The finalized header, but not the optimistic head",
+        "The optimistic head, but not the finalized header",
+        "Nothing, since updates under 342 bits are invalid",
+        "Both, since any participation above half suffices",
+      ],
+      answer: 1,
+    },
+  ],
+
+  "binary-state-tree": [
+    {
+      kind: "detail",
+      question: "In the June 2026 draft of EIP-7864, what sits at sub-index 0 under an account's header stem?",
+      options: [
+        "The code hash of the account's deployed contract bytecode",
+        "Storage slot 0 of the account's own contract storage",
+        "The first 31-byte chunk of the account's deployed code",
+        "Version, code size, nonce and balance packed together",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "cause",
+      question: "Why does EIP-7864 give each node two children rather than sixteen?",
+      options: [
+        "Two children let each node keep the existing RLP encoding",
+        "Proofs carry k minus 1 siblings per level, a cost least at 2",
+        "Binary nodes can use elliptic-curve commitments with no setup",
+        "Sixteen children made the state too deep to store on disk",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "contrast",
+      question: "What is the main cryptographic difference between EIP-7864 and the verkle design it displaced?",
+      options: [
+        "It commits with hashes alone, so it relies on no elliptic curve",
+        "It commits with Pedersen vectors, so proofs open many children",
+        "It commits with Keccak alone, so existing verifiers keep working",
+        "It commits with KZG polynomials, so proofs need a trusted setup",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "scenario",
+      question: "A bridge team plans to verify binary-tree state proofs inside a Solidity contract once EIP-7864 ships. What obstacle does it face?",
+      options: [
+        "The EVM cannot read any storage written before the tree changes",
+        "Binary proofs are larger than hexary proofs for every account",
+        "The EVM has no precompile for BLAKE3 or Poseidon2 hashing",
+        "The new tree removes the stateRoot field from block headers",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "During the overlay transition that EIP-7864 relies on, where does a state read look first?",
+      options: [
+        "In the frozen hexary trie, then in the new binary tree",
+        "In whichever tree the account was last written to",
+        "In both trees at once, comparing their two values",
+        "In the new binary tree, then in the frozen hexary trie",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "consequence",
+      question: "A client keeps its flat state keyed only by keccak256 of each address and slot. What does an EIP-7748 conversion require of it?",
+      options: [
+        "A full resync from genesis under the new tree's key scheme",
+        "A Pedersen hash of every key before it enters the new tree",
+        "A preimage database mapping those hashes back to raw keys",
+        "A trusted header for every block since the fork activated",
+      ],
+      answer: 2,
+    },
+  ],
+
+  "real-time-proving": [
+    {
+      kind: "detail",
+      question: "What latency does the Ethereum Foundation's working definition of real-time proving set?",
+      options: [
+        "At most 12 seconds for every mainnet block, with no exceptions",
+        "At most 10 seconds for 99 percent of mainnet blocks",
+        "At most 4 seconds, so proofs arrive before attestations",
+        "At most one epoch, so proofs arrive before finality",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "scenario",
+      question: "A verifying node receives a proof that checks cryptographically, but its public input has successful_validation set to false. What should it conclude?",
+      options: [
+        "The payload is valid, since the proof itself verified correctly",
+        "The proof counts as positive once a second zkVM's proof agrees",
+        "The proof is malformed and its sender should be banned from gossip",
+        "It cannot count the proof as evidence that the payload is valid",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "How does a zkVM guest program get the state it reads, compared with an execution client validating a block normally?",
+      options: [
+        "It receives every trie node, code and header up front in a witness",
+        "It queries the prover's node over JSON-RPC as execution needs it",
+        "It reads a snapshot of the full state mounted into the proving VM",
+        "It rebuilds the state by replaying the whole chain inside the zkVM",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "cause",
+      question: "Why does a real-time prover usually run its own execution client rather than use a hosted RPC endpoint?",
+      options: [
+        "Hosted endpoints return witnesses the guest cannot hash to a root",
+        "Hosted endpoints rarely expose debug_ and round trips eat the budget",
+        "Proofs must be signed with the execution client's own node key",
+        "Hosted endpoints serve only finalized blocks, which come too late",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "detail",
+      question: "What does the current text of EIP-8025 say proof-verifying nodes do with a block?",
+      options: [
+        "They stop re-executing once three proofs from distinct zkVMs agree",
+        "They skip re-execution whenever any valid proof has arrived first",
+        "They still re-execute it and treat a valid proof as an extra signal",
+        "They re-execute it only when two gossiped proofs disagree on it",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "consequence",
+      question: "Suppose a later EIP lets validators verify proofs and stop re-executing. Which job still needs nodes that hold the full state?",
+      options: [
+        "Checking each proof's public input against the payload received",
+        "Following fork choice and attesting to the head of the chain",
+        "Answering eth_call and other reads for applications and users",
+        "Verifying the BLS signature on each gossiped execution proof",
       ],
       answer: 2,
     },

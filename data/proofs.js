@@ -41,7 +41,7 @@ export const topics = [
     example: {
       title: "eth_getProof for one account and one slot",
       language: "json",
-      code: "// request\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getProof\",\"params\":[\n  \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n  [\"0x1c2e8b6c0d9a4e5f7381cba0d2f3e4a5b6c7d8e9f0a1b2c3d4e5f60718293a3f\"],\n  \"0x12d4f1c\"\n]}\n\n// result (node arrays abridged)\n{\n  \"address\": \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n  \"balance\": \"0x0\",\n  \"nonce\": \"0x1\",\n  \"codeHash\": \"0xb0c9e6…41d2\",\n  \"storageHash\": \"0x4f2b7c…91c0\",\n  \"accountProof\": [\"0xf90211a0…\", \"0xf90211a0…\", \"0xf8b18080…\", \"0xf8669d3a…\"],\n  \"storageProof\": [{\n    \"key\": \"0x1c2e8b…a3f4\",\n    \"value\": \"0x3b9aca00\",\n    \"proof\": [\"0xf90211a0…\", \"0xf87180808…\", \"0xe5a0203f…8403b9aca00\"]\n  }]\n}",
+      code: "// request\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getProof\",\"params\":[\n  \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n  [\"0xbf4954ae1137d99a74d9587692d0c99fcc87859496c91311c267c25a44a35f95\"],\n  \"0x12d4f1c\"\n]}\n\n// result (node arrays abridged)\n{\n  \"address\": \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n  \"balance\": \"0x0\",\n  \"nonce\": \"0x1\",\n  \"codeHash\": \"0xd80d4b…1505\",\n  \"storageHash\": \"0x2dcc6f…ddb6\",\n  \"accountProof\": [\"0xf90211a0…\", \"0xf90211a0…\", …, \"0xf87180a0…\", \"0xf8669d20…\"],\n  \"storageProof\": [{\n    \"key\": \"0xbf4954…5f95\",\n    \"value\": \"0x21c382892\",\n    \"proof\": [\"0xf90211a0…\", …, \"0xf8b18080…\", \"0xe69e203c…85021c382892\"]\n  }]\n}",
       note: "`accountProof` must hash back to the `stateRoot` of a header you trust; `storageProof[0].proof` must hash back to the `storageHash` that the account leaf itself contained.",
     },
     pitfalls: [
@@ -53,7 +53,7 @@ export const topics = [
     related: ["eth-get-proof", "merkle-patricia-trie", "trusted-header", "account-proof", "storage-proof", "state-root", "inclusion-proof", "consensus-proof", "verified-rpc", "light-client"],
     sources: [
       { title: "EIP-1186: RPC-Method to get Merkle Proofs", url: "https://eips.ethereum.org/EIPS/eip-1186" },
-      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/" },
       { title: "ethereum.org: data structures and encoding", url: "https://ethereum.org/developers/docs/data-structures-and-encoding/" },
     ],
   },
@@ -67,7 +67,7 @@ export const topics = [
       {
         heading: "Three node types",
         paragraphs: [
-          "A branch node is an RLP list of 17 items: sixteen references, one per hex nibble, plus a value slot used when a key ends exactly there. An extension node is a two-item list holding a shared path segment and one reference, collapsing a long non-branching run into one node. A leaf node is also two items: the remaining path and the value. A compact hex-prefix encoding marks the first nibble of a path so a verifier can tell a leaf from an extension and whether the nibble count is odd.",
+          "A branch node is an RLP list of 17 items: sixteen references, one per hex nibble, plus a value slot used when a key ends exactly there. An extension node is a two-item list holding a shared path segment and one reference, collapsing a long non-branching run into one node. A leaf node is also two items: the remaining path and the value. A compact [[hex-prefix-encoding|hex-prefix encoding]] marks the first nibble of a path so a verifier can tell a leaf from an extension and whether the nibble count is odd.",
           "A reference is the keccak-256 hash of the child's RLP encoding — except when that encoding is shorter than 32 bytes, in which case the node is inlined verbatim inside its parent. A verifier that treats every reference as a hash fails on small tries and shallow subtrees, so proof-checking code must handle both forms.",
         ],
       },
@@ -88,7 +88,7 @@ export const topics = [
       {
         heading: "The cost of the shape",
         paragraphs: [
-          "Hexary branching keeps the tree shallow — seven to nine levels for a random account — but each branch node carries sixteen 32-byte references, so every proof drags along a lot of sibling data. Each level is a random lookup by hash, which is why [[client-storage|client storage engines]] moved to flat and path-based layouts that answer a value without touching the trie, and why some nodes serve [[eth-get-balance|eth_getBalance]] for an old block but not `eth_getProof` for it. It is also why witnesses for [[stateless-ethereum|stateless execution]] are too large in this structure.",
+          "Hexary branching keeps the tree shallow — seven to nine levels for a random account — but each branch node carries sixteen 32-byte references, so every proof drags along a lot of sibling data. Each level is a random lookup by hash, which is why [[client-storage|client storage engines]] moved to flat and path-based layouts that answer a value without touching the trie, and why some nodes serve [[eth-get-balance|eth_getBalance]] for an old block but not `eth_getProof` for it. It is also why [[witness|witnesses]] for [[stateless-ethereum|stateless execution]] are too large in this structure.",
         ],
       },
     ],
@@ -104,7 +104,7 @@ export const topics = [
       "Applying this structure to consensus data, which is Merkleized with SSZ and SHA-256, not RLP and keccak-256.",
       "Expecting the transactions and receipts tries to be queryable later; they are rebuilt per block and no standard RPC method serves their nodes.",
     ],
-    related: ["state-proof", "state-root", "rlp", "keccak-256", "account-proof", "storage-proof", "receipt-proof", "inclusion-proof", "client-storage", "stateless-ethereum"],
+    related: ["state-proof", "state-root", "rlp", "keccak-256", "account-proof", "storage-proof", "receipt-proof", "inclusion-proof", "client-storage", "stateless-ethereum", "verkle-tree", "hex-prefix-encoding", "binary-state-tree"],
     sources: [
       { title: "ethereum.org: data structures and encoding", url: "https://ethereum.org/developers/docs/data-structures-and-encoding/" },
       { title: "Ethereum Yellow Paper", url: "https://ethereum.github.io/yellowpaper/paper.pdf" },
@@ -115,7 +115,7 @@ export const topics = [
     id: "account-proof",
     title: "Account proof",
     category: "proofs",
-    aliases: ["accountProof", "prove an account", "exclusion proof", "account leaf", "empty account"],
+    aliases: ["accountProof", "prove an account", "account leaf", "empty account"],
     summary: "An account proof is the `accountProof` array of [[eth-get-proof|eth_getProof]]: the [[rlp|RLP]]-encoded [[merkle-patricia-trie|trie]] nodes from the [[state-root|state root]] to the account's leaf, whose value decodes to `RLP([nonce, balance, storageRoot, codeHash])`.",
     sections: [
       {
@@ -135,8 +135,8 @@ export const topics = [
       {
         heading: "Proving that an account does not exist",
         paragraphs: [
-          "Most [[address|addresses]] have never been touched and have no leaf in the state trie at all. The proof for one of those still verifies: the walk terminates at a branch with an empty slot, or at a node whose path diverges from the key, which proves the key is absent under that root. [[eth-get-proof|eth_getProof]] then reports the empty-account values — `nonce` `0x0`, `balance` `0x0`, `codeHash` `0xc5d24601…a470` for the keccak of empty bytes, and `storageHash` `0x56e81f17…b421` for the root of an empty trie.",
-          "Exclusion proofs are what make a bridge or [[light-client|light client]] able to say 'this message was never registered' rather than 'the node did not answer'. They are also why an empty `accountProof` walk should be treated as a successful result and not as an error path.",
+          "Most [[address|addresses]] have never been touched and have no leaf in the state trie at all. The proof for one of those still verifies: the walk terminates at a branch with an empty slot, or at a node whose path diverges from the key, which proves the key is absent under that root. [[eth-get-proof|eth_getProof]] then reports `nonce` and `balance` as `0x0`, but clients disagree on the hashes: [[geth|Geth]], [[nethermind|Nethermind]], and [[erigon|Erigon]] return zero hashes, while [[besu|Besu]] and [[reth|Reth]] return `0xc5d24601…a470`, the keccak of empty bytes, and `0x56e81f17…b421`, the root of an empty trie — exactly what every existing account without code or storage returns. Only the proof shows absence.",
+          "[[exclusion-proof|Exclusion proofs]] are what make a bridge or [[light-client|light client]] able to say 'this message was never registered' rather than 'the node did not answer'. They are also why an empty `accountProof` walk should be treated as a successful result and not as an error path.",
         ],
       },
     ],
@@ -144,7 +144,7 @@ export const topics = [
       title: "Verifying accountProof against a trusted stateRoot",
       language: "js",
       code: "const key = keccak256(hexToBytes(address));       // 20 raw bytes in, 32 bytes out\nlet nibbles = toNibbles(key);                    // 64 nibbles of path\nlet expected = trustedHeader.stateRoot;          // NOT the stateRoot from this response\n\nfor (const node of proof.accountProof) {         // RLP-encoded nodes, root first\n  if (node.length >= 32 && keccak256(node) !== expected)\n    throw new Error(\"node does not hash to the reference its parent held\");\n  const items = rlpDecode(node);\n  if (items.length === 17) {                     // branch: 16 children + value slot\n    expected = items[nibbles.shift()];\n  } else {                                       // extension or leaf: [path, ref | value]\n    consume(nibbles, decodeHexPrefix(items[0])); // throws if the stored path diverges\n    expected = items[1];\n  }\n}\n\nconst [nonce, balance, storageRoot, codeHash] = rlpDecode(expected);\nassert(bytesToHex(storageRoot) === proof.storageHash);   // the pivot into storage proofs",
-      note: "Simplified: a production verifier also distinguishes leaves from extensions by their hex-prefix flag and handles a path that ends at a branch's value slot.",
+      note: "Simplified: a production verifier also distinguishes leaves from extensions by their [[hex-prefix-encoding|hex-prefix flag]] and handles a path that ends at a branch's value slot.",
     },
     pitfalls: [
       "Hashing the checksummed address string instead of the 20 raw bytes, which produces a path that leads nowhere in the trie.",
@@ -156,7 +156,7 @@ export const topics = [
     sources: [
       { title: "EIP-1186: RPC-Method to get Merkle Proofs", url: "https://eips.ethereum.org/EIPS/eip-1186" },
       { title: "ethereum.org: accounts", url: "https://ethereum.org/developers/docs/accounts/" },
-      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/" },
     ],
   },
   {
@@ -184,14 +184,14 @@ export const topics = [
         heading: "Verifying and using one",
         paragraphs: [
           "The order matters: verify the [[account-proof|account proof]] first against a [[state-root|state root]] from a [[trusted-header|trusted header]], take `storageHash` from the leaf you proved, and only then walk the storage nodes. Starting from the `storageHash` field of the response skips the only step that tied the storage trie to the chain.",
-          "This is the workhorse of cross-chain systems. A canonical [[bridge|bridge]] proves that a withdrawal message was recorded in the bridge contract's storage on the other chain; an oracle proves a price it published; a governance system proves a token balance at a past block. In each case the storage slot is the contract's public commitment and the proof is what lets a verifier act on it without running a node on the source chain.",
+          "This is the workhorse of cross-chain systems. A canonical [[bridge|bridge]] proves that a withdrawal message was recorded in the bridge contract's storage on the other chain; an oracle proves a price it published; a [[governance-voting-power|governance system]] proves a token balance at a past block. In each case the storage slot is the contract's public commitment and the proof is what lets a verifier act on it without running a node on the source chain.",
         ],
       },
     ],
     example: {
       title: "Proving one ERC-20 balance slot",
       language: "json",
-      code: "// the balances mapping is declared at slot 9, so the entry's slot number is\n// keccak256( pad32(holder) || pad32(9) )   -- Foundry: cast index address 0xd8dA…6045 9\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getProof\",\"params\":[\n  \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n  [\"0x1c2e8b6c0d9a4e5f7381cba0d2f3e4a5b6c7d8e9f0a1b2c3d4e5f60718293a3f\"],\n  \"0x12d4f1c\"\n]}\n\n// result (abridged)\n{\n  \"storageHash\": \"0x4f2b7c…91c0\",\n  \"storageProof\": [{\n    \"key\":   \"0x1c2e8b…a3f4\",\n    \"value\": \"0x3b9aca00\",\n    \"proof\": [\"0xf90211a0…\", \"0xf871808080…\", \"0xe5a0203f…8403b9aca00\"]\n  }]\n}",
+      code: "// the balances mapping is declared at slot 9, so the entry's slot number is\n// keccak256( pad32(holder) || pad32(9) )   -- Foundry: cast index address 0xd8dA…6045 9\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getProof\",\"params\":[\n  \"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48\",\n  [\"0xbf4954ae1137d99a74d9587692d0c99fcc87859496c91311c267c25a44a35f95\"],\n  \"0x12d4f1c\"\n]}\n\n// result (abridged)\n{\n  \"storageHash\": \"0x2dcc6f…ddb6\",\n  \"storageProof\": [{\n    \"key\":   \"0xbf4954…5f95\",\n    \"value\": \"0x21c382892\",\n    \"proof\": [\"0xf90211a0…\", …, \"0xf8b1808080…\", \"0xe69e203c…85021c382892\"]\n  }]\n}",
       note: "`key` is the slot number you asked for; the path actually walked through the nodes is `keccak256(key)`, and the walk must start from a `storageHash` you proved rather than one you were told.",
     },
     pitfalls: [
@@ -200,18 +200,18 @@ export const topics = [
       "Comparing a padded 32-byte word against the leaf, whose value is RLP with leading zero bytes stripped.",
       "Reading `value` out of the response without walking `proof`, which is trusting the node exactly as much as [[eth-get-storage-at|eth_getStorageAt]] would.",
     ],
-    related: ["state-proof", "account-proof", "eth-get-proof", "contract-storage", "merkle-patricia-trie", "eth-get-storage-at", "trusted-header", "bridge"],
+    related: ["state-proof", "account-proof", "eth-get-proof", "contract-storage", "merkle-patricia-trie", "eth-get-storage-at", "trusted-header", "bridge", "exclusion-proof", "governance-voting-power"],
     sources: [
       { title: "EIP-1186: RPC-Method to get Merkle Proofs", url: "https://eips.ethereum.org/EIPS/eip-1186" },
       { title: "Solidity: layout of state variables in storage", url: "https://docs.soliditylang.org/en/latest/internals/layout_in_storage.html" },
-      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/" },
     ],
   },
   {
     id: "inclusion-proof",
     title: "Inclusion proof",
     category: "proofs",
-    aliases: ["merkle proof", "membership proof", "merkle branch", "generalized index", "exclusion proof"],
+    aliases: ["merkle proof", "membership proof", "merkle branch"],
     summary: "An inclusion proof is a short set of hashes that lets a verifier recompute a commitment root from one member, proving membership without holding the whole set; Ethereum uses [[merkle-patricia-trie|trie]] node paths on the execution side and [[ssz|SSZ]] Merkle branches on the consensus side.",
     sections: [
       {
@@ -225,13 +225,13 @@ export const topics = [
         heading: "Two families in Ethereum",
         paragraphs: [
           "Execution-layer proofs are [[merkle-patricia-trie|Merkle-Patricia]] node paths: [[rlp|RLP]]-encoded whole nodes hashed with [[keccak-256|keccak-256]], with keys hashed before use. Because a branch node carries sixteen references, the proof ships far more sibling data than a binary tree would; an [[account-proof|account proof]] of seven levels is several kilobytes. This is what [[eth-get-proof|eth_getProof]] returns.",
-          "Consensus-layer proofs are SSZ Merkle branches: a fixed binary tree over a fixed data layout, hashed with SHA-256, where a proof is a flat list of 32-byte siblings plus a generalized index naming the leaf's position. The index is what tells the verifier which side each sibling goes on, and it is stable because the layout is fixed by the spec. [[light-client|Light client]] updates and [[beacon-api|Beacon API]] proofs use this form; see [[consensus-proof|consensus proof]].",
+          "Consensus-layer proofs are SSZ Merkle branches: a fixed binary tree over a fixed data layout, hashed with SHA-256, where a proof is a flat list of 32-byte siblings plus a [[generalized-index|generalized index]] naming the leaf's position. The index is what tells the verifier which side each sibling goes on, and it is stable only within a fork, because the spec fixes the layout for each fork: Electra moved the finalized checkpoint root in the beacon state from index 105 to 169, and Glamsterdam's Gloas is set to move it again, to 735. [[light-client|Light client]] updates and [[beacon-api|Beacon API]] proofs use this form; see [[consensus-proof|consensus proof]].",
         ],
       },
       {
         heading: "Inclusion, exclusion, and limits",
         paragraphs: [
-          "The same node path also proves absence. In a trie, a walk that ends at an empty branch slot or at a node whose path diverges is an exclusion proof, and it is verified exactly like an inclusion proof. In a fixed-layout SSZ tree there is no absence to prove: every field exists, so the equivalent statement is that a field holds a particular value, such as zero.",
+          "The same node path also proves absence. In a trie, a walk that ends at an empty branch slot or at a node whose path diverges is an [[exclusion-proof|exclusion proof]], and it is verified exactly like an inclusion proof. In a fixed-layout SSZ tree there is no absence to prove: every field exists, so the equivalent statement is that a field holds a particular value, such as zero.",
           "What no inclusion proof gives you is context. Membership in a [[block|block]]'s trie does not make the block canonical, does not say how old it is, and does not order two members relative to anything outside the tree. Those need a [[trusted-header|trusted header]] and, behind it, consensus evidence.",
         ],
       },
@@ -300,7 +300,7 @@ export const topics = [
     sources: [
       { title: "EIP-2718: Typed Transaction Envelope", url: "https://eips.ethereum.org/EIPS/eip-2718" },
       { title: "ethereum.org: data structures and encoding", url: "https://ethereum.org/developers/docs/data-structures-and-encoding/" },
-      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/api-documentation/" },
+      { title: "Execution APIs documentation", url: "https://ethereum.github.io/execution-apis/" },
     ],
   },
   {
@@ -355,13 +355,13 @@ export const topics = [
     id: "consensus-proof",
     title: "Consensus proof",
     category: "proofs",
-    aliases: ["light client update", "sync committee signature", "Altair light client", "canonicality proof", "BLS aggregate"],
-    summary: "A consensus proof is evidence that a [[beacon-block|beacon header]] is canonical — a [[sync-committee|sync committee]] aggregate signature over it, packaged as a light client update — from which an [[ssz|SSZ]] branch reaches the execution [[block-header|header]] and its `stateRoot`.",
+    aliases: ["sync committee signature", "Altair light client", "canonicality proof", "BLS aggregate"],
+    summary: "A consensus proof is evidence that a [[beacon-block|beacon header]] is canonical — a [[sync-committee|sync committee]] aggregate signature over it, packaged as a [[light-client-update|light client update]] — from which an [[ssz|SSZ]] branch reaches the execution [[block-header|header]] and its `stateRoot`.",
     sections: [
       {
         heading: "What the sync committee buys",
         paragraphs: [
-          "Following [[proof-of-stake|proof of stake]] properly means tracking hundreds of thousands of validators. The Altair sync committee exists so that a [[light-client|light client]] does not have to: 512 validators are selected for a period of 256 [[slot-epoch|epochs]], roughly 27 hours, and sign the headers they see with an aggregatable BLS signature. A verifier that knows the current committee's public keys can check one aggregate signature and accept a header, and the light client spec requires more than two thirds of the committee — at least 342 of the 512 — to have signed.",
+          "Following [[proof-of-stake|proof of stake]] properly means tracking hundreds of thousands of validators. The Altair sync committee exists so that a [[light-client|light client]] does not have to: 512 validators are selected for a period of 256 [[slot-epoch|epochs]], roughly 27 hours, and sign the headers they see with an aggregatable BLS signature. A verifier that knows the current committee's public keys can check one aggregate signature and accept a header. The light client spec sets the bar by purpose: an update is valid with a single participant, the optimistic head moves once participation exceeds half the recent peak, and only the finalized header and the committee hand-over need at least two thirds — 342 of the 512 — except that once a full period has passed since its finalized header, a client may force-apply the best update it has seen.",
           "Committee rotation is itself proven. Each update carries the next period's committee together with an SSZ branch showing it is committed to by the state of the header being attested, so a client that bootstrapped once can walk forward period by period without ever trusting a server again.",
         ],
       },
@@ -375,7 +375,7 @@ export const topics = [
       {
         heading: "From beacon header to execution header",
         paragraphs: [
-          "A canonical beacon header alone does not give you a `stateRoot` to verify a [[state-proof|state proof]] against. The [[execution-payload|execution payload]] header is a field inside the beacon block body, so the link is an SSZ Merkle branch from the beacon block root down to that field, and from there to its `state_root` and `block_hash`. That branch turns a consensus-verified header into the [[trusted-header|trusted header]] an execution proof needs.",
+          "A canonical beacon header alone does not give you a `stateRoot` to verify a [[state-proof|state proof]] against. The [[execution-payload|execution payload]] header is a field inside the beacon block body, so the link is an SSZ Merkle branch from the beacon block root down to that field, and from there to its `state_root` and `block_hash`. That branch turns a consensus-verified header into the [[trusted-header|trusted header]] an execution proof needs. Gloas, the consensus half of the [[hardfork|Glamsterdam upgrade]] (on Sepolia from 2026-10-06, not yet scheduled for mainnet), takes the payload out of the beacon block: the light client header then carries only `execution_block_hash`, proven from the `parent_block_hash` of the block's payload bid, and the `stateRoot` has to come from an execution header whose hash is checked against it.",
           "The same bridge exists inside the [[evm|EVM]]. Since Dencun, EIP-4788 places the parent beacon block root in the execution [[block-header|header]] as `parentBeaconBlockRoot` and exposes it to contracts, so a contract can verify SSZ proofs about consensus state — validator balances, withdrawal credentials — without an oracle.",
         ],
       },
@@ -383,7 +383,7 @@ export const topics = [
     example: {
       title: "Fetching light client updates from a beacon node",
       language: "bash",
-      code: "# 1. bootstrap from a block root you obtained out of band (a weak-subjectivity checkpoint)\ncurl -s http://127.0.0.1:5052/eth/v1/beacon/light_client/bootstrap/0x9f2e4c8b…c41d\n\n# 2. walk forward one sync committee period at a time; each update proves the next committee\ncurl -s 'http://127.0.0.1:5052/eth/v1/beacon/light_client/updates?start_period=1180&count=4'\n\n# 3. track the head and the finalized checkpoint between periods\ncurl -s http://127.0.0.1:5052/eth/v1/beacon/light_client/optimistic_update\ncurl -s http://127.0.0.1:5052/eth/v1/beacon/light_client/finality_update",
+      code: "# 1. bootstrap from a block root you obtained out of band (a weak-subjectivity checkpoint)\ncurl -s http://127.0.0.1:5052/eth/v1/beacon/light_client/bootstrap/0x9f2e4c8b…c41d\n\n# 2. walk forward one sync committee period at a time; each update proves the next committee\ncurl -s 'http://127.0.0.1:5052/eth/v1/beacon/light_client/updates?start_period=1865&count=4'\n\n# 3. track the head and the finalized checkpoint between periods\ncurl -s http://127.0.0.1:5052/eth/v1/beacon/light_client/optimistic_update\ncurl -s http://127.0.0.1:5052/eth/v1/beacon/light_client/finality_update",
       note: "Only the bootstrap root is trusted input; every later header is accepted because a committee proven by the previous update signed it.",
     },
     pitfalls: [
@@ -392,7 +392,7 @@ export const topics = [
       "Stopping at a canonical beacon header; without the SSZ branch to the execution payload header there is no `stateRoot` to verify anything against.",
       "Reusing [[keccak-256|keccak-256]] to check these proofs; consensus Merkleization uses SSZ with SHA-256 throughout.",
     ],
-    related: ["sync-committee", "light-client", "trusted-header", "ssz", "state-proof", "beacon-block", "finality", "beacon-api", "weak-subjectivity", "verified-rpc"],
+    related: ["sync-committee", "light-client", "trusted-header", "ssz", "state-proof", "beacon-block", "finality", "beacon-api", "weak-subjectivity", "verified-rpc", "generalized-index", "light-client-update"],
     sources: [
       { title: "ethereum/consensus-specs", url: "https://github.com/ethereum/consensus-specs" },
       { title: "Beacon APIs specification", url: "https://ethereum.github.io/beacon-APIs/" },
@@ -409,7 +409,7 @@ export const topics = [
       {
         heading: "Two families, several shapes",
         paragraphs: [
-          "The [[geth|Geth]]-style `debug_` methods take a tracer argument. `callTracer` returns the call tree — each entry carrying `type`, `from`, `to`, `value`, `input`, `output`, `gas`, `gasUsed`, and an `error` with a revert reason when the call failed — which is the shape most tools want. `prestateTracer` returns every account and storage slot the transaction read, which is a witness for re-execution. The default struct logger emits one entry per opcode with program counter, opcode, gas, and optionally stack, memory, and storage, and its output for a large transaction runs to hundreds of megabytes.",
+          "The [[geth|Geth]]-style `debug_` methods take a tracer argument. `callTracer` returns the call tree — each entry carrying `type`, `from`, `to`, `value`, `input`, `output`, `gas`, `gasUsed`, and an `error` with a revert reason when the call failed — which is the shape most tools want. `prestateTracer` returns every account and storage slot the transaction read, which is the content of a [[witness|witness]] for re-execution minus its proofs. The default struct logger emits one entry per opcode with program counter, opcode, gas, and optionally stack, memory, and storage, and its output for a large transaction runs to hundreds of megabytes.",
           "The Parity-style `trace_` namespace, implemented by [[nethermind|Nethermind]], [[erigon|Erigon]], and Reth, takes a different cut: `trace` is a flat list of actions and results rather than a tree, `vmTrace` is the step-level view, and `stateDiff` reports the before and after of every account the transaction touched. `trace_filter` searches across blocks, which is why [[block-explorer|block explorers]] built on it can list internal transfers per address.",
         ],
       },
@@ -423,7 +423,7 @@ export const topics = [
       {
         heading: "Where it earns its place",
         paragraphs: [
-          "Traces answer questions nothing else can. They show why a call [[revert|reverted]] and at which depth, they reconstruct internal value transfers that emit no [[event-log|log]] and so are invisible to an [[indexer|indexer]] using logs alone, they feed [[access-list|access list]] construction, and `prestateTracer` output is precisely the witness that [[stateless-ethereum|stateless execution]] would ship with a block.",
+          "Traces answer questions nothing else can. They show why a call [[revert|reverted]] and at which depth, they reconstruct internal value transfers that emit no [[event-log|log]] and so are invisible to an [[indexer|indexer]] using logs alone, they feed [[access-list|access list]] construction, and `prestateTracer` output shows exactly which values a [[witness|witness]] for [[stateless-ethereum|stateless execution]] would have to prove, although, as Geth's documentation points out, it returns only those values and none of the trie nodes that prove them.",
           "The cost is real. Tracing an old transaction needs the state as it was before it, so anything beyond the last few hundred blocks requires an [[archive-node|archive node]]. Providers meter these methods far above `eth_` calls or disable the namespaces entirely, and a node that exposes `debug_` publicly hands anyone a cheap way to consume its CPU; see [[security|RPC security]].",
         ],
       },
@@ -440,7 +440,7 @@ export const topics = [
       "Assuming `debug_` and `trace_` output can be parsed by the same code; the two families differ in structure and field names.",
       "Planning around traces without checking the endpoint; many providers meter them heavily or do not expose the namespaces at all.",
     ],
-    related: ["debug-api", "trace-api", "evm", "state-proof", "indexer", "archive-node", "revert", "transaction-receipt", "block-explorer", "client-diversity"],
+    related: ["debug-api", "trace-api", "evm", "state-proof", "indexer", "archive-node", "revert", "transaction-receipt", "block-explorer", "client-diversity", "internal-transaction"],
     sources: [
       { title: "Geth: EVM tracing", url: "https://geth.ethereum.org/docs/developers/evm-tracing" },
       { title: "Nethermind documentation", url: "https://docs.nethermind.io/" },
@@ -451,8 +451,8 @@ export const topics = [
     id: "stateless-ethereum",
     title: "Stateless Ethereum and state trees",
     category: "proofs",
-    aliases: ["verkle", "binary tree", "witness", "statelessness", "state tree change", "EIP-6800"],
-    summary: "Stateless Ethereum is the goal of validating a block from a witness — the [[state|state]] it touches, plus proofs — instead of holding all state; [[merkle-patricia-trie|MPT]] witnesses are far too large, and the commitment structure meant to replace it is still unsettled.",
+    aliases: ["binary tree", "statelessness", "state tree change"],
+    summary: "Stateless Ethereum is the goal of validating a block from a [[witness|witness]] — the [[state|state]] it touches, plus proofs — instead of holding all state; [[merkle-patricia-trie|MPT]] witnesses are far too large, and the commitment structure meant to replace it is still unsettled.",
     sections: [
       {
         heading: "The witness problem",
@@ -464,8 +464,8 @@ export const topics = [
       {
         heading: "Verkle, then binary",
         paragraphs: [
-          "Verkle trees were the plan from roughly 2021 through 2024. They replace hashes with vector commitments, so a node commits to all its children in constant size and a proof opens a position without shipping sibling data, shrinking witnesses by roughly an order of magnitude. EIP-6800 described the unified Verkle state layout, and testnets were run.",
-          "During 2025 that direction was deprioritized in favour of binary state trees, driven largely by how hard Verkle is to prove inside a SNARK and by the wish for a simpler, more conservative structure. Neither is live: mainnet still uses the [[keccak-256|keccak-256]] hexary Merkle-Patricia trie described in the yellow paper, and no [[hardfork|network upgrade]] has shipped a replacement. Treat Verkle as proposed and set aside, binary trees as the current direction, and both as undated.",
+          "[[verkle-tree|Verkle trees]] were the plan from roughly 2021 through 2024. They replace hashes with vector commitments, so a node commits to all its children in constant size and a proof opens a position without shipping sibling data, shrinking witnesses by roughly an order of magnitude. EIP-6800 described the unified Verkle state layout, and testnets were run.",
+          "During 2025 that direction was deprioritized in favour of [[binary-state-tree|binary state trees]], driven largely by how hard Verkle is to prove inside a SNARK and by the wish for a simpler, more conservative structure. Neither is live: mainnet still uses the [[keccak-256|keccak-256]] hexary Merkle-Patricia trie described in the yellow paper, and no [[hardfork|network upgrade]] has shipped a replacement. Treat Verkle as proposed and set aside, binary trees as the current direction, and both as undated.",
         ],
       },
       {
@@ -488,7 +488,7 @@ export const topics = [
       "Confusing a stateless validator with a [[light-client|light client]]; one executes blocks from a witness, the other follows headers and executes nothing.",
       "Expecting statelessness to remove the need for archive data; witnesses cover the state a block touches, not the chain's history.",
     ],
-    related: ["merkle-patricia-trie", "state-proof", "eth-get-proof", "state", "client-storage", "account-proof", "storage-proof", "light-client", "hardfork", "verified-rpc"],
+    related: ["merkle-patricia-trie", "state-proof", "eth-get-proof", "state", "client-storage", "account-proof", "storage-proof", "light-client", "hardfork", "verified-rpc", "witness", "verkle-tree", "binary-state-tree", "real-time-proving"],
     sources: [
       { title: "EIP-6800: Ethereum state using a unified verkle tree", url: "https://eips.ethereum.org/EIPS/eip-6800" },
       { title: "ethereum.org: the roadmap", url: "https://ethereum.org/roadmap/" },
@@ -499,7 +499,7 @@ export const topics = [
     id: "verified-rpc",
     title: "Verified RPC",
     category: "proofs",
-    aliases: ["helios", "nimbus verified proxy", "trust-minimized rpc", "verifying proxy", "light client rpc"],
+    aliases: ["nimbus verified proxy", "trust-minimized rpc", "verifying proxy", "light client rpc", "verified eth_call"],
     summary: "Verified RPC is consuming an endpoint without trusting it: a [[light-client|light client]] establishes a [[trusted-header|trusted header]], proofs check the answers that can be proven, and everything else is cross-checked or accepted knowingly.",
     sections: [
       {
@@ -512,14 +512,14 @@ export const topics = [
       {
         heading: "The implementations",
         paragraphs: [
-          "Helios is the best known: a Rust light client that syncs from a weak-subjectivity checkpoint, talks to an untrusted execution endpoint, and exposes a local JSON-RPC server for applications. The [[nimbus|Nimbus]] verified proxy does the same job from the Nimbus side, sitting between an application and an untrusted endpoint and verifying what it forwards. [[lodestar|Lodestar]] ships light-client and prover libraries aimed at browsers and JavaScript applications.",
+          "[[helios|Helios]] is the best known: a Rust light client that syncs from a weak-subjectivity checkpoint, talks to an untrusted execution endpoint, and exposes a local JSON-RPC server for applications. The [[nimbus|Nimbus]] verified proxy does the same job from the Nimbus side, sitting between an application and an untrusted endpoint and verifying what it forwards. [[lodestar|Lodestar]] ships light-client and prover libraries aimed at browsers and JavaScript applications.",
           "Method coverage is partial in all of them and moves between releases, so check the project's current list rather than assuming. Reads that reduce to a state proof are the well-covered core. Anything else is either passed through unverified or unsupported, and which of those two it is matters enormously — an unverified pass-through that looks like a verified answer is worse than no proxy at all.",
         ],
       },
       {
         heading: "What cannot be proven, and what to do instead",
         paragraphs: [
-          "Several common calls have no proof available at reasonable cost. [[eth-get-logs|eth_getLogs]] over a range would need a receipts trie rebuilt for every block in it. [[mempool|Pool]] contents and gas suggestions are opinions rather than committed facts. [[eth-call|eth_call]] can only be verified by re-executing locally against a proven witness, which some provers do for narrow cases and none do in general. Traces are an [[execution-trace|execution trace]], which nothing commits to.",
+          "Several common calls have no proof available at reasonable cost. [[eth-get-logs|eth_getLogs]] over a range would need a receipts trie rebuilt for every block in it. [[mempool|Pool]] contents and gas suggestions are opinions rather than committed facts. Traces are an [[execution-trace|execution trace]], which nothing commits to. [[eth-call|eth_call]] sits in between: it can be verified only by re-executing it locally against proven state, and [[helios|Helios]] does that for arbitrary calls, taking an [[eth-create-access-list|eth_createAccessList]] result as a hint, proving every account and slot it names with `eth_getProof`, running the call in a local revm, and fetching and proving whatever state the hint missed, at the price of one proof request for every account the call touches.",
           "For those, use the cheap defences instead: pin the [[chain-id|chain id]], compare [[block-hash|block hashes]] from two genuinely independent providers at the same height, prefer the `finalized` [[block-tag|block tag]] for anything irreversible, and keep in mind that agreement between providers is a heuristic. The cost side is real too: an extra process, extra latency per call, a checkpoint to refresh, and a [[beacon-api|beacon endpoint]] to follow.",
         ],
       },
@@ -536,11 +536,444 @@ export const topics = [
       "Cross-checking two endpoints that resolve to the same upstream or the same provider, which buys agreement without independence.",
       "Presenting provider agreement to users as verification; it detects an isolated liar, and proves nothing about the chain.",
     ],
-    related: ["light-client", "trusted-header", "state-proof", "consensus-proof", "eth-get-proof", "rpc-provider", "sync-committee", "head-lag", "nimbus", "block-tag"],
+    related: ["light-client", "trusted-header", "state-proof", "consensus-proof", "eth-get-proof", "rpc-provider", "sync-committee", "head-lag", "nimbus", "block-tag", "helios"],
     sources: [
       { title: "Nimbus guide", url: "https://nimbus.guide/" },
       { title: "Lodestar documentation", url: "https://chainsafe.github.io/lodestar/" },
       { title: "ethereum.org: nodes and clients", url: "https://ethereum.org/developers/docs/nodes-and-clients/" },
+    ],
+  },
+  {
+    id: "witness",
+    title: "Witness",
+    category: "proofs",
+    aliases: ["execution witness", "stateless witness", "debug_executionWitness", "block witness", "pre-state", "prover input"],
+    summary: "A witness is everything needed to re-execute a block without holding the chain's [[state|state]]: the accounts, storage slots and code it touches, the [[merkle-patricia-trie|trie]] nodes that prove them against the parent block's [[state-root|state root]], and the ancestor headers that `BLOCKHASH` can read.",
+    sections: [
+      {
+        heading: "What a block needs from outside itself",
+        paragraphs: [
+          "Executing a block reads state the block does not carry: each sender's balance and nonce, the bytecode of every contract called, every slot an `SLOAD` touches, and for `BLOCKHASH` the hashes of up to 256 ancestors. A verifier without that state needs them delivered, and needs to know they are genuine. A witness provides both: the values, the trie nodes on the path from the parent's `stateRoot` to each of them, and the parent [[block-header|header]] that pins that root, with older headers linked to it by `parentHash`.",
+          "The trie nodes do a second job. After executing, the verifier recomputes the post-state root and compares it with the block's own `stateRoot`, and updating a trie needs the nodes on every changed path, plus, where a deletion collapses a branch, sibling nodes that no read ever touched. Code travels whole and is authenticated by hashing it with [[keccak-256|keccak-256]] and comparing the result with the `codeHash` in the proven account leaf.",
+        ],
+      },
+      {
+        heading: "Three forms an RPC caller meets",
+        paragraphs: [
+          "`prestateTracer`, run through [[debug-api|debug_traceTransaction]] or a block trace, returns the balance, nonce, code and storage of everything a transaction read. It is values only: Geth's documentation likens it to a stateless witness except that it returns no cryptographic proof, so its output is exactly as trustworthy as the node that ran it; see [[execution-trace|execution trace]]. [[eth-get-proof|eth_getProof]] is the opposite case, verifiable but blind: one [[account-proof|account proof]] and its [[storage-proof|storage proofs]] per call, with no knowledge of which keys a block needs.",
+          "`debug_executionWitness` does the whole job in one call. The node re-executes the block on its parent's state and returns `state` (every trie node touched, [[rlp|RLP]]-encoded), `codes`, `keys` (the unhashed addresses and slots) and `headers`. [[geth|Geth]], [[reth|Reth]], [[erigon|Erigon]], [[nethermind|Nethermind]] and [[besu|Besu]] all have a method of that name, but it is not in the execution-apis specification and the shapes differ: Geth returns headers as JSON objects and leaves `keys` empty, the others return RLP header bytes, and Besu returns only `state`, `codes` and `headers`, the three fields of the reference witness behind EIP-8025. Because the method needs the parent's state, a [[pruned-node|pruned node]] can build a witness only for recent blocks.",
+        ],
+      },
+      {
+        heading: "Who consumes witnesses",
+        paragraphs: [
+          "[[stateless-ethereum|Stateless validation]] is the protocol-level consumer: a validator that checks each block from its witness instead of a database. Today the heavier users are zero-knowledge provers. A prover for a [[zk-rollup|zkEVM]] or [[real-time-proving|for L1 blocks]] runs the block inside a proving system with no disk and no network, so its host program gathers every input in advance, either with one `debug_executionWitness` call or by tracing the block to find the touched keys and then calling `eth_getProof` at the parent block for each. Zeth documents its dependence on the non-standard method and ships a proxy that builds witnesses from an archive node.",
+          "[[fraud-proof|Fault-proof]] programs for [[optimistic-rollup|optimistic rollups]] use the lazy variant. The OP Stack program asks its host for each L2 trie node and each piece of contract code by hash, through a preimage oracle, as execution reaches it. The result is the same witness, fetched on demand and authenticated by hashing.",
+        ],
+      },
+      {
+        heading: "Size, and what makes one trustworthy",
+        paragraphs: [
+          "In the hexary [[merkle-patricia-trie|Merkle-Patricia trie]] every level of a path costs a whole branch node of up to sixteen 32-byte references. EIP-6800 puts the witness for an average account access at close to 3 kB, EIP-7864 estimates one branch in a tree of 2^32 entries at 3,840 bytes, and because code is not chunked, touching one byte of a contract means shipping all of it. That is the case for [[verkle-tree|verkle]] and binary trees.",
+          "A witness proves nothing on its own. Each node is authenticated only by hashing up to a root, so everything rests on the parent header, whose hash must equal the `parentHash` of a block you already trust; see [[trusted-header|trusted header]]. Given a trusted root, a dishonest witness can omit data, which makes execution fail, but cannot alter a value without breaking a hash. Given a root taken from the same response, it can say anything.",
+        ],
+      },
+    ],
+    example: {
+      title: "debug_executionWitness for one block",
+      language: "json",
+      code: "// request (Reth also takes an optional second parameter, \"legacy\" or \"canonical\")\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"debug_executionWitness\",\"params\":[\"0x18d6a2c\"]}\n\n// result (abridged; the shape Reth, Erigon and Nethermind return)\n{\n  \"state\": [\n    \"0xf90211a0…\",                                   // RLP trie nodes, account and storage tries mixed\n    \"0xf8518080…\",\n    \"0xf8669d32c354…\"\n  ],\n  \"codes\": [\"0x6080604052…\"],                        // bytecode of every contract the block ran\n  \"keys\": [\n    \"0xd8da6bf26964af9d7eed9e03e53415d37aa96045\",     // an unhashed address\n    \"0x0000000000000000000000000000000000000000000000000000000000000009\"  // an unhashed slot\n  ],\n  \"headers\": [\"0xf9026aa0…\"]                          // RLP ancestor headers, including the parent\n}",
+      note: "Every `state` entry is authenticated only by hashing up to the parent header's `stateRoot`. Geth serves the same method with headers as JSON objects and an empty `keys`, so a decoder has to know which client answered.",
+    },
+    pitfalls: [
+      "Re-executing a block from `prestateTracer` output as though it were a witness; with no trie nodes, nothing ties those values to a state root.",
+      "Parsing `debug_executionWitness` responses from different clients with one decoder; header encoding and the `keys` field differ, and no specification settles them.",
+      "Assembling a witness from `eth_getProof` at the parent block and then failing to compute the post-state root, because a deletion that collapses a branch needs a sibling node no proof contained.",
+      "Taking the parent header from the same response as the witness, which proves only that the witness agrees with itself.",
+    ],
+    related: ["stateless-ethereum", "merkle-patricia-trie", "eth-get-proof", "execution-trace", "debug-api", "zk-rollup", "fraud-proof", "verkle-tree", "trusted-header", "validity-proof", "real-time-proving"],
+    sources: [
+      { title: "Geth: built-in tracers (prestateTracer)", url: "https://geth.ethereum.org/docs/developers/evm-tracing/built-in-tracers" },
+      { title: "Reth: debug namespace (debug_executionWitness)", url: "https://reth.rs/jsonrpc/debug" },
+      { title: "EIP-8025: Optional Execution Proofs", url: "https://eips.ethereum.org/EIPS/eip-8025" },
+      { title: "OP Stack specification: fault proof", url: "https://specs.optimism.io/fault-proof/index.html" },
+    ],
+  },
+  {
+    id: "verkle-tree",
+    title: "Verkle tree",
+    category: "proofs",
+    aliases: ["verkle", "EIP-6800", "vector commitment", "Pedersen commitment", "EIP-7612", "EIP-4762", "Bandersnatch", "IPA multiproof"],
+    summary: "A verkle tree is a 256-way state tree whose nodes commit to their children with vector commitments rather than hashes, proposed in EIP-6800 to make [[witness|witnesses]] small enough for [[stateless-ethereum|stateless validation]] and since set aside in favour of a binary hash tree.",
+    sections: [
+      {
+        heading: "Commitments instead of hashes",
+        paragraphs: [
+          "In the [[merkle-patricia-trie|Merkle-Patricia trie]] a parent commits to its children by hashing all of them, so proving one child means shipping the others. A verkle node instead holds a vector commitment to its 256 children, in EIP-6800 a Pedersen commitment over the Bandersnatch elliptic curve, and a proof opens only the positions it needs. The openings along every path a block touches are aggregated into one multiproof built on an inner product argument, which needs no trusted setup.",
+          "The payoff is size. EIP-6800 puts the [[witness|witness]] for an average account access at close to 3 kB in today's trie and about 200 bytes in a verkle tree, and puts the hexary worst case for a 15-million-gas block near 18 MB, too large to broadcast safely within a 12-second slot. A verkle proof is checked with elliptic-curve arithmetic rather than [[keccak-256|keccak-256]], so it shares nothing with the walk in [[account-proof|account proof]].",
+        ],
+      },
+      {
+        heading: "One tree, 31-byte stems",
+        paragraphs: [
+          "EIP-6800 also flattens the layout. The state trie whose leaves point to separate per-contract storage tries becomes one key-value tree with 32-byte keys. The first 31 bytes, the stem, come from a Pedersen hash of the [[address|address]] and a tree index; the last byte selects one of 256 values under that stem. An account's version, nonce, balance and code size are packed into one value, its code hash sits beside it, and its first 64 [[contract-storage|storage slots]] and first 128 code chunks share the same stem, so a typical call opens one stem rather than several paths.",
+          "Code enters the tree, split into 31-byte chunks, each prefixed with a byte recording how many of its leading bytes are PUSH data so that jump destinations stay unambiguous. The tree also distinguishes a stored zero from an empty position, which the current trie cannot: a present value has 2^128 added to its lower half before it is committed, so zero and absence commit differently, and EIP-4762 adds that once a key holds a value it never returns to empty. [[exclusion-proof|Exclusion proof]] explains why that matters.",
+        ],
+      },
+      {
+        heading: "Transition and gas",
+        paragraphs: [
+          "The state cannot be rewritten in one block. EIP-7612 proposes an overlay: at the fork the Merkle-Patricia trie is frozen, every write goes into a new verkle tree, and reads try the verkle tree first and fall back to the frozen trie. A later step, EIP-7748, moves a fixed number of old entries across per block. Throughout, a value may live in either structure, which is why the proposed verification precompile, EIP-7545, took a version byte naming the proof type.",
+          "[[gas|Gas]] changes with it, as specified in EIP-4762. A transaction pays 1,900 gas the first time it touches a stem and 200 for each new value read under it, 3,000 and 500 for the first write to a stem and to a value, and 6,200 to fill a previously empty value. Executing code is charged per 31-byte chunk, which the EIP estimates raises average gas use by 6 to 12 percent, and the per-byte charge for deploying code goes away.",
+        ],
+      },
+      {
+        heading: "Status in 2026",
+        paragraphs: [
+          "Verkle was the plan from roughly 2021 to 2024 and ran on the Kaustinen testnets, but it has not shipped and is not scheduled. EIP-6800, EIP-7612 and EIP-7545 are marked Stagnant, and in March 2026 the consensus specifications removed EIP-6800's feature specs on the grounds that it was unlikely to be included in an upgrade soon. Neither the Glamsterdam nor the Hegotá upgrade lists a state tree change, and mainnet still runs the hexary trie.",
+          "The direction moved to [[binary-state-tree|a binary tree, EIP-7864]], still a Draft: two children per node and plain hashing, because elliptic-curve commitments are not quantum-resistant and hash-based binary trees are cheaper to prove inside the SNARKs expected to verify blocks. Its hash function is undecided, with BLAKE3 as a placeholder. It keeps 256-value stems, the EIP-7612 overlay and EIP-4762's access events, and the Ethereum Foundation's 2026 priorities list binary trees and statelessness as long-term goals. Either change replaces what [[eth-get-proof|eth_getProof]] returns; see [[stateless-ethereum|stateless Ethereum]].",
+        ],
+      },
+    ],
+    example: {
+      title: "Where one account's data lives in the EIP-6800 tree",
+      language: "text",
+      code: "tree key = stem (31 bytes) || suffix (1 byte)\nstem     = pedersen_hash(address32 || tree_index)[:31]\n\nthe account's own stem (tree_index 0):\n  suffix 0          basic data: version | code_size | nonce | balance, packed\n  suffix 1          code hash\n  suffix 64-127     storage slots 0-63        HEADER_STORAGE_OFFSET = 64\n  suffix 128-255    code chunks 0-127         CODE_OFFSET = 128, 31 bytes of code each\n\neverything else lands on other stems:\n  storage slot s >= 64    tree_index = (256**31 + s) // 256    suffix = s % 256\n  code chunk c            tree_index = (128 + c) // 256        suffix = (128 + c) % 256",
+      note: "Slots at or above 64 share a stem in aligned runs of 256, so adjacent slots open one commitment; slots derived with keccak-256, such as Solidity mapping entries, land on unrelated stems.",
+    },
+    pitfalls: [
+      "Describing verkle trees as the next scheduled upgrade; the EIPs are Stagnant and no named upgrade contains a state tree change.",
+      "Expecting a verkle proof to be a list of sibling hashes; it is a set of commitments plus one aggregated opening, checked with elliptic-curve arithmetic.",
+      "Treating EIP-4762's gas numbers as settled; the EIP is a Draft, and the binary tree proposal reuses its access events without fixing its prices.",
+      "Assuming a single proof format during a transition; under the overlay a value may have to be proven from the frozen trie or from the new tree.",
+    ],
+    related: ["stateless-ethereum", "merkle-patricia-trie", "witness", "eth-get-proof", "exclusion-proof", "gas", "contract-storage", "hardfork", "client-storage", "validity-proof", "binary-state-tree"],
+    sources: [
+      { title: "EIP-6800: Ethereum state using a unified verkle tree", url: "https://eips.ethereum.org/EIPS/eip-6800" },
+      { title: "EIP-7864: Ethereum state using a unified binary tree", url: "https://eips.ethereum.org/EIPS/eip-7864" },
+      { title: "consensus-specs #4984: Remove specs for EIP-6800", url: "https://github.com/ethereum/consensus-specs/pull/4984" },
+      { title: "Ethereum Foundation: Protocol Priorities Update for 2026", url: "https://blog.ethereum.org/2026/02/18/protocol-priorities-update-2026" },
+    ],
+  },
+  {
+    id: "exclusion-proof",
+    title: "Exclusion proof",
+    category: "proofs",
+    aliases: ["proof of absence", "non-membership proof", "non-inclusion proof", "absence proof", "non-existent account", "unset storage slot"],
+    summary: "An exclusion proof shows that a key has no entry under a [[state-root|root]]: the [[merkle-patricia-trie|trie]] path for that key, walked down from the root, ends at an empty branch slot or at a node whose stored path diverges from the key, so no value can exist there.",
+    sections: [
+      {
+        heading: "Where the path stops",
+        paragraphs: [
+          "A key's nibbles fix its path, so an absent key still has a place it would occupy. An exclusion proof is the list of nodes from the root down to where that place turns out to be empty, and in the state and storage tries it can end in three ways. A branch node's child for the next nibble is the empty string `0x80`. A leaf's stored remaining path differs from the key's remaining nibbles, so a different key lives there. Or an extension's stored segment is not a prefix of the remaining nibbles, so the key would have branched off above it.",
+          "The walk is verified exactly like an [[inclusion-proof|inclusion proof]], each node hashing to the reference its parent held, and only the final check differs. Reading the stored paths depends on [[hex-prefix-encoding|hex-prefix encoding]], which also tells a verifier whether a two-item node is a leaf or an extension. EIP-1186 describes the branch and leaf endings and does not mention the extension one, which verifiers must handle anyway. An empty trie, whose root is `0x56e81f17…b421`, proves every key absent with an empty proof.",
+        ],
+      },
+      {
+        heading: "What eth_getProof returns for absence",
+        paragraphs: [
+          "For an address with no leaf, [[eth-get-proof|eth_getProof]] returns `balance` `0x0`, `nonce` `0x0` and an `accountProof` that ends in one of those three ways. The two hash fields depend on the client. Geth since v1.13.4, Nethermind and Erigon return `0x000…000` for both `codeHash` and `storageHash`; Besu and Reth by default return the empty-code hash `0xc5d24601…a470` and the empty-trie root `0x56e81f17…b421`, and EIP-1186 does not settle it. Every existing [[account|account]] without code or storage carries those same constants, so only the proof separates an absent account from an empty one.",
+          "For a storage key with no leaf, the `storageProof` entry has `value` `0x0` and a proof ending at the divergence; when there is no storage trie to walk, because the account is absent or its storage root is the empty root, Geth returns an empty `proof` array. A slot never written and a slot written back to zero give the same answer, because the [[evm|EVM]] deletes a slot set to zero rather than storing a zero, as [[storage-proof|storage proof]] explains. A contract that needs the distinction must keep its own flag. The [[verkle-tree|verkle]] design would have changed this: there, zero commits differently from absence.",
+        ],
+      },
+      {
+        heading: "Verifying one",
+        paragraphs: [
+          "Start from a root you trust: `stateRoot` from a [[trusted-header|trusted header]] for an account, and for storage the `storageRoot` inside an account leaf you have already proven, never the response's `storageHash` field. Hash the address or slot with [[keccak-256|keccak-256]] to get 64 nibbles. Walk the nodes, checking each hash, remembering that nodes shorter than 32 bytes are inlined in their parent, and consuming nibbles as you go. Then require that the last node shows absence in one of the three ways and that the proof ends there.",
+          "That last requirement is where verifiers go wrong. A proof that stops because the next node was left out looks like a path that ran out, but the parent still holds a reference to a real child: the proof is incomplete, and the key may well exist. Accept absence only when the final node itself shows the empty slot or the diverging path. Then treat the account as nonexistent or the slot as zero, and ignore the response's `codeHash` and `storageHash`.",
+        ],
+      },
+      {
+        heading: "What absence is used for",
+        paragraphs: [
+          "A [[bridge|bridge]] or messaging contract proves that a claimed flag or nullifier slot is still zero before it pays out. A [[light-client|light client]] or [[verified-rpc|verifying proxy]] answers `eth_getBalance` for a fresh address with a verified zero rather than an unverifiable one, and an absent account fixes [[eth-get-code|eth_getCode]] as empty just as firmly as a proven leaf would.",
+          "The [[ssz|SSZ]] side has no equivalent. Consensus objects have a fixed layout in which every field exists, so what a consensus verifier proves is that a field holds some value, such as a zero hash, at a known [[generalized-index|generalized index]], rather than that a key is missing.",
+        ],
+      },
+    ],
+    example: {
+      title: "eth_getProof for an address that was never used",
+      language: "json",
+      code: "// request: an address that has never been used, one storage key\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getProof\",\"params\":[\n  \"0x7c3a9e1f0b2d4c6e8a0f1b3d5c7e9a1b3d5f7e90\",\n  [\"0x0000000000000000000000000000000000000000000000000000000000000000\"],\n  \"0x18d6a2c\"\n]}\n\n// result from Geth (abridged)\n{\n  \"address\": \"0x7c3a9e1f0b2d4c6e8a0f1b3d5c7e9a1b3d5f7e90\",\n  \"balance\": \"0x0\",\n  \"nonce\": \"0x0\",\n  \"codeHash\": \"0x0000000000000000000000000000000000000000000000000000000000000000\",\n  \"storageHash\": \"0x0000000000000000000000000000000000000000000000000000000000000000\",\n  \"accountProof\": [\n    \"0xf90211a0…\",        // branch, root: must hash to the trusted stateRoot\n    \"0xf90211a0…\",        // branches, one nibble each\n    \"0xf90211a0…\",\n    \"0xf90211a0…\",\n    \"0xf90211a0…\",\n    \"0xf90211a0…\",\n    \"0xf8f1a0…8080…\"      // last branch: the slot for the key's next nibble is 0x80, empty\n  ],\n  \"storageProof\": [\n    { \"key\": \"0x0000000000000000000000000000000000000000000000000000000000000000\",\n      \"value\": \"0x0\",\n      \"proof\": [] }       // no account, so no storage trie to walk\n  ]\n}\n\n// Besu and Reth return the same absence with codeHash 0xc5d24601…a470\n// and storageHash 0x56e81f17…b421 instead of the zero hashes",
+      note: "The last `accountProof` node, not the zero `balance`, is the evidence: it must hash to the reference its parent held, and its slot for the key's next nibble must be empty.",
+    },
+    pitfalls: [
+      "Treating a proof that runs out of nodes as absence; a missing child node is an incomplete proof, and only an empty slot or a diverging path shows the key is absent.",
+      "Deciding that an account exists because `codeHash` and `storageHash` are non-zero; Besu and Reth return the empty constants for accounts that are not in the trie at all.",
+      "Expecting a storage proof to tell a slot that was never written from one that was reset to zero; neither has a leaf.",
+      "Handling only the branch and leaf endings, which rejects a valid proof whose key diverges inside an extension node.",
+    ],
+    related: ["account-proof", "storage-proof", "merkle-patricia-trie", "eth-get-proof", "inclusion-proof", "hex-prefix-encoding", "trusted-header", "state-proof", "verkle-tree", "bridge"],
+    sources: [
+      { title: "EIP-1186: RPC-Method to get Merkle Proofs", url: "https://eips.ethereum.org/EIPS/eip-1186" },
+      { title: "go-ethereum #28441: eth_getProof hashes for non-existent accounts", url: "https://github.com/ethereum/go-ethereum/issues/28441" },
+      { title: "ethereum.org: Merkle Patricia Trie", url: "https://ethereum.org/developers/docs/data-structures-and-encoding/patricia-merkle-trie/" },
+      { title: "EIP-4762: Statelessness gas cost changes", url: "https://eips.ethereum.org/EIPS/eip-4762" },
+    ],
+  },
+  {
+    id: "hex-prefix-encoding",
+    title: "Hex-prefix encoding",
+    category: "proofs",
+    aliases: ["HP encoding", "compact encoding", "hex prefix", "nibble path", "leaf flag", "compact_encode"],
+    summary: "Hex-prefix encoding is the compact form in which [[merkle-patricia-trie|Merkle-Patricia]] leaf and extension nodes store their path: nibbles packed two to a byte behind a flag nibble that says whether the node is a leaf and whether the path has an odd number of nibbles.",
+    sections: [
+      {
+        heading: "Why a flag nibble",
+        paragraphs: [
+          "The trie walks keys nibble by nibble, but nodes store bytes, so a path with an odd number of nibbles cannot be packed without saying so. Leaf and extension nodes add a second ambiguity: both are two-item [[rlp|RLP]] lists, `[path, x]`, and nothing else in the list says whether `x` is a stored value or a reference to a child. Hex-prefix encoding settles both with one leading nibble. The Yellow Paper defines it; Geth's source calls it the compact encoding and keeps a separate in-memory form in which a trailing nibble 16 marks a leaf.",
+          "Branch nodes carry no path, since their seventeen slots are indexed by the nibble itself, so the encoding appears only in the first item of a two-item node. [[eth-get-proof|eth_getProof]] returns nodes raw, so anyone checking an [[account-proof|account proof]] or a [[storage-proof|storage proof]] by hand decodes it at every leaf and extension, and the per-block tries behind a [[receipt-proof|receipt proof]] use it too.",
+        ],
+      },
+      {
+        heading: "Four flags",
+        paragraphs: [
+          "The high nibble of the first byte is the flag: 0 for an extension with an even number of nibbles, 1 for an extension with an odd number, 2 for a leaf with an even number, 3 for a leaf with an odd number. Bit 1 marks a leaf and bit 0 marks odd length. With an odd length, the low nibble of that first byte is the first nibble of the path; with an even length it is a padding zero and the path starts in the second byte. The remaining nibbles follow two to a byte.",
+          "So the extension path f 3 b encodes as `0x1f3b` and f 3 as `0x00f3`, while the leaf paths 0 f 1 c b 8 and f 1 c b 8 encode as `0x200f1cb8` and `0x3f1cb8`, the examples ethereum.org uses. One consequence surprises people: a 56-nibble and a 57-nibble leaf path both occupy 29 bytes, so the byte length does not give the nibble count, and only the flag does.",
+        ],
+      },
+      {
+        heading: "Decoding one leaf by hand",
+        paragraphs: [
+          "Take the account key `keccak256(0xd8dA…6045)`, whose nibbles begin 0 6 e 1 2 0 c 2, and suppose seven branch nodes have consumed 0 6 e 1 2 0 c. The leaf's first item is then an RLP string of 29 bytes, prefix `0x9d`, beginning `0x32`: flag 3, a leaf with an odd path, so the low nibble 2 is the path's first nibble and the next 28 bytes supply the other 56. Seven consumed plus 57 decoded makes 64, and the 57 must equal the key's tail exactly, or the leaf belongs to another account.",
+          "Had eight nibbles been consumed, the same leaf would begin `0x20`: a leaf, an even path, a padding zero, then the identical 28 bytes. At an extension the arithmetic is the same, but the result is a segment to consume before following the node's reference. A verifier that misreads the flag does not fail loudly; it walks one nibble out of step and rejects valid proofs. When the decoded path is meant to differ from the key, the node is evidence of absence; see [[exclusion-proof|exclusion proof]].",
+        ],
+      },
+    ],
+    example: {
+      title: "Decoding the path of one account leaf",
+      language: "text",
+      code: "key    = keccak256(0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045)\n       = 06e120c 2c3547c60ee47f712d32e5acf38b35d1cc62e23b055a69bb88284c281\n         ^^^^^^^ consumed by seven branch nodes; 57 nibbles remain\n\nleaf   = RLP([ path, value ])\npath   = 9d 32 c3547c60ee47f712d32e5acf38b35d1cc62e23b055a69bb88284c281\n         |  ||\n         |  |+-- low nibble 2: the first path nibble, packed here because the length is odd\n         |  +--- high nibble 3: leaf, odd length\n         +------ RLP prefix 0x9d: a 29-byte string follows\n\ndecoded  2 c 3 5 4 7 c 6 0 e e 4 7 f … 8 4 c 2 8 1        57 nibbles\ncheck    7 consumed + 57 decoded = 64, and the 57 equal the key's last 57 nibbles\n\none level deeper (8 consumed, 56 remain):  9d 20 c3547c60…84c281    flag 2: leaf, even; 0 is padding\nextension paths:                           1f 3b -> f 3 b (odd)     00 f3 -> f 3 (even)",
+      note: "Three layers stack here: strip `0x` and decode hex to get bytes, decode RLP to get the node's items, then decode hex-prefix to get nibbles. Only the last is this encoding.",
+    },
+    pitfalls: [
+      "Telling a leaf from an extension by anything other than the flag, such as the node's depth or the length of its second item, which sends the walk the wrong way.",
+      "Discarding the low nibble of every first byte; for an odd-length path it is the first nibble of the path.",
+      "Counting the flag nibble, or the padding zero, as part of the path, which shifts the whole walk by one nibble.",
+      "Inferring the nibble count from the byte length, which cannot separate a 56-nibble path from a 57-nibble one.",
+      "Confusing it with the `0x` [[hex-encoding|hex encoding]] of JSON-RPC fields; hex-prefix lives inside RLP-encoded trie nodes, one layer below the JSON text.",
+    ],
+    related: ["merkle-patricia-trie", "rlp", "account-proof", "storage-proof", "exclusion-proof", "eth-get-proof", "receipt-proof", "state-proof", "hex-encoding", "keccak-256"],
+    sources: [
+      { title: "ethereum.org: Merkle Patricia Trie", url: "https://ethereum.org/developers/docs/data-structures-and-encoding/patricia-merkle-trie/" },
+      { title: "Ethereum Yellow Paper (Appendix C, hex-prefix encoding)", url: "https://ethereum.github.io/yellowpaper/paper.pdf" },
+      { title: "go-ethereum: trie/encoding.go", url: "https://github.com/ethereum/go-ethereum/blob/master/trie/encoding.go" },
+    ],
+  },
+  {
+    id: "generalized-index",
+    title: "Generalized index",
+    category: "proofs",
+    aliases: ["gindex", "generalised index", "SSZ Merkle proof", "FINALIZED_ROOT_GINDEX", "get_generalized_index", "subtree index", "EIP-7688"],
+    summary: "A generalized index is the number that names one node in an [[ssz|SSZ]] Merkle tree, with the root at 1 and the children of node i at 2i and 2i + 1, so a single integer tells a verifier how deep a proven field sits and which side each sibling hash goes on.",
+    sections: [
+      {
+        heading: "Numbering a binary tree",
+        paragraphs: [
+          "SSZ Merkleization turns every object into a binary tree of 32-byte chunks, and a generalized index numbers its nodes from the top: the root is 1, its children 2 and 3, theirs 4 to 7, and in general the children of i are 2i on the left and 2i + 1 on the right. Written in binary the index is its own map. The leading 1 is the root, the number of bits after it is the depth, and those bits, read from the top, are the turns, 0 for left and 1 for right. 105 is `0b1101001`: six levels down, turning right, left, right, left, left, right.",
+          "That is everything a verifier needs besides the data. A branch for index g holds exactly floor(log2 g) sibling hashes; walking up, each step hashes the current node with its sibling, with the current node on the left when g is even and on the right when it is odd, and then halves g. The [[inclusion-proof|inclusion proof]] lesson shows that loop in code, and a [[consensus-proof|consensus proof]] is a chain of such branches. The consensus specs call the position within the deepest level the subtree index: g minus 2 to the power of its depth.",
+        ],
+      },
+      {
+        heading: "From a field name to a number",
+        paragraphs: [
+          "A container with n fields is padded to the next power of two, P leaves, so field i has index P + i. Nesting concatenates: to reach a field inside a field, shift the outer index left by the inner depth and add the inner path. Lists mix their length into their root, so their contents sit under the left child of the list's node. For the Altair beacon state, 24 fields pad to 32 and `finalized_checkpoint`, field 20, is 52; inside a two-field `Checkpoint`, `root` is 3; together 52 times 2 plus 1 gives 105, the spec's `FINALIZED_ROOT_GINDEX`. The two sync committee fields, 22 and 23, are 54 and 55.",
+          "The same arithmetic reaches the execution layer. In a Deneb [[beacon-block|beacon block]] body `execution_payload` is 25, and inside the payload `state_root` is field 2 of 17 fields padded to 32, index 34, so 802 from the body root. This is how [[light-client-update|light client updates]] and EIP-4788 contracts prove [[finality|finality]], [[sync-committee|sync committee]] membership, validator records and the [[execution-payload|execution payload]] header against a root they already trust.",
+        ],
+      },
+      {
+        heading: "When a fork moves the numbers",
+        paragraphs: [
+          "Because P depends on the field count, a [[hardfork|fork]] that pushes a container past a power of two deepens its tree and renumbers every field in it. Electra took the beacon state from 28 fields to 37, so `finalized_checkpoint.root` moved from 105 to 169, the sync committees from 54 and 55 to 86 and 87, and every branch through the state grew by one hash. Deneb did the same to the execution payload header, 15 fields to 17, moving `block_hash` within the body from 412 to 812. The light client spec now picks the index by slot, and on-chain verifiers carry both: EigenLayer's `BeaconChainProofs` keeps a Deneb and a Pectra beacon state height.",
+          "Anything that hard-codes an index, a branch length or a tree height breaks at the fork, usually as proofs that suddenly fail, and a contract that cannot be upgraded fails for good. EIP-7688, Scheduled for Inclusion in Glamsterdam, is the fix: it moves the main consensus containers to `ProgressiveContainer` (EIP-7495) and `ProgressiveList` (EIP-7916), whose shapes let new fields be appended without moving existing ones. The price is one last renumbering, 735 for `finalized_checkpoint.root` and 2,945 and 2,946 for the sync committees in the Gloas specs, after which positions are meant to hold. Gloas activated on Sepolia on 6 October 2026, at epoch 353024; mainnet is not yet scheduled.",
+        ],
+      },
+    ],
+    example: {
+      title: "Computing the light client indices",
+      language: "js",
+      code: "// generalized index: the root is 1, and the children of i are 2i and 2i + 1\nconst nextPow2 = n => 2 ** Math.ceil(Math.log2(n));\nconst depth    = g => Math.floor(Math.log2(g));           // also the number of branch hashes\nconst field    = (i, n) => nextPow2(n) + i;                 // field i of a container with n fields\nconst concat   = (outer, inner) => outer * 2 ** depth(inner) + (inner - 2 ** depth(inner));\n\nconcat(field(20, 24), field(1, 2));   // Altair BeaconState.finalized_checkpoint.root   -> 105\nconcat(field(20, 37), field(1, 2));   // Electra: 37 fields pad to 64 leaves, not 32    -> 169\nfield(22, 24);                        // current_sync_committee -> 54 (86 since Electra)\nconcat(field(9, 12), field(2, 17));   // Deneb body.execution_payload (25) .state_root   -> 802\n\ndepth(105);                           // 6 hashes in an Altair finality branch; depth(169) is 7\n(105).toString(2);                    // \"1101001\": after the leading 1, the turns from the root\n                                      // are right, left, right, left, left, right",
+      note: "Hard-coding the outputs of these lines is exactly what broke at Electra; the light client spec now selects each index from the slot of the header being proven.",
+    },
+    pitfalls: [
+      "Hard-coding `FINALIZED_ROOT_GINDEX` as 105 in a [[light-client|light client]] or contract; since Electra the finalized root sits at 169.",
+      "Multiplying nested indices instead of concatenating them; 52 and 3 combine to 105, not 156.",
+      "Forgetting a list's length mix-in, which puts the proof one level too shallow and on the wrong side.",
+      "Taking the depth from the length of the supplied branch rather than from the index, which lets a prover present an inner node, also 32 bytes, as if it were the leaf.",
+    ],
+    related: ["ssz", "inclusion-proof", "light-client-update", "consensus-proof", "sync-committee", "beacon-block", "execution-payload", "hardfork", "light-client", "finality"],
+    sources: [
+      { title: "Consensus specs: Altair light client sync protocol", url: "https://github.com/ethereum/consensus-specs/blob/master/specs/altair/light-client/sync-protocol.md" },
+      { title: "Consensus specs: Electra light client sync protocol", url: "https://github.com/ethereum/consensus-specs/blob/master/specs/electra/light-client/sync-protocol.md" },
+      { title: "ethereum/ssz-specs", url: "https://github.com/ethereum/ssz-specs" },
+      { title: "EIP-7688: Forward compatible consensus data structures", url: "https://eips.ethereum.org/EIPS/eip-7688" },
+    ],
+  },
+  {
+    id: "light-client-update",
+    title: "Light client update",
+    category: "proofs",
+    aliases: ["LightClientUpdate", "LightClientBootstrap", "finality update", "optimistic update", "light_client/updates", "sync committee period", "Altair light client"],
+    summary: "A light client update is the Altair [[ssz|SSZ]] object a beacon node serves so a [[light-client|light client]] can advance: a header attested by the [[sync-committee|sync committee]]'s aggregate signature, plus Merkle branches proving the finalized header and the next committee from that header's state.",
+    sections: [
+      {
+        heading: "What the object carries",
+        paragraphs: [
+          "`LightClientUpdate` has seven fields. `attested_header` is the header the committee signed, and `sync_aggregate` holds the 512-bit participation field and one aggregate [[bls-signature|BLS signature]], taken from a later block at `signature_slot`. `finalized_header` with `finality_branch` proves the finalized checkpoint recorded in the attested header's state, and `next_sync_committee` with its branch proves the next period's committee the same way. Both branches are checked against `attested_header.beacon.state_root` at a fixed [[generalized-index|generalized index]]: 105 and 55 before Electra, 169 and 87 since.",
+          "Two lighter objects cut this down. `LightClientFinalityUpdate` drops the next committee, and `LightClientOptimisticUpdate` keeps only the attested header, the aggregate and the slot, which lets a client follow the head between finalized checkpoints. The starting point is `LightClientBootstrap`, fetched for a block root the client already trusts: the header for that root, the current committee and its branch. The client checks that the header's hash tree root equals the root it asked for, which is why that root must come from outside the server, as [[weak-subjectivity|weak subjectivity]] requires.",
+        ],
+      },
+      {
+        heading: "Verifying and applying one",
+        paragraphs: [
+          "The committee rotates every 256 [[slot-epoch|epochs]], 8,192 slots or about 27 hours, and the signature must come from the committee of the period containing `signature_slot`: the current one, or the next once the client has learned it. Validation checks that `signature_slot` is later than the attested slot, which is no earlier than the finalized slot; verifies both branches; and verifies the aggregate over the attested header using the fork version at `signature_slot` minus one and the network's genesis validators root. An update with a single participant still passes validation.",
+          "What an update may change depends on participation. The finalized header and the committee rotation are applied only when at least two thirds of the 512 bits are set, 342 members. The optimistic head moves on less: more than half of the highest participation seen in the current and previous periods. If nothing finalizes for a whole period, the spec allows a forced update from the best one seen, with its attested header standing in for a finalized one, which keeps a client moving through long non-finality at a guarantee weaker than [[finality|finality]].",
+        ],
+      },
+      {
+        heading: "From a beacon header to eth_getProof",
+        paragraphs: [
+          "Since Capella a `LightClientHeader` carries more than the beacon header: `execution`, the [[execution-payload|execution payload]] header of that block, and `execution_branch`, four hashes proving it at index 25 of the block body against `beacon.body_root`. That is the step that turns a verified beacon header into a [[trusted-header|trusted header]] for execution. `execution.state_root` is the root an [[eth-get-proof|eth_getProof]] response must hash up to, and `execution.block_hash` is what to pin the request to. [[verified-rpc|Verifying proxies]] such as [[helios|Helios]] rest on exactly this step.",
+          "The Gloas specification, the consensus half of Glamsterdam, changes the shape again. With [[enshrined-pbs|enshrined proposer-builder separation]] the payload leaves the beacon block, so `LightClientHeader` keeps only `execution_block_hash`, proven from the payload bid's `parent_block_hash`, and every state-root lookup gains a step: fetch the execution header, hash it, compare. Gloas activated on Sepolia on 6 October 2026, at epoch 353024, and mainnet is not yet scheduled.",
+        ],
+      },
+      {
+        heading: "Serving them",
+        paragraphs: [
+          "The [[beacon-api|Beacon API]] has four routes under `/eth/v1/beacon/light_client/`: `bootstrap/{block_root}`, `updates?start_period=…&count=…` returning the best update per period and at most 128 per request, `finality_update` and `optimistic_update`, plus `light_client_finality_update` and `light_client_optimistic_update` events on the [[server-sent-events|event stream]]. Each answers JSON with a `version` field, or SSZ bytes when asked, and the object's shape follows the fork of its attested header.",
+          "Serving is optional, and the spec asks full nodes to keep this data only for the block-serving window of about five months. Lighthouse serves it unless started with `--disable-light-client-server`, while Prysm serves it only with `--enable-light-client`. A client that has been offline longer than the window, or bootstraps from an older root, may find nothing to fetch.",
+        ],
+      },
+    ],
+    example: {
+      title: "From a finality update to a pinned eth_getProof",
+      language: "bash",
+      code: "# 1. the latest finality update (JSON; send Accept: application/octet-stream for SSZ)\ncurl -s http://127.0.0.1:5052/eth/v1/beacon/light_client/finality_update \\\n  | jq '.version, .data.attested_header.beacon.slot, .data.signature_slot,\n        .data.finalized_header.beacon.slot, (.data.finality_branch | length),\n        .data.finalized_header.execution.block_hash,\n        .data.finalized_header.execution.state_root'\n# \"fulu\"  \"15314395\"  \"15314396\"  \"15314304\"  7  \"0x3b7e…41c0\"  \"0x6c1f…a9e2\"\n\n# 2. only after checking the aggregate and both branches: an execution proof pinned to that block\ncurl -s -X POST -H 'content-type: application/json' \\\n  --data '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getProof\",\"params\":[\"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045\",[],{\"blockHash\":\"0x3b7e…41c0\"}]}' \\\n  https://rpc.example\n# accountProof[0] must hash to 0x6c1f…a9e2, the execution.state_root proven in step 1",
+      note: "The beacon node supplies the bytes but not the trust: the update is accepted only after the sync aggregate checks out against a committee the client already holds and both branches hash up to `attested_header.beacon.state_root`.",
+    },
+    pitfalls: [
+      "Bootstrapping from a block root supplied by the same beacon node that serves the updates, which reduces the whole chain of proofs to that node's word.",
+      "Treating an optimistic update as final; it carries no finality branch, and the optimistic head advances on a smaller share of the committee.",
+      "Keeping pre-Electra branch lengths or indices in a light client, which then rejects every update attested after the fork.",
+      "Checking an `eth_getProof` response against `beacon.state_root`, the root of the consensus state, instead of `execution.state_root`.",
+    ],
+    related: ["sync-committee", "consensus-proof", "light-client", "beacon-api", "generalized-index", "trusted-header", "verified-rpc", "weak-subjectivity", "execution-payload", "helios"],
+    sources: [
+      { title: "Consensus specs: Altair light client sync protocol", url: "https://github.com/ethereum/consensus-specs/blob/master/specs/altair/light-client/sync-protocol.md" },
+      { title: "Consensus specs: Capella light client sync protocol", url: "https://github.com/ethereum/consensus-specs/blob/master/specs/capella/light-client/sync-protocol.md" },
+      { title: "Consensus specs: Altair light client full node", url: "https://github.com/ethereum/consensus-specs/blob/master/specs/altair/light-client/full-node.md" },
+      { title: "Beacon APIs specification", url: "https://ethereum.github.io/beacon-APIs/" },
+    ],
+  },
+  {
+    id: "binary-state-tree",
+    title: "Binary state tree",
+    category: "proofs",
+    aliases: ["EIP-7864", "unified binary tree", "binary trie", "stem node", "binary Merkle tree", "state tree conversion"],
+    summary: "The binary state tree is EIP-7864's draft replacement for the hexary [[merkle-patricia-trie|Merkle-Patricia trie]] behind Ethereum's [[state-root|state root]]: one key-value tree for accounts, code and storage in which every node has two children and commits by hashing alone, giving smaller proofs than today's trie and, unlike the [[verkle-tree|verkle tree]], no reliance on elliptic curves.",
+    sections: [
+      {
+        heading: "The problem with today's trie",
+        paragraphs: [
+          "Every block header carries a `stateRoot`, a 32-byte hash committing to all accounts, code and storage. Checking one value against it without holding the [[state|state]], as a [[light-client|light client]], a [[bridge|bridge]] or a [[stateless-ethereum|stateless]] validator must, takes a proof: the sibling hashes on the path up to the root. Today's trie gives each node sixteen children, so each level carries fifteen siblings; EIP-7864 puts one path through 2^32 entries at 3,840 bytes. Code sits outside the trie, so touching one byte of a contract means shipping all of it.",
+          "The trie is also slow to prove inside a [[validity-proof|validity proof]], the route to checking blocks without re-executing them that [[real-time-proving|real-time proving]] describes; the EIP blames RLP, slow-to-prove Keccak, one storage trie per contract and code kept outside. For RPC callers a new tree would change what [[eth-get-proof|eth_getProof]] returns and how every verifier checks state.",
+        ],
+      },
+      {
+        heading: "Stems, values and two children",
+        paragraphs: [
+          "The binary tree is one map from keys to 32-byte values. A key's last byte is its sub-index and the rest its stem; the 256 values sharing a stem hang under one stem node, so data read together is proven together. Above the stems each internal node has two children, and the tree is only as deep as needed to tell stems apart: no extension nodes and no [[rlp|RLP]].",
+          "An internal node commits as `hash(left || right)`, its two children's hashes joined; a stem node hashes its 256 values pairwise up an eight-level binary tree and hashes the stem with that root. A proof needs k − 1 siblings per level of a k-child tree, and two children minimises the total: for 2^24 entries, 768 bytes per path against 2,880 for a hexary tree. The hash is undecided: the reference code uses BLAKE3, which the EIP says is not final, and Keccak and Poseidon2, under Ethereum Foundation security review, remain candidates.",
+        ],
+      },
+      {
+        heading: "Where an account's data lands: settled and open",
+        paragraphs: [
+          "Part of the layout has held through every revision. Each account has a header stem derived from its [[address|address]]: sub-index 0 packs a version byte, a 3-byte code size, an 8-byte nonce and a 16-byte balance into one value, and sub-index 1 holds the code hash. Code is cut into 31-byte chunks, each stored with a leading byte counting its PUSH data. The first chunks and storage slots share the header stem; the rest go in groups of 256 under other stems derived from the address, so keccak-derived [[contract-storage|mapping slots]] scatter widely.",
+          "The exact positions are not settled. A June 2026 revision added a leading type byte, 0 for account headers, 1 for code and 255 for storage, and cut the header stem's share from 128 code chunks and 64 slots to 16 and 4. Elsewhere the text lags: its prose still says 128 and 64, its key functions use undefined names and hash inputs of lengths its hashing rule forbids, and there are no test vectors. The account fields are safe to learn; the exact keys are not.",
+        ],
+      },
+      {
+        heading: "Not verkle, not scheduled, and what changes for proofs",
+        paragraphs: [
+          "Against [[verkle-tree|verkle]], the EIP's case is not proof size, where verkle wins, but cryptography and proving. Verkle relies on elliptic curves, which a large quantum computer would break; the EIP cites NIST's advice to drop them by 2030, expects a hash tree to be Ethereum's last state tree, and argues fast provers make small proofs matter less. EIP-7864 is a Draft that neither of the next two upgrades, Glamsterdam and Hegotá, lists, so mainnet keeps the hexary trie.",
+          "Migration would freeze the old trie and start the new tree empty. Writes go to the new tree; under the EIP-7612 overlay, written for verkle and now Stagnant, reads try it first and fall back to the frozen trie. EIP-7748 would then copy a fixed number of old entries per block. That needs the original keys, since today's trie stores `keccak256(address)` and `keccak256(slot)`, so each client must keep raw keys in a flat database, hold a full preimage database from hash to key, or download a prepared one.",
+          "[[eth-get-proof|eth_getProof]] as EIP-1186 defines it returns RLP trie nodes, which the new tree does not have, and no replacement is specified. On-chain verifiers fare worst: the [[evm|EVM]] has precompiles for SHA-256 and BLAKE2 compression but none for BLAKE3 or Poseidon2, and the EIP notes that in-EVM proofs of historical state stop working.",
+        ],
+      },
+    ],
+    example: {
+      title: "One account's keys under the June 2026 constants",
+      language: "text",
+      code: "address    0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045\naddress32  0x000000000000000000000000d8da6bf26964af9d7eed9e03e53415d37aa96045\nH          the tree hash: BLAKE3 in the reference code, not final\n||         joins byte strings; every byte of a key but the last is its stem\n\nkey = type byte || position || sub-index\n  basic data       0x00 || H(address32) || 0x00\n  code hash        0x00 || H(address32) || 0x01\n  code chunk 3     0x00 || H(address32) || 0x07           CODE_OFFSET 4 + 3\n  storage slot 2   0x00 || H(address32) || 0x16           HEADER_STORAGE_OFFSET 20 + 2\n  code chunk 40    0x01 || H(address32 || group) || 0x18                 group 0, (40 - 16) % 256 = 24\n  storage slot 9   0xff || H(address32) || H(address32 || group) || 0x05   group 0, (9 - 4) % 256 = 5\n\nbasic data for an account with nonce 1500, 1 ETH and no code (32 bytes, big-endian):\n  00 | 00000000 | 000000    | 00000000000005dc | 00000000000000000de0b6b3a7640000\n  version  reserved  code_size  nonce              balance in wei\n\none proof path, from the EIP’s table for 2^24 entries:\n  binary (k = 2)    24 siblings x 32 bytes =   768 bytes\n  hexary (k = 16)   90 siblings x 32 bytes = 2,880 bytes",
+      note: "The basic-data packing matches the verkle layout and is not in dispute; sub-indices 0x07 and 0x16 come from the constants table that the EIP's own prose contradicts, and the last two keys give `H` inputs its hashing rule does not allow, so treat every key here as illustrative until test vectors exist.",
+    },
+    pitfalls: [
+      "Hard-coding BLAKE3 into a verifier, when the EIP says the hash is not final.",
+      "Shipping key derivation from the current text, whose constants, prose and functions disagree.",
+      "Expecting one proof format during migration, when under the overlay a value lives in the new tree or the frozen trie.",
+    ],
+    related: ["verkle-tree", "stateless-ethereum", "merkle-patricia-trie", "witness", "eth-get-proof", "state-proof", "real-time-proving", "contract-storage", "client-storage", "hardfork"],
+    sources: [
+      { title: "EIP-7864: Ethereum state using a unified binary tree", url: "https://eips.ethereum.org/EIPS/eip-7864" },
+      { title: "EIP-7748: State conversion to Verkle Tree", url: "https://eips.ethereum.org/EIPS/eip-7748" },
+      { title: "EIP-7612: Verkle state transition via an overlay tree", url: "https://eips.ethereum.org/EIPS/eip-7612" },
+      { title: "EIP-8081: Hardfork Meta - Hegotá", url: "https://eips.ethereum.org/EIPS/eip-8081" },
+    ],
+  },
+  {
+    id: "real-time-proving",
+    title: "Real-time block proving",
+    category: "proofs",
+    aliases: ["real-time proving", "realtime proving", "L1 zkEVM", "Ethproofs", "zkVM guest", "EIP-8025", "optional execution proofs"],
+    summary: "Real-time proving is producing a zero-knowledge proof that an L1 [[block|block]] is valid before its 12-second [[slot-epoch|slot]] ends, so that a validator could check a small proof instead of re-executing the block; the Ethereum Foundation's working definition is at most 10 seconds for 99 percent of mainnet blocks on hardware an individual could own.",
+    sections: [
+      {
+        heading: "Why prove blocks, and how fast",
+        paragraphs: [
+          "Today every [[validator|validator]] re-executes every block against the full [[state|state]] before it [[attestation|attests]], so validating costs more as the gas limit and the state grow. A zero-knowledge proof breaks that link: here, a succinct certificate that a computation ran correctly, checked in milliseconds however long the computation took, the asymmetry [[validity-proof|validity proofs]] give [[zk-rollup|ZK rollups]]. If one machine, the prover, proves each block, everyone else can check instead of executing, provided the proof is ready within the slot. For RPC, provers are heavy users of witness methods, and a proof-only validator would hold no state to serve calls.",
+          "An Ethereum Foundation post in July 2025 set the bar: at most 10 seconds for the 99th percentile of mainnet blocks; on-premises hardware costing at most 100,000 USD and drawing at most 10 kW, so that proving stays possible at home; at least 128 bits of security; and proofs of at most 300 KiB, from open-source code, with no trusted setup, the one-time ceremony some proof systems need, whose leftover secret could forge proofs.",
+        ],
+      },
+      {
+        heading: "The guest, and the scoreboard",
+        paragraphs: [
+          "A zkVM is a proving system for ordinary programs: it runs a program compiled for a small instruction set, usually RISC-V, and outputs a proof of what the run produced. The program is the guest, here an execution client's stateless validation: given the block and a [[witness|witness]], the state data the block touches, re-execute it and check the resulting state root, receipts root and requests. [[geth|Geth]] ships `cmd/keeper`, with a build for the MIPS-based Ziren zkVM, and [[nethermind|Nethermind]] publishes `stateless-validator` guests for ZisK, SP1 and OpenVM.",
+          "Ethproofs, at `ethproofs.org`, is the public scoreboard: teams submit proofs of mainnet blocks, and the site records each one's latency against the 10-second line, its hardware, such as 16 consumer GPUs, and its cost. A December 2025 Foundation post reported 99 percent of blocks proven in under 10 seconds on target hardware. Several guests on several zkVMs is deliberate: if validators verify, say, three proofs from different zkVMs, one soundness bug, a flaw that lets a false statement be proven, cannot get an invalid block accepted. It is [[client-diversity|client diversity]] for provers.",
+        ],
+      },
+      {
+        heading: "Feeding the prover",
+        paragraphs: [
+          "The guest has no disk and no network, so a host program gathers its input in advance. EIP-8025 fixes it as a `StatelessInput`: the [[engine-api|Engine API]] `NewPayloadRequest`, meaning the block plus the fields the consensus client sends with it, the [[chain-id|chain id]], and an `ExecutionWitness` of three lists. `state` holds the RLP trie nodes that execution and the post-state root need, `codes` the bytecode read from the pre-state, and `headers` the chain from the parent back to the oldest ancestor `BLOCKHASH` read, at most 256.",
+          "Over RPC the witness comes from one `debug_executionWitness` call to a node holding the parent's state, or from [[eth-get-proof|eth_getProof]] at the parent for every touched key, which misses nodes needed to recompute the root after a deletion. A real-time host runs its own execution client beside the prover: hosted endpoints rarely expose [[debug-api|debug_]], and every round trip spends the 10-second budget. An open execution-apis pull request would add `POST /engine/v1/payloads/witness`, returning the validation result and the witness in one Engine API call.",
+        ],
+      },
+      {
+        heading: "Verifying instead of re-executing",
+        paragraphs: [
+          "EIP-8025, Optional Execution Proofs, is the current proposal for L1. Opt-in validators act as provers and broadcast a `SignedExecutionProof` on a new `execution_proof` topic of the consensus layer's [[libp2p-gossip|gossip network]]: up to 400 KiB of proof (the EIP's limit on the wire; the Foundation's 300 KiB is a target for proof systems), a proof type naming the zkVM and guest, and a public input carrying the [[ssz|SSZ]] hash tree root of the whole `NewPayloadRequest`, a `successful_validation` flag, the chain id and a schema id. A verifier accepts it only if the proof checks, `successful_validation` is true and the root matches its own request. The EIP is a Draft, and the Hegotá upgrade's planning list declines it.",
+          "In its current text, proof-verifying nodes still re-execute and treat a valid proof as an extra signal; dropping re-execution would take a later EIP. Even then the work would move, not vanish. A prover needs the full execution state plus its GPUs, a verify-only validator would hold no state and could answer no [[eth-call|eth_call]], and [[rpc-provider|RPC providers]] would still run stateful [[full-node|full nodes]]. The EIP warns that if verifiers multiply faster than provers, fewer parties will hold the state.",
+        ],
+      },
+    ],
+    example: {
+      title: "One slot under EIP-8025, step by step",
+      language: "text",
+      code: "1. A beacon block for slot S arrives; the beacon node emits a Block event over server-sent events.\n2. The prover fetches the block and builds the NewPayloadRequest: payload, blob versioned hashes,\n   parent_beacon_block_root and execution requests.\n3. Its execution client re-executes the block on the parent state and records every trie node,\n   bytecode and ancestor header it touched: the ExecutionWitness (state, codes, headers).\n4. The host serializes StatelessInput = request + witness + chain_id as prefixed SSZ\n   and hands it to the proof node.\n5. The zkVM runs the guest: it checks the headers form a chain ending at the parent, executes\n   against witness-backed state, and outputs StatelessValidationResult.\n6. The prover signs the ExecutionProof under DOMAIN_EXECUTION_PROOF and gossips it on execution_proof.\n7. A verifying node checks the proof, then:\n     successful_validation    == true\n     new_payload_request_root == hash_tree_root(its own NewPayloadRequest)\n     chain_id                 == 1\n     schema_id                == the schema it expects\n   and, under the current text, still re-executes the block itself.\n\nbudgets: steps 3-6 within 10 s for 99% of blocks (EF target); proof <= 400 KiB on the wire;\n         at most 4 proof types per payload, so at most 1.6 MiB of proofs per slot",
+      note: "The checks in step 7 need only the proof and the payload the node already has, while step 3 needs the full parent state and step 5 the proving hardware; the verifier holds state only because the current text keeps re-execution.",
+    },
+    pitfalls: [
+      "Reading a verified proof as evidence that the block is canonical; it binds one `NewPayloadRequest`, and [[fork-choice|fork choice]] still picks the branch.",
+      "Accepting a proof because it verifies, without checking `successful_validation` and its request root against your own `NewPayloadRequest`.",
+      "Describing EIP-8025 as scheduled or as ending re-execution; it is a Draft, declined for Hegotá, whose verifiers still re-execute.",
+    ],
+    related: ["witness", "stateless-ethereum", "validity-proof", "zk-rollup", "binary-state-tree", "engine-api", "client-diversity", "debug-api", "execution-payload", "full-node"],
+    sources: [
+      { title: "Shipping an L1 zkEVM #1: Realtime Proving (Ethereum Foundation)", url: "https://blog.ethereum.org/2025/07/10/realtime-proving" },
+      { title: "Shipping an L1 zkEVM #2: The Security Foundations (Ethereum Foundation)", url: "https://blog.ethereum.org/2025/12/18/zkevm-security-foundations" },
+      { title: "EIP-8025: Optional Execution Proofs", url: "https://eips.ethereum.org/EIPS/eip-8025" },
+      { title: "Ethproofs", url: "https://ethproofs.org/" },
     ],
   },
 ];

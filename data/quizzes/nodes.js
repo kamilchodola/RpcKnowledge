@@ -913,7 +913,7 @@ export const quizzes = {
       kind: "detail",
       question: "Where does the content of a blob live once its transaction is a few weeks old?",
       options: [
-        "Normally nowhere; sidecars go after 4096 epochs",
+        "Only in blob archives; nodes drop it after 4096 epochs",
         "In the execution block body, retrievable from archive nodes",
         "In the beacon state, which archive consensus nodes keep forever",
         "In the transaction receipt, encoded under blobGasUsed",
@@ -1020,6 +1020,282 @@ export const quizzes = {
         "Each piece of content is signed by the Ethereum Foundation",
       ],
       answer: 0,
+    },
+  ],
+
+  "receipt-retention": [
+    {
+      kind: "scenario",
+      question: "An indexer asks a Geth node for the receipt of a 2019 transaction by hash and gets null, although the node still holds that block. What is the likely explanation?",
+      options: [
+        "The receipt was pruned, and the specification answers pruned receipts with null",
+        "The transaction index no longer reaches that block, so the hash is not found",
+        "Pre-Merge receipts are served through eth_getBlockReceipts rather than by hash",
+        "The transaction reverted, and a reverted transaction never gets a receipt",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "cause",
+      question: "Why can a node that prunes both receipts and state not regenerate an old receipt by changing a setting?",
+      options: [
+        "Receipts are signed by the proposer, so a rebuilt copy would fail verification",
+        "The receiptsRoot is deleted with the receipts, leaving nothing to check against",
+        "Clients refuse to re-execute blocks older than the finalized checkpoint",
+        "Rebuilding it means re-executing the block over its parent's state, now gone",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "How does Reth's receipts log filter differ from its prune.receipts.distance setting?",
+      options: [
+        "It keeps receipts containing logs from listed addresses and prunes the rest",
+        "It keeps logs for listed addresses but drops status and gas from their receipts",
+        "It filters what eth_getLogs returns, while the receipts stay on disk",
+        "It applies to state history, while the distance setting applies to receipts",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "detail",
+      question: "Which error does the execution-apis specification define for a receipt or log request below a node's retention boundary?",
+      options: [
+        "Code -32601, Method not found",
+        "Code -32000, missing trie node at that block",
+        "Code 4444, Pruned history unavailable",
+        "Code -32005, query returned too many results",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "consequence",
+      question: "A fresh Nethermind 2.0 mainnet node synced with default settings is used to backfill an indexer from block 20,000,000. What happens?",
+      options: [
+        "The node fetches the missing receipts from peers on the first request",
+        "The queries succeed, since the ancient barrier limits block bodies, not receipts",
+        "The node re-derives them from state, since receipts can always be rebuilt",
+        "Receipts below block 24,600,000 were never downloaded, so those reads fail",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "scenario",
+      question: "An operator adds prune.include-receipts to an Erigon 3.6 datadir that was created without it. What happens?",
+      options: [
+        "Erigon keeps the setting the datadir was created with, so nothing changes",
+        "Erigon backfills the receipt cache across its whole state-history window",
+        "Erigon starts caching receipts from the next block, leaving a gap behind",
+        "Erigon refuses to start until the datadir has been migrated in place",
+      ],
+      answer: 0,
+    },
+  ],
+
+  "partial-archive": [
+    {
+      kind: "scenario",
+      question: "A Geth path-based archive ran with a 100,000-block history.state for a year, and the operator now sets it to 0. What becomes available?",
+      options: [
+        "History back to genesis, rebuilt from reverse diffs in the freezer",
+        "History back to genesis, once the state index finishes rebuilding",
+        "History from now on is kept, while blocks already pruned stay gone",
+        "History back to the first sync, recovered from the ancient store",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "cause",
+      question: "Why can a historical eth_call to a sliced contract fail even though that contract's own history is retained?",
+      options: [
+        "Execution reaches other contracts' state, which the slice does not hold",
+        "Slices keep storage slots but not code, so the call has nothing left to run",
+        "A slice keeps only logs and receipts, never the contract's own state",
+        "Historical calls need a proof per slot, and slices keep no trie nodes",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "contrast",
+      question: "How does a since-block archive differ from a rolling window?",
+      options: [
+        "It keeps a fixed number of blocks and rebuilds older ones on demand",
+        "It keeps the same window but also retains receipts back to genesis",
+        "It starts at genesis and stops recording once a chosen block passes",
+        "It keeps everything from a fixed block onward and never prunes it",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "detail",
+      question: "A node must trace transactions from block 20,000,000 onward. Where should its since-block floor be set?",
+      options: [
+        "At block 20,000,000, since a trace needs only that block's own state",
+        "At block 19,999,999, since replay starts from the parent's state",
+        "At block 19,999,872, since replay needs 128 blocks of prior state",
+        "Anywhere, since tracing reads bodies and receipts rather than state",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "consequence",
+      question: "A gateway probes a rolling-window node's lowest answering block once and hard-codes it. What follows?",
+      options: [
+        "Nothing, because a rolling window's floor is fixed when the node syncs",
+        "Requests near that height start failing as the window's floor rises",
+        "Requests below it are answered slowly from state rebuilt on demand",
+        "The node widens its window to cover the hard-coded height when asked",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "scenario",
+      question: "An application needs historical eth_getProof and uses a Nethermind node with a Rolling flat-history window. What does it find?",
+      options: [
+        "Proofs work anywhere inside the window, since its state is fully retained",
+        "Proofs work only for addresses listed in the slice configuration",
+        "Historical proofs need unwindowed history, so this node never serves them",
+        "Proofs work, but inside the window they are built from live state",
+      ],
+      answer: 2,
+    },
+  ],
+
+  "database-snapshot": [
+    {
+      kind: "scenario",
+      question: "An operator restores a full-node snapshot, then enables archive settings to serve eth_call at old blocks. What happens?",
+      options: [
+        "The node rebuilds old state overnight from the bodies in the snapshot",
+        "Old blocks answer once the node re-indexes the snapshot's change sets",
+        "The client refuses to start, since archive and full database layouts cannot mix",
+        "Old blocks stay unanswerable, because the snapshot never held that state",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "How does snap sync differ from starting a node from a database snapshot?",
+      options: [
+        "Snap sync re-executes the chain from genesis before it serves reads",
+        "Snap sync proves each state range against a vouched-for state root",
+        "Snap sync trusts one peer for the whole state, a snapshot trusts many",
+        "Snap sync fetches the same files but verifies their checksums first",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "cause",
+      question: "Why can a wrong account value restored from a snapshot survive while new blocks keep producing matching state roots?",
+      options: [
+        "State roots cover only accounts that changed in the last 128 blocks",
+        "Clients compare roots at finalized checkpoints rather than per block",
+        "Root computation reuses stored hashes for everything a block leaves alone",
+        "Flat databases compute no state root, so nothing is compared to headers",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "What does reth download check for each file it extracts?",
+      options: [
+        "Its size and BLAKE3 hash against the snapshot's own manifest",
+        "Its SHA-256 hash against a list compiled into the binary",
+        "A publisher signature against a key pinned in reth.toml",
+        "Its block range against the consensus client's headers",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "consequence",
+      question: "A snapshot's checksum was downloaded from the same server as the snapshot, and it matches. What does that establish?",
+      options: [
+        "Only that the bytes arrived as that server published them",
+        "That the database belongs to the canonical chain at its head",
+        "That the publisher executed the blocks contained in it",
+        "That the snapshot was produced by an official client release",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "contrast",
+      question: "What distinguishes Erigon's snapshot files from a database snapshot?",
+      options: [
+        "They are copies of another node's full datadir, served over BitTorrent",
+        "They hold only current state, while database snapshots hold history",
+        "They are identical segments of Erigon's own layout, fetched by hash",
+        "They are era1 files that Erigon converts into its database at start",
+      ],
+      answer: 2,
+    },
+  ],
+
+  "era-files": [
+    {
+      kind: "scenario",
+      question: "A team downloads era1 files from a history endpoint. Which check ties a file to the canonical pre-Merge chain?",
+      options: [
+        "Rebuilding its accumulator root and matching the frozen historical list",
+        "Matching its SHA-256 against the checksums.txt on the same endpoint",
+        "Re-executing its blocks and comparing each state root with the header",
+        "Checking the proof-of-work seal on each header inside the file",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "detail",
+      question: "At most how many blocks does one era1 file hold?",
+      options: [
+        "4096",
+        "32768",
+        "8192",
+        "2048",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "contrast",
+      question: "How do consensus-layer era files differ from era1 files in what they carry?",
+      options: [
+        "Execution receipts and state diffs, but no beacon blocks",
+        "Beacon blocks with their payloads and a state, but no receipts",
+        "The same headers, bodies and receipts, only in SSZ instead of RLP",
+        "Only beacon states, one per epoch, with no blocks inside",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "cause",
+      question: "Why does importing era1 into Nethermind without Era.TrustedAccumulatorFile weaken verification?",
+      options: [
+        "It then skips checking bodies against the transactionsRoot",
+        "It then imports blocks without checking that parent hashes link",
+        "It then accepts files from other networks without complaint",
+        "It then trusts the accumulators found in the import directory itself",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "consequence",
+      question: "An operator runs geth download-era for a range of post-Merge blocks. What happens?",
+      options: [
+        "It fetches ere files for that range and verifies them against checksums",
+        "It fetches consensus era files and extracts the execution payloads",
+        "It fetches nothing useful, since era1 files end at the Merge",
+        "It fetches the blocks from peers instead, since endpoints lack them",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "cause",
+      question: "Why must an ere file written with the noproofs profile be checked against headers from elsewhere?",
+      options: [
+        "It omits the receipts, so receiptsRoot cannot be recomputed from it",
+        "It omits the per-header proofs that anchor it to canonical roots",
+        "It stores headers without hashes, so they must be fetched separately",
+        "It uses a compression that hides the headers from ordinary readers",
+      ],
+      answer: 1,
     },
   ],
 };

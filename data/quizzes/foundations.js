@@ -488,12 +488,12 @@ export const quizzes = {
   "namespaces": [
     {
       kind: "detail",
-      question: "Which three namespaces does the execution APIs specification define?",
+      question: "Which namespaces does the execution APIs specification cover?",
       options: [
-        "eth_, net_, and web3_",
-        "eth_, debug_, and trace_",
-        "eth_, txpool_, and admin_",
-        "eth_, net_, and debug_",
+        "eth_ and net_, plus part of debug_ and txpool_",
+        "eth_, net_, and web3_, and nothing beyond them",
+        "eth_, debug_, and trace_, but not txpool_",
+        "Every namespace a client serves, admin_ included",
       ],
       answer: 0,
     },
@@ -536,7 +536,7 @@ export const quizzes = {
       options: [
         "debug_ follows Geth's shape; trace_ follows Parity's",
         "debug_ is read-only; trace_ can change the node's state",
-        "debug_ is in the spec; trace_ is left to each client",
+        "debug_ has its own port; trace_ shares port 8545",
         "debug_ is cheap to serve; trace_ is the expensive one",
       ],
       answer: 0,
@@ -891,7 +891,7 @@ export const quizzes = {
       question: "An exchange credits deposits and cannot claw a credit back. Which tag should its confirmation reads use?",
       options: [
         "finalized, locked in by Casper FFG",
-        "safe, the latest justified checkpoint",
+        "safe, judged unlikely to be reorged",
         "latest, the head this node has chosen",
         "pending, the block this node expects next",
       ],
@@ -1086,7 +1086,7 @@ export const quizzes = {
       kind: "consequence",
       question: "An application asks a consensus node for a blob posted two months ago. What does it get?",
       options: [
-        "Nothing; sidecars are kept for about 18 days",
+        "Nothing; blob data is kept for about 18 days",
         "The blob, since consensus nodes keep every sidecar",
         "The blob, fetched on demand from the execution client",
         "Its KZG proof alone, since blob data is kept 4096 slots",
@@ -1515,6 +1515,351 @@ export const quizzes = {
         "It runs a single client, so results never vary between runs",
         "It has no faucet limits, so tests can mint unlimited ether",
         "It forks weeks before Sepolia, so tests see upgrades first",
+      ],
+      answer: 0,
+    },
+  ],
+
+  "ephemery": [
+    {
+      kind: "detail",
+      question: "How is the chain id of an Ephemery iteration formed?",
+      options: [
+        "A fresh random id drawn at each new genesis",
+        "39438000 plus the number of the iteration",
+        "11155111 plus the number of the iteration",
+        "One fixed id, 39438000, kept across resets",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "cause",
+      question: "Why does Ephemery change its chain id at every reset?",
+      options: [
+        "So the public RPC endpoints can move to new URLs each period",
+        "So validators must generate fresh keys for every iteration",
+        "So transactions signed for one iteration fail on the next",
+        "So the ethereum-lists registry can assign a new entry",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "scenario",
+      question: "An indexer on Ephemery resumes after a reset and finds a lower head with different hashes at every height. What should it do?",
+      options: [
+        "Detect the new chain id or genesis hash and rebuild from zero",
+        "Roll back block by block, as it would for any chain reorg",
+        "Wait for finality, since the new blocks may still be replaced",
+        "Keep its data and index only blocks above its old cursor",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "consequence",
+      question: "An operator runs Geth and Lighthouse from downloaded Ephemery genesis files and, after a reset, restarts them without clearing data. What happens?",
+      options: [
+        "The nodes resume and follow the new iteration automatically",
+        "The nodes join, but their validators start with a zero balance",
+        "The nodes sync the new chain while keeping last period's state",
+        "The nodes cannot join the new iteration on their old databases",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "How does Ephemery differ from Sepolia as a place to test staking software?",
+      options: [
+        "It keeps state forever, which suits long soak tests better",
+        "It starts fresh each period with its faucets refilled",
+        "It has no validators, so staking cannot be tested on it",
+        "It upgrades later than Sepolia, so new features arrive late",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "cause",
+      question: "What sets the upper limit on the length of Ephemery's reset period?",
+      options: [
+        "The disk each client needs as state grows over the period",
+        "The expiry of EIP-155 replay protection after one month",
+        "The faucet balances running out partway through a month",
+        "Keeping genesis validators above two thirds until the reset",
+      ],
+      answer: 3,
+    },
+  ],
+
+  "gnosis-chain": [
+    {
+      kind: "scenario",
+      question: "An exchange credits Gnosis staking payouts by watching the native balance of each withdrawal address. What does it miss?",
+      options: [
+        "Payouts arrive as claimable GNO in the deposit contract, not as xDAI",
+        "Payouts arrive as xDAI, but only after each epoch is finalized",
+        "Payouts arrive as logs emitted by the block reward contract instead",
+        "Payouts arrive as native GNO, which eth_getBalance does not report",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "cause",
+      question: "Why can an address's xDAI balance on Gnosis grow with no transaction and no log?",
+      options: [
+        "Priority fees are paid to every validator's address as native credits",
+        "Bridge mints are credited by a system call to the block reward contract",
+        "Withdrawals credit xDAI to validators' addresses on every block sweep",
+        "Gas refunds are credited at the end of each block as native payments",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "contrast",
+      question: "How do Gnosis Chain's slot and epoch lengths compare with Ethereum mainnet's?",
+      options: [
+        "12-second slots and 16-slot epochs, against 12 seconds and 32 slots",
+        "5-second slots and 32-slot epochs, against 12 seconds and 32 slots",
+        "2-second slots and 64-slot epochs, against 12 seconds and 32 slots",
+        "5-second slots and 16-slot epochs, against 12 seconds and 32 slots",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "detail",
+      question: "What happens to the EIP-1559 base fee on Gnosis Chain?",
+      options: [
+        "It is burned, exactly as on Ethereum mainnet since London",
+        "It is paid to a fee collector address instead of being burned",
+        "It is refunded to the sender once the block is finalized",
+        "It is paid to the block's proposer along with the priority fee",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "consequence",
+      question: "An explorer backend drops every trace_block entry of type reward while indexing Gnosis history. What does it lose?",
+      options: [
+        "Nothing, since Gnosis never produced reward entries in any block",
+        "Gas accounting, since reward entries carry each transaction's fee",
+        "The AuRa-era reward contract payouts, reported with type external",
+        "Withdrawal tracking, since GNO claims are reported as reward entries",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "scenario",
+      question: "An indexer rebuilds contract code on Gnosis from creation transactions and disagrees with eth_getCode for one address after December 2025. Why?",
+      options: [
+        "The account deployed code through an EIP-7702 delegation instead",
+        "The block reward contract replaced the code through a system call",
+        "A hard fork rewrote that account's code without any transaction",
+        "A reorg past finality restored an older version of the contract",
+      ],
+      answer: 2,
+    },
+  ],
+
+  "permissioned-network": [
+    {
+      kind: "scenario",
+      question: "An app defaults every read to the finalized tag and is pointed at a Besu QBFT network with no plugins. What does it see?",
+      options: [
+        "Blocks two epochs behind latest, as on mainnet proof of stake",
+        "An Unknown block error, because nothing sets the finalized marker",
+        "The genesis block, since BFT networks never advance finality",
+        "The latest block, since Besu maps finalized to the head block under QBFT",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "cause",
+      question: "Why does a Besu node with account permissioning still import blocks that contain transactions from non-allowlisted senders?",
+      options: [
+        "The allowlist covers transactions submitted during the last epoch",
+        "QBFT validators override the allowlists of non-validating nodes",
+        "Imported blocks are rechecked once the perm_ methods are called",
+        "Account permissioning is node-local policy, not a consensus rule",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "contrast",
+      question: "How does QBFT's finality differ from Clique's?",
+      options: [
+        "QBFT blocks are final once committed; Clique can have short forks",
+        "Clique blocks are final once sealed; QBFT can have short forks",
+        "Both reach finality after two epochs of validator attestations",
+        "QBFT needs a beacon chain for finality; Clique finalizes at genesis",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "detail",
+      question: "What happened to Tessera private transactions and the priv_ methods in Besu?",
+      options: [
+        "They moved into a plugin that is enabled with the PRIV API group",
+        "They were deprecated but remain available behind a feature flag",
+        "They were removed, together with the PRIV and EEA API groups",
+        "They were merged into the perm_ namespace for allowlisted accounts",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "consequence",
+      question: "More than a third of a QBFT network's validators go offline. What does an RPC caller observe?",
+      options: [
+        "The chain forks, and each partition keeps producing its own blocks",
+        "Blocks continue, but the finalized tag stops advancing until recovery",
+        "The remaining validators lower the quorum and keep producing blocks",
+        "eth_blockNumber stops advancing, since no block can be committed",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "scenario",
+      question: "A team wants to start a brand-new Clique network today. Which client can still seal Clique blocks?",
+      options: [
+        "Geth, with the clique engine set in its genesis config",
+        "Besu, with a clique section set in its genesis config",
+        "Nethermind, with a Clique engine set in its chainspec",
+        "Reth, with the clique engine enabled at its startup",
+      ],
+      answer: 2,
+    },
+  ],
+
+  "server-sent-events": [
+    {
+      kind: "scenario",
+      question: "An indexer's event-stream connection to a beacon node drops for two minutes and then reconnects. What happened to the events in between?",
+      options: [
+        "They are replayed, because the client sent Last-Event-ID",
+        "They are buffered by the node and sent first on reconnect",
+        "They are gone; the stream has no ids and replays nothing",
+        "They are replayed for the head and chain_reorg topics only",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "cause",
+      question: "Why do events behind a default nginx configuration arrive in bursts rather than one at a time?",
+      options: [
+        "nginx buffers proxied responses unless buffering is off",
+        "nginx turns the stream into chunked JSON and batches it",
+        "Beacon nodes batch their events when a proxy is detected",
+        "The stream needs HTTP/2, which nginx downgrades to 1.1",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "contrast",
+      question: "How does the Beacon API event stream differ from eth_subscribe on the execution layer?",
+      options: [
+        "It replays missed events, whereas eth_subscribe does not",
+        "It wraps each event in a JSON-RPC envelope with an id field",
+        "It delivers only finalized data, whereas eth_subscribe is live",
+        "It is a one-way HTTP response, not messages on a WebSocket",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "detail",
+      question: "In the event-stream format, what does a blank line do?",
+      options: [
+        "It marks a keep-alive comment that clients should ignore",
+        "It dispatches the event built from the lines before it",
+        "It resets the reconnection delay back to its default value",
+        "It closes the stream and makes the client reconnect at once",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "consequence",
+      question: "A dashboard subscribes only to finalized_checkpoint through a proxy with a 60-second read timeout. What happens?",
+      options: [
+        "Finality events arrive every slot, so the stream stays up",
+        "The proxy holds the updates and delivers them as a burst",
+        "The proxy cuts the idle stream between epoch updates",
+        "The browser renews the timeout by sending Last-Event-ID",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "scenario",
+      question: "After reconnecting, how should a consumer recover blocks and reorgs it may have missed?",
+      options: [
+        "Resubscribe with a from_slot parameter so the node replays the gap",
+        "Send Last-Event-ID with the last slot so the node resends the gap",
+        "Subscribe to block_gossip, which re-sends the most recent blocks",
+        "Read head and finality over REST and walk back from its last root",
+      ],
+      answer: 3,
+    },
+  ],
+
+  "openrpc": [
+    {
+      kind: "detail",
+      question: "What does make build produce in the execution-apis repository?",
+      options: [
+        "A client library generated for each language",
+        "One openrpc.json with every $ref resolved",
+        "A compiled test chain for the hive simulator",
+        "One YAML file per method, split from the spec",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "contrast",
+      question: "How does rpc_modules on Geth or Reth differ from OpenRPC's rpc.discover?",
+      options: [
+        "It returns the OpenRPC document, but only for the eth_ namespace",
+        "It is the same method, renamed to fit Ethereum's namespace style",
+        "It lists every method with parameters, but leaves out examples",
+        "It lists enabled namespaces, not a document describing each method",
+      ],
+      answer: 3,
+    },
+    {
+      kind: "scenario",
+      question: "A response passes validation against openrpc.json but carries a wrong balance. Why did validation not catch it?",
+      options: [
+        "The schema checks shape and encoding, not whether values are true",
+        "Balances are left out of the schema because they are unbounded",
+        "Validation runs on requests only, and responses are never checked",
+        "The schema checks values only for blocks that have been finalized",
+      ],
+      answer: 0,
+    },
+    {
+      kind: "cause",
+      question: "Why can a fully conformant node still refuse an eth_getLogs range that another node answers?",
+      options: [
+        "Conformance covers eth_getLogs only over already finalized blocks",
+        "The schema lets each client define its own set of filter fields",
+        "Range caps are an operator choice the schema says nothing about",
+        "Conformant nodes must reject any range wider than a single epoch",
+      ],
+      answer: 2,
+    },
+    {
+      kind: "detail",
+      question: "What does an .io file in the execution-apis tests directory contain?",
+      options: [
+        "A method's YAML schema compiled to JSON for the simulator",
+        "A request and its expected response on a fixed test chain",
+        "A list of the clients that implement a method, by version",
+        "A latency benchmark for a method on reference hardware",
+      ],
+      answer: 1,
+    },
+    {
+      kind: "consequence",
+      question: "Code relies on the execution-apis error catalogue to recognise code 3 from any method. What is wrong with that assumption?",
+      options: [
+        "It is referenced by two submission methods, not yet by eth_call",
+        "Code 3 falls in the range the catalogue reserves for gas errors",
+        "The catalogue applies to Engine API methods, not to eth_ ones",
+        "Error codes are stripped from openrpc.json when it is built",
       ],
       answer: 0,
     },
